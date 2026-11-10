@@ -186,6 +186,16 @@ export const PLAN_SETTINGS: PlanSetting[] = [
     part: 'A',
   },
   ...NOTE_TASK_DEFS.flatMap(noteTaskRows),
+  {
+    settingKey: 'openMovementsFromDate',
+    value: '2024-01-01',
+    valueType: TXT,
+    label: 'תנועות פתוחות – מתאריך',
+    description:
+      'YYYY-MM-DD. משיכת התנועות הפתוחות מפריוריטי קוראת רק תנועות שתאריך המסמך שלהן מהתאריך הזה והלאה, ובוחרת לקוחות שיש להם חשבונית מהתאריך הזה (או תנועות פתוחות קיימות). הרצה עם "היסטוריה מלאה" מתעלמת ממנו ומדווחת על תנועות פתוחות ישנות יותר.',
+    basis: 'ברירת מחדל',
+    part: 'A',
+  },
   // ---------- part B: receipts ----------
   {
     settingKey: 'bankLinesSource',

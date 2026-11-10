@@ -78,7 +78,8 @@
       "enum": [
         "priority-mock",
         "test-fixture",
-        "priority-api"
+        "priority-api",
+        "priority-direct"
       ]
     },
     {

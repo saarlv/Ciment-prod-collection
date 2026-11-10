@@ -18,7 +18,9 @@ import type { BlocksClient, Item } from './blocks/blocks-client.ts';
 import { monthKeyOf, toIsraelDate } from './collections-dates.ts';
 import { createInChunks, deleteByIds, errText, mapLimit, num, numOrNull, readAll, readWhereIn, round2, str } from './collections-data.ts';
 import { type CustomersSource, customersSource, INACTIVE_IN_PRIORITY, type PriorityCustomer } from './priority-customers-source.ts';
-import { DOC_OTHER, DOC_TYPES, type MovementsSource, movementsSource, type PriorityMovement } from './priority-movements-source.ts';
+import {
+  DOC_OTHER, DOC_TYPES, type IncompleteCustomer, type MovementsAnswer, type MovementsSource, movementsSource, type OlderThanCutoff,
+} from './priority-movements-source.ts';
 import { type ExposureSource, exposureSource, type PriorityExposure } from './priority-orders-source.ts';
 import { PRIORITY_NOT_CONNECTED } from './priority-connection.ts';
 
@@ -307,14 +309,41 @@ export interface MovementsPullResult {
   syncedAt: string;
   writeVerified: boolean;
   errors: string[];
+  /** customers whose read completed this run */
+  customersRead: number;
+  /** customers whose read failed (rows kept) */
+  customersIncomplete: IncompleteCustomer[];
+  /** open movements written (or that would be) for known customers */
+  movements: number;
+  /** sum of the positive amounts / of the negative amounts (ILS) */
+  sumDebt: number;
+  sumCredit: number;
+  /** docType → { count, sum } */
+  byDocType: Record<string, { count: number; sum: number }>;
+  /** the 5 customers with the largest open-movements sum, next to the CustomerActivity openDebt (unreconciled Invoices.amount) */
+  topCustomers: { customerCode: string; customerName: string | null; openMovementsSum: number; invoicesOpenDebt: number | null; difference: number | null }[];
+  /** dry run: customerCode → { count, sum } */
+  perCustomer?: Record<string, { count: number; sum: number }>;
+  /** dry run: 10 sample movements */
+  samples?: Item[];
+  cutoff: string | null;
+  fullHistory: boolean;
+  /** fullHistory: open lines older than the cutoff */
+  olderThanCutoff: OlderThanCutoff | null;
+  customersPlanned: number | null;
+  /** customers left for the next run (time ran out) */
+  remaining: number;
+  needsResume: boolean;
+  resumed: boolean;
+  notes: string[];
 }
 
 const movementKey = (code: unknown, id: unknown) => `${str(code).trim()}|${str(id).trim()}`;
 
 export async function pullOpenMovements(
   client: BlocksClient,
-  input: { dryRun?: unknown; customerCodes?: unknown; importBatchId?: unknown } = {},
-  deps: PullDeps & { source?: MovementsSource } = {},
+  input: { dryRun?: unknown; customerCodes?: unknown; importBatchId?: unknown; fullHistory?: unknown; resume?: unknown } = {},
+  deps: PullDeps & { source?: MovementsSource; readDeadline?: number } = {},
 ): Promise<MovementsPullResult> {
   const source = deps.source ?? movementsSource;
   const syncedAt = deps.nowIso ?? new Date().toISOString();
@@ -338,6 +367,21 @@ export async function pullOpenMovements(
     syncedAt,
     writeVerified: false,
     errors,
+    customersRead: 0,
+    customersIncomplete: [],
+    movements: 0,
+    sumDebt: 0,
+    sumCredit: 0,
+    byDocType: {},
+    topCustomers: [],
+    cutoff: null,
+    fullHistory: input.fullHistory === true || input.fullHistory === 'true',
+    olderThanCutoff: null,
+    customersPlanned: null,
+    remaining: 0,
+    needsResume: false,
+    resumed: false,
+    notes: [],
   };
 
   if (source.connected === false) {
@@ -346,13 +390,29 @@ export async function pullOpenMovements(
     return out;
   }
   // ---------- the source ----------
-  let answer: { customers: string[]; movements: PriorityMovement[] };
+  let answer: MovementsAnswer;
   try {
-    answer = await source.fetchOpenMovements({ client, customerCodes: only.length ? only : null });
+    answer = await source.fetchOpenMovements({
+      client,
+      customerCodes: only.length ? only : null,
+      fullHistory: out.fullHistory,
+      resume: input.resume !== false && input.resume !== 'false',
+      readDeadline: deps.readDeadline ?? null,
+      dryRun,
+    });
   } catch (e) {
     errors.push(`מקור התנועות הפתוחות נכשל: ${errText(e)} – לא נכתב ולא נמחק דבר`);
     return out;
   }
+  out.customersRead = (answer?.customers ?? []).length;
+  out.customersIncomplete = answer?.incomplete ?? [];
+  out.cutoff = answer?.cutoff ?? null;
+  out.olderThanCutoff = answer?.olderThanCutoff ?? null;
+  out.customersPlanned = answer?.customersPlanned ?? null;
+  out.remaining = answer?.remaining ?? 0;
+  out.needsResume = answer?.needsResume === true;
+  out.resumed = answer?.resumed === true;
+  out.notes = answer?.notes ?? [];
   const inScope = (code: string) => !only.length || only.includes(code);
   const seen = new Set<string>();
   const movements = (answer?.movements ?? []).filter((m) => {
@@ -367,6 +427,7 @@ export async function pullOpenMovements(
   out.fromSource = movements.length;
   if (!movements.length) {
     errors.push('המקור החזיר 0 תנועות – המשיכה נחשבת כנכשלה, הטבלה לא רוקנה');
+    if (!dryRun) await answer?.afterWrite?.(false);
     return out;
   }
   const coveredCodes = [...new Set([...(answer.customers ?? []).map((c) => str(c).trim()).filter(Boolean), ...movements.map((m) => str(m.customerCode).trim())])].filter(inScope);
@@ -378,6 +439,7 @@ export async function pullOpenMovements(
     [customers, existing] = await Promise.all([readWhereIn(client, 'Customers', 'customerCode', coveredCodes), readWhereIn(client, 'OpenMovements', 'customerCode', coveredCodes)]);
   } catch (e) {
     errors.push(`קריאה נכשלה: ${errText(e)} – לא נכתב ולא נמחק דבר`);
+    if (!dryRun) await answer.afterWrite?.(false);
     return out;
   }
   const customerByCode = new Map<string, Item>();
@@ -437,6 +499,7 @@ export async function pullOpenMovements(
   out.updated = updates.length;
   out.written = creates.length + updates.length;
   out.deleted = deletes.length;
+  await summarizeMovements(client, out, [...creates, ...updates], dryRun);
 
   if (dryRun) {
     out.ok = true;
@@ -481,7 +544,44 @@ export async function pullOpenMovements(
   }
   out.writeVerified = errors.length === 0;
   out.ok = errors.length === 0;
+  await answer.afterWrite?.(out.ok);
   return out;
+}
+
+/** Counts and sums of the movements written (or that would be), the 5 largest customers against CustomerActivity. */
+async function summarizeMovements(client: BlocksClient, out: MovementsPullResult, rows: Item[], dryRun: boolean) {
+  const per: Record<string, { count: number; sum: number }> = {};
+  for (const r of rows) {
+    const a = num(r.amount);
+    if (a > 0) out.sumDebt = round2(out.sumDebt + a);
+    else out.sumCredit = round2(out.sumCredit + a);
+    const t = (out.byDocType[str(r.docType)] ??= { count: 0, sum: 0 });
+    t.count++;
+    t.sum = round2(t.sum + a);
+    const c = (per[str(r.customerCode)] ??= { count: 0, sum: 0 });
+    c.count++;
+    c.sum = round2(c.sum + a);
+  }
+  out.movements = rows.length;
+  if (dryRun) {
+    out.perCustomer = per;
+    out.samples = rows.slice(0, 10).map(({ id, customer, importBatchId, syncedAt, ...m }) => m);
+  }
+  const top = Object.entries(per).sort((a, b) => b[1].sum - a[1].sum).slice(0, 5);
+  let activity = new Map<string, number>();
+  if (top.length) {
+    try {
+      const act = await readWhereIn(client, 'CustomerActivity', 'customerCode', top.map(([c]) => c));
+      activity = new Map(act.map((r) => [str(r.customerCode).trim(), round2(num(r.openDebt ?? r.openDebtRaw))]));
+    } catch (e) {
+      out.notes.push(`CustomerActivity: ${errText(e)}`);
+    }
+  }
+  const names = new Map(rows.map((r) => [str(r.customerCode), str(r.customerName) || null]));
+  out.topCustomers = top.map(([code, v]) => {
+    const inv = activity.has(code) ? activity.get(code)! : null;
+    return { customerCode: code, customerName: names.get(code) ?? null, openMovementsSum: v.sum, invoicesOpenDebt: inv, difference: inv === null ? null : round2(v.sum - inv) };
+  });
 }
 
 // =====================================================================================================================

@@ -87,8 +87,18 @@ function parseJson(s: string, what: string) {
   }
 }
 
-/** One ReadEntitySet call, ≤2 in flight, with 429 backoff. Returns the `value` rows or throws. */
-export async function priorityRead(client: BlocksClient, input: ReadEntitySetInput, tag: string): Promise<Item[]> {
+/** A 4xx other than 429 (a bad filter, a missing entity): retrying it cannot help. */
+function isClientError(e: any): boolean {
+  const s = Number(e?.statusCode ?? e?.status);
+  if (Number.isFinite(s) && s >= 400 && s < 500) return s !== 429;
+  return /\b40[0-4]\b/.test(errText(e));
+}
+
+/**
+ * One ReadEntitySet call, ≤2 in flight, with 429 backoff. Returns the `value` rows or throws.
+ * opts.retryAllErrors (default false): also back off 2/4/8/16/32 s on any error that is not a 4xx (timeouts, 5xx).
+ */
+export async function priorityRead(client: BlocksClient, input: ReadEntitySetInput, tag: string, opts: { retryAllErrors?: boolean } = {}): Promise<Item[]> {
   for (let attempt = 0; ; attempt++) {
     await acquire();
     const t = Date.now();
@@ -109,7 +119,8 @@ export async function priorityRead(client: BlocksClient, input: ReadEntitySetInp
       console.log(`[p] ${tag} ${rows.length}r ${ms}ms${attempt ? ` try${attempt + 1}` : ''}`);
       return rows;
     }
-    if (!isRateLimited(err) || attempt >= PD_RETRY_BACKOFF_S.length) {
+    const retryable = isRateLimited(err) || (opts.retryAllErrors === true && !isClientError(err));
+    if (!retryable || attempt >= PD_RETRY_BACKOFF_S.length) {
       const e = new Error(`${tag}: ${errText(err)}${attempt ? ` (אחרי ${attempt} ניסיונות חוזרים)` : ''}`) as any;
       e.statusCode = err?.statusCode;
       throw e;
@@ -117,7 +128,7 @@ export async function priorityRead(client: BlocksClient, input: ReadEntitySetInp
     const wait = retryAfterMs(err) ?? PD_RETRY_BACKOFF_S[attempt] * 1000;
     priorityStats.retries++;
     priorityStats.waitedMs += wait;
-    console.error(`[p] ${tag} 429, retry ${attempt + 1}/${PD_RETRY_BACKOFF_S.length} in ${wait}ms`);
+    console.error(`[p] ${tag} ${isRateLimited(err) ? '429' : 'error'}, retry ${attempt + 1}/${PD_RETRY_BACKOFF_S.length} in ${wait}ms`);
     await sleep(wait);
   }
 }

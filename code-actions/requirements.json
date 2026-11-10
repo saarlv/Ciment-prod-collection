@@ -4585,6 +4585,16 @@
           "importBatchId": {
             "type": "string",
             "description": "ImportBatches row of the run this pull belongs to (optional)"
+          },
+          "fullHistory": {
+            "type": "boolean",
+            "default": false,
+            "description": "Drop the BALDATE cutoff (one-off runs); reports open lines older than the cutoff"
+          },
+          "resume": {
+            "type": "boolean",
+            "default": true,
+            "description": "Continue an unfinished pass from the next customer (ignored with customerCodes)"
           }
         }
       },
@@ -4619,6 +4629,103 @@
               "type": "string"
             },
             "description": "Codes not in Customers (skipped)"
+          },
+          "customersRead": {
+            "type": "number"
+          },
+          "customersIncomplete": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "[{customerCode, error}] kept yesterday's rows"
+          },
+          "movements": {
+            "type": "number"
+          },
+          "sumDebt": {
+            "type": "number"
+          },
+          "sumCredit": {
+            "type": "number"
+          },
+          "byDocType": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "{docType: {count, sum}}"
+          },
+          "topCustomers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "5 largest: {customerCode, customerName, openMovementsSum, invoicesOpenDebt, difference}"
+          },
+          "perCustomer": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Dry run: {code: {count, sum}}"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "cutoff": {
+            "type": "string"
+          },
+          "fullHistory": {
+            "type": "boolean"
+          },
+          "olderThanCutoff": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "customersPlanned": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "needsResume": {
+            "type": "boolean"
+          },
+          "resumed": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created": {
+            "type": "number"
+          },
+          "updated": {
+            "type": "number"
+          },
+          "importBatchId": {
+            "type": "string"
+          },
+          "syncedAt": {
+            "type": "string"
+          },
+          "writeVerified": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
           },
           "totalsByCustomer": {
             "type": "object",
@@ -12362,7 +12469,8 @@
             "enum": [
               "priority-mock",
               "test-fixture",
-              "priority-api"
+              "priority-api",
+              "priority-direct"
             ],
             "title": "source",
             "description": "Where the row came from",
@@ -12885,7 +12993,8 @@
             "type": "string",
             "enum": [
               "contacts",
-              "payments"
+              "payments",
+              "openMovements"
             ],
             "title": "scope",
             "description": "Scope",
@@ -33707,7 +33816,8 @@
             "enum": [
               "priority-mock",
               "test-fixture",
-              "priority-api"
+              "priority-api",
+              "priority-direct"
             ],
             "title": "source",
             "description": "Where the row came from",
@@ -34453,7 +34563,8 @@
             "type": "string",
             "enum": [
               "contacts",
-              "payments"
+              "payments",
+              "openMovements"
             ],
             "title": "scope",
             "description": "Scope",
@@ -52698,7 +52809,8 @@
                   "enum": [
                     "priority-mock",
                     "test-fixture",
-                    "priority-api"
+                    "priority-api",
+                    "priority-direct"
                   ],
                   "title": "source",
                   "description": "Where the row came from",
@@ -54363,7 +54475,8 @@
                   "type": "string",
                   "enum": [
                     "contacts",
-                    "payments"
+                    "payments",
+                    "openMovements"
                   ],
                   "title": "scope",
                   "description": "Scope",
@@ -73436,7 +73549,8 @@
                   "enum": [
                     "priority-mock",
                     "test-fixture",
-                    "priority-api"
+                    "priority-api",
+                    "priority-direct"
                   ],
                   "title": "source",
                   "description": "Where the row came from",
@@ -73616,7 +73730,8 @@
                   "enum": [
                     "priority-mock",
                     "test-fixture",
-                    "priority-api"
+                    "priority-api",
+                    "priority-direct"
                   ],
                   "title": "source",
                   "description": "Where the row came from",
@@ -74773,7 +74888,8 @@
                   "type": "string",
                   "enum": [
                     "contacts",
-                    "payments"
+                    "payments",
+                    "openMovements"
                   ],
                   "title": "scope",
                   "description": "Scope",
@@ -74902,7 +75018,8 @@
                   "type": "string",
                   "enum": [
                     "contacts",
-                    "payments"
+                    "payments",
+                    "openMovements"
                   ],
                   "title": "scope",
                   "description": "Scope",
@@ -81886,6 +82003,16 @@
           "importBatchId": {
             "type": "string",
             "description": "ImportBatches row of the run this pull belongs to (optional)"
+          },
+          "fullHistory": {
+            "type": "boolean",
+            "default": false,
+            "description": "Drop the BALDATE cutoff (one-off runs); reports open lines older than the cutoff"
+          },
+          "resume": {
+            "type": "boolean",
+            "default": true,
+            "description": "Continue an unfinished pass from the next customer (ignored with customerCodes)"
           }
         },
         "title": "PullOpenMovementsInput",
@@ -81922,6 +82049,103 @@
               "type": "string"
             },
             "description": "Codes not in Customers (skipped)"
+          },
+          "customersRead": {
+            "type": "number"
+          },
+          "customersIncomplete": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "[{customerCode, error}] kept yesterday's rows"
+          },
+          "movements": {
+            "type": "number"
+          },
+          "sumDebt": {
+            "type": "number"
+          },
+          "sumCredit": {
+            "type": "number"
+          },
+          "byDocType": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "{docType: {count, sum}}"
+          },
+          "topCustomers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "5 largest: {customerCode, customerName, openMovementsSum, invoicesOpenDebt, difference}"
+          },
+          "perCustomer": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Dry run: {code: {count, sum}}"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "cutoff": {
+            "type": "string"
+          },
+          "fullHistory": {
+            "type": "boolean"
+          },
+          "olderThanCutoff": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "customersPlanned": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "needsResume": {
+            "type": "boolean"
+          },
+          "resumed": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created": {
+            "type": "number"
+          },
+          "updated": {
+            "type": "number"
+          },
+          "importBatchId": {
+            "type": "string"
+          },
+          "syncedAt": {
+            "type": "string"
+          },
+          "writeVerified": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
           },
           "totalsByCustomer": {
             "type": "object",
@@ -98363,7 +98587,8 @@
                   "enum": [
                     "priority-mock",
                     "test-fixture",
-                    "priority-api"
+                    "priority-api",
+                    "priority-direct"
                   ],
                   "title": "source",
                   "description": "Where the row came from",
@@ -98550,7 +98775,8 @@
                   "enum": [
                     "priority-mock",
                     "test-fixture",
-                    "priority-api"
+                    "priority-api",
+                    "priority-direct"
                   ],
                   "title": "source",
                   "description": "Where the row came from",
@@ -99728,7 +99954,8 @@
                   "type": "string",
                   "enum": [
                     "contacts",
-                    "payments"
+                    "payments",
+                    "openMovements"
                   ],
                   "title": "scope",
                   "description": "Scope",
@@ -99864,7 +100091,8 @@
                   "type": "string",
                   "enum": [
                     "contacts",
-                    "payments"
+                    "payments",
+                    "openMovements"
                   ],
                   "title": "scope",
                   "description": "Scope",

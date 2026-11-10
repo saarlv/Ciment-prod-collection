@@ -1,0 +1,15 @@
+{
+  "name": "OpenMovementsDailyPull",
+  "description": "Daily 07:20 Israel time (after PrioritySubformSync 07:00) runs PullOpenMovements from Priority's ledger (not dry, resume on).",
+  "iconName": "list-tree",
+  "triggerTypeId": "686255085f46e24c41a1b536",
+  "triggerData": {
+    "cronExpression": "20 7 * * *",
+    "timezone": "Asia/Jerusalem"
+  },
+  "actionTypeId": "PullOpenMovements",
+  "actionInstanceInputs": {
+    "dryRun": false,
+    "resume": true
+  }
+}

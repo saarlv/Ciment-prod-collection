@@ -2070,7 +2070,8 @@ export type OpenMovementsEntityDocTypeEnum =
 export type OpenMovementsEntitySourceEnum =
   | "priority-mock"
   | "test-fixture"
-  | "priority-api";
+  | "priority-api"
+  | "priority-direct";
 
 /**
  * Mirror of Priority's unmatched customer movements (plan 04.11, part A). Written ONLY by PullOpenMovements (morning pull 06:00, the re-pull after the receipts run, and the manual button); each pull replaces the snapshot of every customer it returns. Nothing points at a movement row: notes point at customer + dueMonth, so replacing rows is safe. Includes invoices, receipts on account, partial balances and journal entries. amount > 0 = debt, < 0 = credit. dueMonth = YYYY-MM of dueDate. Until the Priority API exists the source is a test source derived from TEST-001..029 (source test-fixture), so the aging report and the customer card show the same totals.
@@ -2244,7 +2245,10 @@ export const PriceListItemsEntity = {
   instanceType: {} as IPriceListItemsEntity,
 } as const;
 
-export type PrioritySyncCursorsEntityScopeEnum = "contacts" | "payments";
+export type PrioritySyncCursorsEntityScopeEnum =
+  | "contacts"
+  | "payments"
+  | "openMovements";
 
 export type PrioritySyncCursorsEntityModeEnum = "טעינה ראשונה" | "דלתא";
 

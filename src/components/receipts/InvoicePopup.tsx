@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { noteTypeLabel } from '@/utils/AgingMonths';
 import { bankFileKind, openableFileUrl } from '@/utils/BankFile';
-import { daysOverdue, formatDate, formatDateTime, formatILS, formatNumber } from '@/utils/Format';
+import { EMPTY, PRIORITY_FORM_LABEL, daysOverdue, formatDate, formatDateTime, formatILS, formatMoney, formatNumber, isILS } from '@/utils/Format';
 
 const HEAD = 'h-8 text-xs font-semibold text-muted-foreground';
 const stop = (e: SyntheticEvent) => e.stopPropagation();
@@ -93,7 +93,7 @@ export function InvoicePopup({
             {inv?.status && <StatusBadge value={inv.status} />}
           </DialogTitle>
           <DialogDescription>
-            {inv ? `${inv.customerName ?? inv.customerCode ?? ''} · ${formatILS(inv.amount)} · פירעון ${formatDate(inv.dueDate)}` : 'הנתונים שנשלפו מ-Priority לצד החשבונית כפי שנשלחה ללקוח.'}
+            {inv ? `${inv.customerName ?? inv.customerCode ?? ''} · ${formatMoney(inv.amount, inv.currencyCode)} · פירעון ${formatDate(inv.dueDate)}` : 'הנתונים שנשלפו מ-Priority לצד החשבונית כפי שנשלחה ללקוח.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -130,6 +130,8 @@ export function InvoicePopup({
                   <span dir="ltr">{inv.invoiceNumber}</span>
                 </Fact>
                 <Fact label="סוג מסמך">{inv.documentType ?? 'חשבונית'}</Fact>
+                <Fact label="טופס">{PRIORITY_FORM_LABEL[inv.priorityForm ?? ''] ?? EMPTY}</Fact>
+                <Fact label="מטבע">{isILS(inv.currencyCode) ? 'ש״ח' : inv.currencyCode}</Fact>
                 <Fact label="לקוח" wide>
                   {customerLink ? (
                     <CustomerPopupLink code={inv.customerCode} name={inv.customerName} showCode />
@@ -145,7 +147,7 @@ export function InvoicePopup({
                   {overdue && overdue > 0 && (inv.openAmount ?? 0) > 0 ? <span className="ms-1.5 text-xs font-semibold text-critical-ink">באיחור {formatNumber(overdue)} ימים</span> : null}
                 </Fact>
                 <Fact label="סכום">
-                  <span className="tabular-nums">{formatILS(inv.amount)}</span>
+                  <span className="tabular-nums">{formatMoney(inv.amount, inv.currencyCode)}</span>
                 </Fact>
                 <Fact label="יתרה פתוחה ב-Priority">
                   <span className="tabular-nums">{formatILS(inv.openAmount)}</span>
@@ -155,6 +157,8 @@ export function InvoicePopup({
                 </Fact>
                 <Fact label="מצב תשלום">{inv.paymentStatus ? <StatusBadge value={inv.paymentStatus} /> : '—'}</Fact>
                 <Fact label="סטטוס ב-Priority">{inv.status ? <StatusBadge value={inv.status} /> : '—'}</Fact>
+                <Fact label="סטטוס מסמך בפריוריטי">{inv.priorityDocStatus || EMPTY}</Fact>
+                <Fact label="תאריך התאמה">{formatDate(inv.reconciledDate)}</Fact>
                 {inv.paymentState && (
                   <Fact label="תשלום שראינו">
                     <PaymentStateCell inv={inv} />

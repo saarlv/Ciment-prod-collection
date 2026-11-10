@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
-import { SearchIcon } from 'lucide-react';
-import { CreditCoversEntity, CustomerExposureEntity, CustomersEntity } from '@/product-types';
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon } from 'lucide-react';
+import { CreditCoversEntity, CustomerActivityEntity, CustomerExposureEntity, CustomersEntity } from '@/product-types';
 import { AgentPanel } from '@/components/AgentPanel';
 import { CustomerLink } from '@/components/CustomerLink';
 import { ObligoBar } from '@/components/ObligoBar';
@@ -11,14 +11,18 @@ import { useOwnerScope } from '@/hooks/useOwnerScope';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AgentEmpty, LoadError, LoadingRows, PageHeader } from '@/components/PageStates';
 import { StatusBadge } from '@/components/StatusBadge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getRouteUrl } from '@/lib/platform';
-import { formatDate, formatILS } from '@/utils/Format';
+import { formatDate, formatILS, formatNumber } from '@/utils/Format';
 
 const STAGES = ['תקין', 'תזכורת', 'פנייה שנייה', 'שיחה', 'הוסלם למנהל'];
 const OBLIGO_BANDS = [
@@ -32,6 +36,73 @@ const OBLIGO_BANDS = [
 const INTERNAL_CODE = /^1000\d{2}$/;
 
 type Cover = (typeof CreditCoversEntity)['instanceType'];
+
+/** CustomerActivity view row — the generated type has no columns yet, and counts/dates may arrive as strings. */
+type ActivityRow = { customerCode?: unknown; documentCount?: unknown; lastDocumentDate?: unknown };
+type Activity = { count: number; last: string | null };
+
+const PRIORITY_STATUSES = ['פעיל', 'לא פעיל', 'חסום', 'זמני', 'חסום BDI', 'בטיפול', 'פעיל-ח.ניירת', 'חס-חסר ניירת'];
+const PAGE_SIZE = 50;
+const PILL = 'h-8 rounded-[16px] px-3 text-[13px] font-semibold aria-pressed:bg-glass-strong aria-pressed:text-link aria-pressed:shadow-glass-pill';
+const RECENCY = [
+  { value: '12', label: 'מסמך ב־12 חודשים' },
+  { value: '24', label: 'מסמך ב־24 חודשים' },
+];
+const SORTS = [
+  { value: 'last', label: 'מיון: מסמך אחרון' },
+  { value: 'name', label: 'מיון: שם' },
+  { value: 'count', label: 'מיון: מספר מסמכים' },
+];
+
+function activityByCode(rows: ActivityRow[]): Map<string, Activity> {
+  const out = new Map<string, Activity>();
+  for (const r of rows) {
+    const code = r.customerCode == null ? '' : String(r.customerCode);
+    if (!code) continue;
+    const count = Number(r.documentCount) || 0;
+    const last = r.lastDocumentDate ? String(r.lastDocumentDate).slice(0, 10) : null;
+    out.set(code, { count, last });
+  }
+  return out;
+}
+
+function monthsAgoISO(months: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
+
+function StatusFilter({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (v: string[]) => void }) {
+  const label = selected.length === 0 ? 'כל הסטטוסים' : selected.length === 1 ? selected[0] : `${selected.length} סטטוסים`;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" className="w-40 justify-between" />}>
+        <span className="truncate">{label}</span>
+        <ChevronDownIcon data-icon="inline-end" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-52">
+        <DropdownMenuGroup>
+          {options.map((o) => (
+            <DropdownMenuCheckboxItem
+              key={o}
+              checked={selected.includes(o)}
+              closeOnClick={false}
+              onCheckedChange={(on) => onChange(on ? [...selected, o] : selected.filter((x) => x !== o))}
+            >
+              {o}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem disabled={selected.length === 0} onClick={() => onChange([])}>
+            כל הסטטוסים
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /** The cover that counts: the newest in תקף (the same rule GetCreditExposure uses for the use %). */
 function validCoverByCustomer(covers: Cover[]): Map<string, Cover> {
@@ -80,6 +151,8 @@ export default function CustomersPage() {
   const { data, isLoading, isError } = useEntityGetAll(CustomersEntity, {
     orderBy: [{ column: 'customerName', direction: 'asc' }],
   });
+  const activityQ = useEntityGetAll(CustomerActivityEntity);
+  const activity = activityByCode((activityQ.data ?? []) as ActivityRow[]);
   const coversQ = useEntityGetAll(CreditCoversEntity);
   const exposureQ = useEntityGetAll(CustomerExposureEntity);
   const insuredCodes = new Set((coversQ.data ?? []).map((c) => c.customerCode).filter((c): c is string => !!c));
@@ -106,18 +179,49 @@ export default function CustomersPage() {
       { replace: true },
     );
   }
+  const [page, setPage] = useState(1);
+  /** Every filter change starts again from the first page. */
+  function reset<T>(set: (v: T) => void) {
+    return (v: T) => {
+      set(v);
+      setPage(1);
+    };
+  }
   const [stage, setStage] = useState<string | null>(null);
   const [bookkeeper, setBookkeeper] = useState<string | null>(null);
   const [band, setBand] = useState<string | null>(null);
   const [showInternal, setShowInternal] = useState(false);
+  const [scopeAll, setScopeAll] = useState(false);
+  const [statuses, setStatuses] = useState<string[]>([]);
+  const [agent, setAgent] = useState<string | null>(null);
+  const [terms, setTerms] = useState<string | null>(null);
+  const [recency, setRecency] = useState<string | null>(null);
+  const [sort, setSort] = useState<string>('last');
 
   const all = (data ?? []).filter((c) => scope.isVisible(c.customerCode, c.assignedBookkeeperName) && (showInternal || !INTERNAL_CODE.test(c.customerCode ?? '')));
   const bookkeepers = [
     ...new Set(all.map((c) => scope.ownerOf(c.customerCode, c.assignedBookkeeperName)).filter((n): n is string => !!n)),
   ].sort();
+  const actOf = (code?: string) => (code ? activity.get(code) : undefined);
+  const hasActivity = (code?: string) => (actOf(code)?.count ?? 0) > 0;
+  const activeCount = all.filter((c) => hasActivity(c.customerCode)).length;
+  const agents = [...new Set(all.map((c) => c.salesAgentName).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, 'he'));
+  const termsList = [...new Set(all.map((c) => c.paymentTermsLabel).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, 'he'));
+  const statusOptions = [...PRIORITY_STATUSES, ...new Set(all.map((c) => c.priorityStatus).filter((s): s is NonNullable<typeof s> => !!s && !PRIORITY_STATUSES.includes(s)))];
+  const recencyFrom = recency ? monthsAgoISO(Number(recency)) : null;
   const q = search.trim().toLowerCase();
-  const rows = all.filter((c) => {
-    if (q && !`${c.customerName ?? ''} ${c.customerCode ?? ''}`.toLowerCase().includes(q)) return false;
+  // A search always looks through every customer, with documents or without.
+  const filtered = all.filter((c) => {
+    const act = actOf(c.customerCode);
+    if (q) {
+      if (!`${c.customerName ?? ''} ${c.customerCode ?? ''} ${c.companyId ?? ''}`.toLowerCase().includes(q)) return false;
+    } else {
+      if (!scopeAll && !hasActivity(c.customerCode)) return false;
+      if (recencyFrom && (!act?.last || act.last < recencyFrom)) return false;
+    }
+    if (statuses.length > 0 && !statuses.includes(c.priorityStatus ?? '')) return false;
+    if (agent && c.salesAgentName !== agent) return false;
+    if (terms && c.paymentTermsLabel !== terms) return false;
     if (stage && c.collectionStage !== stage) return false;
     if (bookkeeper && scope.ownerOf(c.customerCode, c.assignedBookkeeperName) !== bookkeeper) return false;
     const p = staticPct(c.customerCode);
@@ -128,6 +232,19 @@ export default function CustomersPage() {
     if (band === 'over80' && (p === null || p < 80)) return false;
     return true;
   });
+  const rows = [...filtered].sort((a, b) => {
+    if (sort === 'name') return (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
+    const x = actOf(a.customerCode);
+    const y = actOf(b.customerCode);
+    if (sort === 'count') return (y?.count ?? 0) - (x?.count ?? 0) || (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
+    return (y?.last ?? '').localeCompare(x?.last ?? '') || (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
+  });
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const from = rows.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(currentPage * PAGE_SIZE, rows.length);
+  const loading = isLoading || scope.isLoading || activityQ.isLoading;
   const overThreshold = all.filter((c) => (staticPct(c.customerCode) ?? 0) >= 80).length;
   const escalated = all.filter((c) => c.collectionStage === 'הוסלם למנהל').length;
 
@@ -152,61 +269,105 @@ export default function CustomersPage() {
           />
           <Card className="glass glass-lift border">
             <CardHeader className="flex flex-row flex-wrap items-center gap-[13px]">
+              <ToggleGroup
+                aria-label="אילו לקוחות"
+                value={[scopeAll ? 'all' : 'active']}
+                onValueChange={(v) => {
+                  if (v[0]) reset(setScopeAll)(v[0] === 'all');
+                }}
+                className="gap-0.5 rounded-[20px] bg-glass-card p-1"
+              >
+                <ToggleGroupItem value="active" className={PILL}>
+                  עם פעילות
+                </ToggleGroupItem>
+                <ToggleGroupItem value="all" className={PILL}>
+                  הכל
+                </ToggleGroupItem>
+              </ToggleGroup>
               <div className="relative w-full max-w-72">
                 <SearchIcon className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="חיפוש לפי שם או קוד לקוח"
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="חיפוש לפי שם, קוד לקוח או ח״פ"
                   className="ps-8"
                 />
               </div>
               <FilterSelect
                 className="w-40"
                 value={stage}
-                onChange={setStage}
+                onChange={reset(setStage)}
                 items={[{ label: 'כל השלבים', value: null }, ...STAGES.map((s) => ({ label: s, value: s }))]}
               />
               <FilterSelect
                 className="w-44"
                 value={bookkeeper}
-                onChange={setBookkeeper}
+                onChange={reset(setBookkeeper)}
                 items={[{ label: 'כל האחראיות', value: null }, ...bookkeepers.map((b) => ({ label: b, value: b }))]}
               />
               <FilterSelect
                 className="w-40"
                 value={band}
-                onChange={setBand}
+                onChange={reset(setBand)}
                 items={[{ label: 'כל רמות הביטוח', value: null }, ...OBLIGO_BANDS]}
               />
+              <StatusFilter options={statusOptions} selected={statuses} onChange={reset(setStatuses)} />
+              <FilterSelect
+                className="w-40"
+                value={agent}
+                onChange={reset(setAgent)}
+                items={[{ label: 'כל הסוכנים', value: null }, ...agents.map((a) => ({ label: a, value: a }))]}
+              />
+              <FilterSelect
+                className="w-40"
+                value={terms}
+                onChange={reset(setTerms)}
+                items={[{ label: 'כל תנאי התשלום', value: null }, ...termsList.map((t) => ({ label: t, value: t }))]}
+              />
+              <FilterSelect
+                className="w-44"
+                value={recency}
+                onChange={reset(setRecency)}
+                items={[{ label: 'מסמך אחרון: הכל', value: null }, ...RECENCY]}
+              />
+              <FilterSelect className="w-44" value={sort} onChange={(v) => reset(setSort)(v ?? 'last')} items={SORTS} />
               <div className="flex items-center gap-2">
-                <Switch id="show-internal" checked={showInternal} onCheckedChange={setShowInternal} />
+                <Switch id="show-internal" checked={showInternal} onCheckedChange={reset(setShowInternal)} />
                 <Label htmlFor="show-internal" className="text-[13px]">הצג חשבונות פנימיים</Label>
               </div>
-              <span className="ms-auto text-xs text-muted-foreground">{rows.length} לקוחות</span>
+              <span className="ms-auto text-xs text-muted-foreground tabular-nums">
+                {q || scopeAll || statuses.length || agent || terms || recency || stage || bookkeeper || band ? `${formatNumber(rows.length)} מתאימים · ` : ''}
+                {formatNumber(activeCount)} עם פעילות · {formatNumber(all.length)} בסך הכל
+              </span>
             </CardHeader>
             <CardContent className="px-0">
-              {isLoading || scope.isLoading ? (
+              {loading ? (
                 <LoadingRows />
               ) : all.length === 0 ? (
                 <AgentEmpty title="אין לקוחות עדיין">
                   הלקוחות יגיעו לכאן מפריוריטי אחרי החיבור, וסוכנת הגבייה תתחיל לעקוב אחרי כל אחד מהם.
                 </AgentEmpty>
               ) : (
-                <Table className="min-w-[860px]">
+                <Table className="min-w-[1180px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="ps-4">לקוח</TableHead>
                       <TableHead>שלב גבייה</TableHead>
                       <TableHead>אחראית</TableHead>
+                      <TableHead>סוכן</TableHead>
                       <TableHead>תנאים</TableHead>
+                      <TableHead>מסמכים</TableHead>
+                      <TableHead>מסמך אחרון</TableHead>
                       <TableHead className="w-48">ניצול ביטוח · סטטי</TableHead>
                       <TableHead>מסגרת אשראי</TableHead>
                       <TableHead className="pe-4">תשלום אחרון</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((c) => (
+                    {pageRows.map((c) => (
                       <TableRow
                         key={c.id}
                         className="cursor-pointer"
@@ -217,15 +378,23 @@ export default function CustomersPage() {
                             <CustomerLink code={c.customerCode} name={c.customerName} />
                             <span className="text-xs text-muted-foreground">
                               {c.customerCode}
-                              {c.priorityStatus === 'חסום' && ' · חסום בפריוריטי'}
+                              {c.priorityStatus && c.priorityStatus !== 'פעיל' && ` · ${c.priorityStatus}`}
                             </span>
+                            {!hasActivity(c.customerCode) && (
+                              <Badge variant="outline" className="mt-0.5 h-5 self-start rounded-full border-transparent bg-glass-inner px-2 text-[11px] font-semibold text-muted-foreground">
+                                ללא מסמכים
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <StatusBadge value={c.collectionStage} />
                         </TableCell>
                         <TableCell>{scope.ownerOf(c.customerCode, c.assignedBookkeeperName) ?? '—'}</TableCell>
+                        <TableCell>{c.salesAgentName || '—'}</TableCell>
                         <TableCell>{c.paymentTermsLabel ?? (c.paymentTermsDays ? `שוטף+${c.paymentTermsDays}` : '—')}</TableCell>
+                        <TableCell className="tabular-nums">{actOf(c.customerCode)?.count ? formatNumber(actOf(c.customerCode)?.count) : '—'}</TableCell>
+                        <TableCell className="tabular-nums">{formatDate(actOf(c.customerCode)?.last)}</TableCell>
                         <TableCell>
                           {coversQ.isLoading || exposureQ.isLoading ? (
                             <Skeleton className="h-2 w-full" />
@@ -243,7 +412,7 @@ export default function CustomersPage() {
                     ))}
                     {rows.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                        <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                           אין לקוחות שמתאימים לסינון.
                         </TableCell>
                       </TableRow>
@@ -252,6 +421,26 @@ export default function CustomersPage() {
                 </Table>
               )}
             </CardContent>
+            {!loading && rows.length > PAGE_SIZE && (
+              <CardFooter className="flex flex-wrap items-center justify-between gap-[13px]">
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  מציג {formatNumber(from)}–{formatNumber(to)} מתוך {formatNumber(rows.length)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="rounded-full" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+                    <ChevronRightIcon data-icon="inline-start" />
+                    הקודם
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    עמוד {currentPage} מתוך {pageCount}
+                  </span>
+                  <Button variant="outline" size="sm" className="rounded-full" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>
+                    הבא
+                    <ChevronLeftIcon data-icon="inline-end" />
+                  </Button>
+                </div>
+              </CardFooter>
+            )}
           </Card>
         </>
       )}

@@ -1,0 +1,34 @@
+{
+  "name": "CustomerActivity",
+  "description": "Per customer: how many Priority documents the app holds and the date of the latest one",
+  "technicalDescription": "Invoices grouped by customerCode: document count and latest invoiceDate (all forms, all statuses). Customers without any row here have no documents in the app. Used by the customer list to show only customers with activity by default.",
+  "query": {
+    "from": {
+      "table": "Invoices",
+      "as": "i"
+    },
+    "select": [
+      {
+        "column": "i.customerCode",
+        "as": "customerCode"
+      },
+      {
+        "column": "i.id",
+        "function": "count",
+        "as": "documentCount"
+      },
+      {
+        "column": "i.invoiceDate",
+        "function": "max",
+        "as": "lastDocumentDate"
+      }
+    ],
+    "groupBy": [
+      "i.customerCode"
+    ]
+  },
+  "calculatedColumns": [],
+  "permission": {
+    "type": "public"
+  }
+}

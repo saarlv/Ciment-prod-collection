@@ -19987,6 +19987,88 @@
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
+    "DeleteItemsFromCustomerActivityTable": {
+      "isCurrentAppAction": false,
+      "actionTypeId": "databases/TableOps&CustomerActivity&delete-many",
+      "actionTypeName": "DeleteItemsFromCustomerActivityTable",
+      "actionTypeDescription": "Delete items from the CustomerActivity table",
+      "input": {
+        "type": "object",
+        "properties": {
+          "tableBlockId": {
+            "type": "string",
+            "enum": [
+              "6af33d7b8142376209419a7d"
+            ],
+            "default": "6af33d7b8142376209419a7d",
+            "description": "The id of the table"
+          },
+          "where": {
+            "type": "object",
+            "properties": {
+              "column": {
+                "type": "string",
+                "description": "Column name to filter (for simple conditions)"
+              },
+              "operator": {
+                "type": "string",
+                "description": "Comparison operator (for simple conditions)",
+                "enum": [
+                  "=",
+                  ">",
+                  ">=",
+                  "<",
+                  "<=",
+                  "!=",
+                  "in"
+                ],
+                "default": "="
+              },
+              "value": {
+                "description": "Value to compare against (for simple conditions)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "column",
+              "value"
+            ],
+            "description": "Rows to delete. column must be an existing column of the table; a where that matches no specific rows is rejected. Required unless allItems is true."
+          },
+          "allItems": {
+            "type": "boolean",
+            "description": "Set to true ONLY to delete every row in the table. Omit it for any targeted delete.",
+            "default": false
+          }
+        },
+        "required": [],
+        "title": "DeleteItemsFromCustomerActivityTableInput",
+        "description": "DeleteItemsFromCustomerActivityTable input payload"
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "affectedItems": {
+            "type": "array",
+            "description": "The items deleted from the table",
+            "items": {
+              "type": "string",
+              "description": "The item ids deleted from the table"
+            }
+          }
+        },
+        "required": [
+          "affectedItems"
+        ],
+        "title": "DeleteItemsFromCustomerActivityTableOutput",
+        "description": "DeleteItemsFromCustomerActivityTable output payload"
+      },
+      "exposedToAiCode": false,
+      "exposedToAiAgent": true,
+      "actionSetId": "table:CustomerActivity",
+      "isFromDependency": false,
+      "productId": "67692d6bf934f8a921e1777d"
+    },
     "DeleteItemsFromCustomerContactsTable": {
       "isCurrentAppAction": false,
       "actionTypeId": "databases/TableOps&CustomerContacts&delete-many",
@@ -28104,6 +28186,63 @@
       "exposedToAiCode": false,
       "exposedToAiAgent": true,
       "actionSetId": "table:CreditLimitRequests",
+      "isFromDependency": false,
+      "productId": "67692d6bf934f8a921e1777d"
+    },
+    "GetItemFromCustomerActivityTable": {
+      "isCurrentAppAction": false,
+      "actionTypeId": "databases/TableOps&CustomerActivity&get-one",
+      "actionTypeName": "GetItemFromCustomerActivityTable",
+      "actionTypeDescription": "Get item from the CustomerActivity table",
+      "input": {
+        "type": "object",
+        "properties": {
+          "tableBlockId": {
+            "type": "string",
+            "enum": [
+              "6af33d7b8142376209419a7d"
+            ],
+            "default": "6af33d7b8142376209419a7d",
+            "description": "The id of the table"
+          },
+          "itemId": {
+            "type": "string",
+            "description": "The id of the row to get"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "title": "GetItemFromCustomerActivityTableInput",
+        "description": "GetItemFromCustomerActivityTable input payload"
+      },
+      "output": {
+        "title": "GetItemFromCustomerActivityTableOutput",
+        "type": "object",
+        "properties": {
+          "customerCode": {
+            "type": "string",
+            "title": "customerCode",
+            "description": "Priority customer code (text link to Customers)",
+            "$id": "1eb74d440804c3716c580d45"
+          },
+          "documentCount": {
+            "type": "number",
+            "title": "documentCount",
+            "description": "Count aggregation result"
+          },
+          "lastDocumentDate": {
+            "type": "number",
+            "title": "lastDocumentDate",
+            "description": "Max aggregation result"
+          }
+        },
+        "required": [],
+        "description": "GetItemFromCustomerActivityTable output payload"
+      },
+      "exposedToAiCode": false,
+      "exposedToAiAgent": true,
+      "actionSetId": "table:CustomerActivity",
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
@@ -41293,6 +41432,295 @@
       "exposedToAiCode": false,
       "exposedToAiAgent": true,
       "actionSetId": "table:CreditLimitRequests",
+      "isFromDependency": false,
+      "productId": "67692d6bf934f8a921e1777d"
+    },
+    "GetItemsFromCustomerActivityTable": {
+      "isCurrentAppAction": false,
+      "actionTypeId": "databases/TableOps&CustomerActivity&get-all",
+      "actionTypeName": "GetItemsFromCustomerActivityTable",
+      "actionTypeDescription": "Get items from the CustomerActivity table",
+      "input": {
+        "type": "object",
+        "properties": {
+          "tableBlockId": {
+            "type": "string",
+            "enum": [
+              "6af33d7b8142376209419a7d"
+            ],
+            "default": "6af33d7b8142376209419a7d",
+            "description": "The id of the table"
+          },
+          "minimalHeaderColumns": {
+            "type": "boolean",
+            "description": "true (default): rows carry the system fields id, createdAt, createdBy, updatedAt, updatedBy, createdByAgentId and createdByAgentThreadId; false: also accountId, appId and tableId",
+            "default": true
+          },
+          "responseFormat": {
+            "type": "string",
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "default": "json",
+            "description": "How the rows come back: json — an `items` array of objects; csv — a `csv` string with a header line of column names and one line per row (far more compact, since column names appear once)"
+          },
+          "where": {
+            "type": "object",
+            "description": "A condition `{ column, operator, value }`, or `{ and: [...] }` / `{ or: [...] }` of conditions; `not: true` negates any of them. `expression` is a SQL-like condition over column names for comparisons a plain condition cannot express, including deeper and/or nesting.",
+            "properties": {
+              "column": {
+                "type": "string",
+                "description": "Column name"
+              },
+              "operator": {
+                "type": "string",
+                "enum": [
+                  "=",
+                  "!=",
+                  ">",
+                  ">=",
+                  "<",
+                  "<=",
+                  "in",
+                  "not in",
+                  "is null",
+                  "is not null"
+                ],
+                "default": "=",
+                "description": "`in` / `not in` take an array value; `is null` / `is not null` take no value"
+              },
+              "value": {
+                "description": "Value to compare against"
+              },
+              "and": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "A condition `{ column, operator, value }` (or an `expression`); `not: true` negates it",
+                  "properties": {
+                    "column": {
+                      "type": "string",
+                      "description": "Column name"
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "=",
+                        "!=",
+                        ">",
+                        ">=",
+                        "<",
+                        "<=",
+                        "in",
+                        "not in",
+                        "is null",
+                        "is not null"
+                      ],
+                      "default": "=",
+                      "description": "`in` / `not in` take an array value; `is null` / `is not null` take no value"
+                    },
+                    "value": {
+                      "description": "Value to compare against"
+                    },
+                    "not": {
+                      "type": "boolean",
+                      "description": "Negate this condition"
+                    },
+                    "expression": {
+                      "type": "string",
+                      "description": "SQL-like condition, e.g. \"price * qty > 100\""
+                    }
+                  }
+                },
+                "description": "All of these conditions"
+              },
+              "or": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "A condition `{ column, operator, value }` (or an `expression`); `not: true` negates it",
+                  "properties": {
+                    "column": {
+                      "type": "string",
+                      "description": "Column name"
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "=",
+                        "!=",
+                        ">",
+                        ">=",
+                        "<",
+                        "<=",
+                        "in",
+                        "not in",
+                        "is null",
+                        "is not null"
+                      ],
+                      "default": "=",
+                      "description": "`in` / `not in` take an array value; `is null` / `is not null` take no value"
+                    },
+                    "value": {
+                      "description": "Value to compare against"
+                    },
+                    "not": {
+                      "type": "boolean",
+                      "description": "Negate this condition"
+                    },
+                    "expression": {
+                      "type": "string",
+                      "description": "SQL-like condition, e.g. \"price * qty > 100\""
+                    }
+                  }
+                },
+                "description": "Any of these conditions"
+              },
+              "not": {
+                "type": "boolean",
+                "description": "Negate this condition"
+              },
+              "expression": {
+                "type": "string",
+                "description": "SQL-like condition, e.g. \"price * qty > 100\""
+              }
+            }
+          },
+          "select": {
+            "type": "array",
+            "description": "Columns to return (all when omitted). With an aggregate `function`, combine with `groupBy`.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "column": {
+                  "type": "string",
+                  "description": "Column name"
+                },
+                "as": {
+                  "type": "string",
+                  "description": "Name of the output column"
+                },
+                "function": {
+                  "type": "string",
+                  "enum": [
+                    "count",
+                    "sum",
+                    "avg",
+                    "min",
+                    "max"
+                  ],
+                  "description": "Aggregate to compute over the column"
+                },
+                "expression": {
+                  "type": "string",
+                  "description": "Calculated value, e.g. \"price * qty\""
+                }
+              }
+            }
+          },
+          "groupBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Columns to group by (use with aggregate selects)"
+          },
+          "orderBy": {
+            "type": "array",
+            "description": "Row order. Default: oldest first (id ascending); for the latest rows, order by `id` desc (indexed, unlike `createdAt`).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "column": {
+                  "type": "string",
+                  "description": "Column name or a `select` alias"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "default": "asc"
+                }
+              },
+              "required": [
+                "column"
+              ]
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum rows to return. The result then carries `nextCursor` when more rows follow, or `limitReached` when they do but the read cannot be paged (groupBy, aggregate or expression selects)."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "The `nextCursor` of the previous page, to read the next one. Send the same where / orderBy / select as that page."
+          },
+          "maxChars": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Caps the response at about this many characters of rows; a cut page sets `truncated` and, when paged, `nextCursor`"
+          }
+        },
+        "required": [],
+        "title": "GetItemsFromCustomerActivityTableInput",
+        "description": "GetItemsFromCustomerActivityTable input payload"
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "title": "items",
+            "description": "The rows (responseFormat json)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "customerCode": {
+                  "type": "string",
+                  "title": "customerCode",
+                  "description": "Priority customer code (text link to Customers)",
+                  "$id": "1eb74d440804c3716c580d45"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Count aggregation result"
+                },
+                "lastDocumentDate": {
+                  "type": "number",
+                  "title": "lastDocumentDate",
+                  "description": "Max aggregation result"
+                }
+              }
+            }
+          },
+          "csv": {
+            "title": "csv",
+            "description": "The rows as CSV: a header line of column names, then one line per row (responseFormat csv)",
+            "type": "string"
+          },
+          "nextCursor": {
+            "title": "nextCursor",
+            "description": "Cursor of the next page — pass it back as `cursor` to read on; absent after the last page",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "truncated",
+            "description": "True when a size cap cut this page short",
+            "type": "boolean"
+          }
+        },
+        "title": "GetItemsFromCustomerActivityTableOutput",
+        "description": "GetItemsFromCustomerActivityTable output payload"
+      },
+      "exposedToAiCode": false,
+      "exposedToAiAgent": true,
+      "actionSetId": "table:CustomerActivity",
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
@@ -63826,6 +64254,101 @@
       "exposedToAiCode": false,
       "exposedToAiAgent": true,
       "actionSetId": "table:CreditLimitRequests",
+      "isFromDependency": false,
+      "productId": "67692d6bf934f8a921e1777d"
+    },
+    "InsertItemsToCustomerActivityTable": {
+      "isCurrentAppAction": false,
+      "actionTypeId": "databases/TableOps&CustomerActivity&insert-many",
+      "actionTypeName": "InsertItemsToCustomerActivityTable",
+      "actionTypeDescription": "Insert items into the CustomerActivity table",
+      "input": {
+        "type": "object",
+        "properties": {
+          "tableBlockId": {
+            "type": "string",
+            "enum": [
+              "6af33d7b8142376209419a7d"
+            ],
+            "default": "6af33d7b8142376209419a7d",
+            "description": "The id of the table"
+          },
+          "items": {
+            "type": "array",
+            "description": "The items to insert into the table, array of records to insert. Maximum 1000 items.",
+            "maxItems": 1000,
+            "items": {
+              "type": "object",
+              "description": "The item to insert into the table, keys are the column names, values are the column values",
+              "properties": {
+                "customerCode": {
+                  "type": "string",
+                  "title": "customerCode",
+                  "description": "Priority customer code (text link to Customers)",
+                  "$id": "1eb74d440804c3716c580d45"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Count aggregation result"
+                },
+                "lastDocumentDate": {
+                  "type": "number",
+                  "title": "lastDocumentDate",
+                  "description": "Max aggregation result"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InsertItemsToCustomerActivityTableInput",
+        "description": "InsertItemsToCustomerActivityTable input payload"
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "title": "items",
+            "type": "array",
+            "description": "The items inserted into the table",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "The item inserted into the table, keys are the column names, values are the column values",
+              "properties": {
+                "customerCode": {
+                  "type": "string",
+                  "title": "customerCode",
+                  "description": "Priority customer code (text link to Customers)",
+                  "$id": "1eb74d440804c3716c580d45"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Count aggregation result"
+                },
+                "lastDocumentDate": {
+                  "type": "number",
+                  "title": "lastDocumentDate",
+                  "description": "Max aggregation result"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InsertItemsToCustomerActivityTableOutput",
+        "description": "InsertItemsToCustomerActivityTable output payload"
+      },
+      "exposedToAiCode": false,
+      "exposedToAiAgent": true,
+      "actionSetId": "table:CustomerActivity",
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
@@ -88442,6 +88965,108 @@
       "exposedToAiCode": false,
       "exposedToAiAgent": true,
       "actionSetId": "table:CreditLimitRequests",
+      "isFromDependency": false,
+      "productId": "67692d6bf934f8a921e1777d"
+    },
+    "UpdateItemsInCustomerActivityTable": {
+      "isCurrentAppAction": false,
+      "actionTypeId": "databases/TableOps&CustomerActivity&update-many",
+      "actionTypeName": "UpdateItemsInCustomerActivityTable",
+      "actionTypeDescription": "Update items in the CustomerActivity table\nIMPORTANT TOOL BEHAVIOR:\nWhen calling this tool, the assistant MUST omit any column that should not be changed.\nNull MUST only be used when intentionally setting a column to NULL.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "tableBlockId": {
+            "type": "string",
+            "enum": [
+              "6af33d7b8142376209419a7d"
+            ],
+            "default": "6af33d7b8142376209419a7d",
+            "description": "The id of the table"
+          },
+          "items": {
+            "type": "array",
+            "description": "The items to update in the table by id, array of records to update. Maximum 1000 items.",
+            "maxItems": 1000,
+            "items": {
+              "type": "object",
+              "description": "The item to update in the table by id, keys are the column names, values are the column values. \nUPDATE RULES:\n- Only include columns you want to modify.\n- To leave a column unchanged: OMIT it entirely.\n- To clear a column value: explicitly set it to null.\n- Never send null as a placeholder or default for columns that should not change.\n- Do NOT send undefined values.",
+              "properties": {
+                "customerCode": {
+                  "type": "string",
+                  "title": "customerCode",
+                  "description": "Priority customer code (text link to Customers)",
+                  "$id": "1eb74d440804c3716c580d45"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Count aggregation result"
+                },
+                "lastDocumentDate": {
+                  "type": "number",
+                  "title": "lastDocumentDate",
+                  "description": "Max aggregation result"
+                },
+                "id": {
+                  "type": "string",
+                  "description": "The id of the item to update. Must be an existing id in the table."
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "id"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "UpdateItemsInCustomerActivityTableInput",
+        "description": "UpdateItemsInCustomerActivityTable input payload"
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "title": "items",
+            "type": "array",
+            "description": "The items updated in the table",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "The item updated in the table, keys are the column names, values are the column values",
+              "properties": {
+                "customerCode": {
+                  "type": "string",
+                  "title": "customerCode",
+                  "description": "Priority customer code (text link to Customers)",
+                  "$id": "1eb74d440804c3716c580d45"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Count aggregation result"
+                },
+                "lastDocumentDate": {
+                  "type": "number",
+                  "title": "lastDocumentDate",
+                  "description": "Max aggregation result"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "UpdateItemsInCustomerActivityTableOutput",
+        "description": "UpdateItemsInCustomerActivityTable output payload"
+      },
+      "exposedToAiCode": false,
+      "exposedToAiAgent": true,
+      "actionSetId": "table:CustomerActivity",
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },

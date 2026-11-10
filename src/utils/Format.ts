@@ -290,3 +290,5 @@ export function formatForeignExtra(rows: { amount?: number | null; currencyCode?
 
 /** Priority document statuses hidden from invoice lists by default. */
 export const HIDDEN_DOC_STATUSES = ['מבוטלת', 'טיוטא'];
+/** The Priority form a document came from, as the app labels it. */
+export const PRIORITY_FORM_LABEL: Record<string, string> = { CINVOICES: 'חשבונית', AINVOICES: 'חשבונית יצוא/מט״ח' };

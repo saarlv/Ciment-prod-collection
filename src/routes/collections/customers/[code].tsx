@@ -13,7 +13,7 @@ import {
   PlusIcon,
   ShieldCheckIcon,
 } from 'lucide-react';
-import { CustomerNotesEntity, GetCustomer360Action } from '@/product-types';
+import { CustomerNotesEntity, CustomersEntity, GetCustomer360Action, PaymentsEntity } from '@/product-types';
 import { CustomerDailySummary } from '@/components/customer/CustomerDailySummary';
 import { CustomerFeed } from '@/components/customer/CustomerFeed';
 import { TamarCardChat } from '@/components/customer/TamarCardChat';
@@ -41,9 +41,10 @@ import { ACTIVE_STATUS, PROMISE, commitmentProgress } from '@/utils/AgingMonths'
 import { isCustomer360 } from '@/utils/CollectionsTypes';
 import type { Customer360, Customer360Month, FeedRow } from '@/utils/CollectionsTypes';
 import { CREDIT_TAB, formatPct1 } from '@/utils/CreditExposure';
-import { formatDate, formatILS, formatMonth, round2, todayISO } from '@/utils/Format';
+import { EMPTY, formatDate, formatILS, formatMoney, formatMonth, round2, todayISO } from '@/utils/Format';
 
 const OPEN_TAB = 'open';
+const PAYMENTS_TAB = 'payments';
 const CLOSED_TAB = 'closed';
 
 function Kpi({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
@@ -246,7 +247,58 @@ function WaitingForOpenMovements() {
   );
 }
 
+/** קבלות: every Priority receipt line of the customer (Payments mirror), newest first; reversals struck through. */
+function CustomerPayments({ customerCode }: { customerCode: string }) {
+  const q = useEntityGetAll(PaymentsEntity, {
+    where: { column: 'customerCode', value: customerCode },
+    orderBy: [{ column: 'paymentDate', direction: 'desc' }],
+    page: { size: 1000 },
+  });
+  const head = 'h-9 text-xs font-semibold text-muted-foreground';
+  if (q.isError) return <div className="px-[21px] pb-[21px]"><LoadError what="הקבלות" /></div>;
+  if (q.isLoading) return <div className="px-[21px] pb-[21px]"><LoadingRows rows={4} /></div>;
+  const rows = [...(q.data ?? [])].sort((a, b) => (b.receiptDate ?? b.paymentDate ?? '').localeCompare(a.receiptDate ?? a.paymentDate ?? ''));
+  if (rows.length === 0) return <p className="px-[21px] pb-[21px] text-sm text-muted-foreground">אין קבלות ללקוח מפריוריטי.</p>;
+  return (
+    <div className="overflow-x-auto pb-[13px]">
+      <Table className="min-w-[960px]">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className={cn(head, 'ps-[21px]')}>מס׳ קבלה</TableHead>
+            <TableHead className={head}>תאריך</TableHead>
+            <TableHead className={head}>אמצעי / סוג</TableHead>
+            <TableHead className={head}>סכום</TableHead>
+            <TableHead className={head}>מס׳ צ׳ק</TableHead>
+            <TableHead className={head}>בנק / סניף</TableHead>
+            <TableHead className={head}>פירעון</TableHead>
+            <TableHead className={cn(head, 'pe-[21px]')}>סטטוס קבלה</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((p) => {
+            const bank = [p.bankName || p.bankCode, p.branch].filter(Boolean).join(' / ');
+            return (
+              <TableRow key={p.id} className={cn('hover:bg-glass-faint', p.isReversal && 'text-muted-foreground line-through')}>
+                <TableCell className="ps-[21px] font-semibold" dir="ltr">{p.receiptNumber || EMPTY}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(p.receiptDate ?? p.paymentDate)}</TableCell>
+                <TableCell>{p.paymentType || p.method || EMPTY}</TableCell>
+                <TableCell className="font-semibold tabular-nums">{formatMoney(p.lineTotal ?? p.amount, p.currency)}</TableCell>
+                <TableCell className="tabular-nums" dir="ltr">{p.chequeNumber || EMPTY}</TableCell>
+                <TableCell>{bank || EMPTY}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(p.checkDueDate)}</TableCell>
+                <TableCell className="pe-[21px]">{p.receiptStatus || EMPTY}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function CustomerBody({ code }: { code: string }) {
+  const cardQ = useEntityGetAll(CustomersEntity, { where: { column: 'customerCode', value: code } });
+  const card = cardQ.data?.[0];
   const nina = useNinaActivity();
   const { executeFunction } = useExecuteAction(GetCustomer360Action);
   const q = useActionQuery(executeFunction, { customerCode: code, asOfDate: todayISO() }, { cache: 'customer360', validate: isCustomer360 });
@@ -307,7 +359,7 @@ function CustomerBody({ code }: { code: string }) {
 
   const kpis = data?.kpis ?? {};
   const insured = !!data?.insured;
-  const tab = tabParam === CLOSED_TAB || tabParam === 'receipts' ? CLOSED_TAB : tabParam === CREDIT_TAB ? CREDIT_TAB : tabParam === OPEN_TAB ? OPEN_TAB : ALL_DOCS_TAB;
+  const tab = tabParam === CLOSED_TAB || tabParam === 'receipts' ? CLOSED_TAB : tabParam === CREDIT_TAB ? CREDIT_TAB : tabParam === PAYMENTS_TAB ? PAYMENTS_TAB : tabParam === OPEN_TAB ? OPEN_TAB : ALL_DOCS_TAB;
   const balance = kpis.openBalance ?? 0;
   const notes = data?.customerNotes ?? [];
   const openMonths = data?.openMonths ?? [];
@@ -356,9 +408,15 @@ function CustomerBody({ code }: { code: string }) {
         <dl className="flex flex-wrap gap-x-[21px] gap-y-1 text-sm">
           {[
             { label: 'סטטוס', value: c.priorityStatus },
-            { label: 'תנאי תשלום', value: c.paymentTermsLabel },
+            { label: 'תנאי תשלום', value: [c.paymentTermsLabel, card?.paymentTermsCode && `קוד ${card.paymentTermsCode}`].filter(Boolean).join(' · ') },
             { label: 'אמצעי תשלום', value: c.paymentMethod },
             { label: 'הערה לגבייה', value: c.collectionNote },
+            { label: 'ח״פ', value: card?.companyId },
+            { label: 'כתובת', value: card?.address },
+            { label: 'דוא״ל כללי', value: card?.primaryEmail },
+            { label: 'מסגרת אובליגו', value: typeof card?.obligoLimit === 'number' ? formatILS(card.obligoLimit) : null },
+            { label: 'ביטוח אשראי בפריוריטי', value: typeof card?.creditInsuredAmount === 'number' ? formatILS(card.creditInsuredAmount) : null },
+            { label: 'בעלים בפריוריטי', value: card?.priorityOwner },
           ].map((f) => (
             <div key={f.label} className="flex items-baseline gap-1.5">
               <dt className="text-xs text-muted-foreground">{f.label}</dt>
@@ -418,7 +476,10 @@ function CustomerBody({ code }: { code: string }) {
           <span className="text-base font-bold">{data?.bookkeeperName ?? '—'}</span>
         </Kpi>
         <Kpi label="סוכן">
-          <span className="text-base font-bold">{c.salesAgentName ?? '—'}</span>
+          <span className="text-base font-bold">
+            {c.salesAgentName ?? '—'}
+            {card?.salesAgentCode && <span className="ms-1.5 text-xs font-normal text-muted-foreground">קוד {card.salesAgentCode}</span>}
+          </span>
           {c.salesAgentPhone && (
             <a href={`tel:${c.salesAgentPhone}`} dir="ltr" className="text-xs text-link hover:underline">
               {c.salesAgentPhone}
@@ -487,6 +548,9 @@ function CustomerBody({ code }: { code: string }) {
                 {insured && <ShieldCheckIcon data-icon="inline-start" />}
                 אובליגו
               </TabsTrigger>
+              <TabsTrigger value={PAYMENTS_TAB} className="min-h-[34px] flex-none rounded-[17px] px-4 text-ink-2 data-active:font-semibold">
+                קבלות
+              </TabsTrigger>
               <TabsTrigger value={ALL_DOCS_TAB} className="min-h-[34px] flex-none rounded-[17px] px-4 text-ink-2 data-active:font-semibold">
                 כל המסמכים
               </TabsTrigger>
@@ -496,10 +560,13 @@ function CustomerBody({ code }: { code: string }) {
             {hasOpenData ? <CustomerOpenInvoices customerCode={c.customerCode} invoices={invoices} /> : <WaitingForOpenMovements />}
           </TabsContent>
           <TabsContent value={CLOSED_TAB}>
-            {hasOpenData ? <CustomerClosedInvoices invoices={invoices} receipts={receipts} /> : <WaitingForOpenMovements />}
+            {hasOpenData ? <CustomerClosedInvoices customerCode={c.customerCode} invoices={invoices} receipts={receipts} /> : <WaitingForOpenMovements />}
           </TabsContent>
           <TabsContent value={CREDIT_TAB}>
             <CreditExposureTab code={c.customerCode} />
+          </TabsContent>
+          <TabsContent value={PAYMENTS_TAB}>
+            <CustomerPayments customerCode={c.customerCode} />
           </TabsContent>
           <TabsContent value={ALL_DOCS_TAB}>
             <CustomerAllDocuments customerCode={c.customerCode} />

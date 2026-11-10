@@ -2918,6 +2918,23 @@ export const AgingByMonthEntity = {
   instanceType: {} as IAgingByMonthEntity,
 } as const;
 
+/**
+ * undefined
+ */
+export interface ICustomerActivityEntity {
+  /** Priority customer code (text link to Customers)  */
+  customerCode?: string;
+  /** Count aggregation result  */
+  documentCount?: number;
+  /** Max aggregation result  */
+  lastDocumentDate?: number;
+}
+
+export const CustomerActivityEntity = {
+  tableBlockId: "CustomerActivity",
+  instanceType: {} as ICustomerActivityEntity,
+} as const;
+
 export type InboxFoldersEntityCategoryEnum =
   | "כרטסת"
   | "חובות פתוחים"

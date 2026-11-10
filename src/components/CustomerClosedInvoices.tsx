@@ -1,5 +1,7 @@
 import { isInvoiceClosed } from '@/utils/InvoiceSubStatus';
 import { useState } from 'react';
+import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
+import { InvoicesEntity } from '@/product-types';
 import { Link } from 'react-router';
 import { ArrowUpLeftIcon, InfoIcon, ReceiptIcon } from 'lucide-react';
 import { AgentAvatar } from '@/components/AgentPanel';
@@ -84,7 +86,9 @@ function ClosingReceiptRow({ r, href }: { r: ClosingReceipt; href: (id: string) 
   );
 }
 
-function ClosedInvoiceItem({ inv, href }: { inv: Customer360Invoice; href: (id: string) => string | null }) {
+type DocMeta = { documentType?: string; salesAgentName?: string };
+
+function ClosedInvoiceItem({ inv, href, meta }: { inv: Customer360Invoice; href: (id: string) => string | null; meta?: DocMeta }) {
   const receipts = inv.closingReceipts ?? [];
   return (
     <li className="grid gap-[13px] rounded-[22px] bg-glass-inner p-[13px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.618fr)]">
@@ -101,6 +105,10 @@ function ClosedInvoiceItem({ inv, href }: { inv: Customer360Invoice; href: (id: 
           <dd className="font-semibold">{formatDate(inv.dueDate)}</dd>
           <dt className="text-muted-foreground">תאריך חשבונית</dt>
           <dd className="font-semibold">{formatDate(inv.invoiceDate)}</dd>
+          <dt className="text-muted-foreground">סוג מסמך</dt>
+          <dd className="font-semibold">{meta?.documentType || '—'}</dd>
+          <dt className="text-muted-foreground">סוכן</dt>
+          <dd className="font-semibold">{meta?.salesAgentName || '—'}</dd>
         </dl>
       </div>
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -201,7 +209,18 @@ function CustomerReceipts({ receipts, href }: { receipts: Customer360Receipt[]; 
  * The customer card's סגורות tab: the customer's receipts on top (what each paid, what is still open, on account), then every closed invoice
  * (newest closing first) with the receipts that closed it, as GetCustomer360 matched them by the promise engine's rule.
  */
-export function CustomerClosedInvoices({ invoices, receipts }: { invoices: Customer360Invoice[]; receipts: Customer360Receipt[] }) {
+export function CustomerClosedInvoices({
+  customerCode,
+  invoices,
+  receipts,
+}: {
+  customerCode: string;
+  invoices: Customer360Invoice[];
+  receipts: Customer360Receipt[];
+}) {
+  // GetCustomer360 does not carry the document type or agent; read them off the customer's Invoices mirror rows.
+  const docs = useEntityGetAll(InvoicesEntity, { where: { column: 'customerCode', value: customerCode }, page: { size: 1000 } });
+  const metaOf = new Map((docs.data ?? []).map((d) => [d.invoiceNumber ?? '', { documentType: d.documentType, salesAgentName: d.salesAgentName }]));
   const closed = invoices
     .filter(isInvoiceClosed)
     .sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? '') || (b.dueDate ?? '').localeCompare(a.dueDate ?? ''));
@@ -228,7 +247,7 @@ export function CustomerClosedInvoices({ invoices, receipts }: { invoices: Custo
       ) : (
         <ul className="flex flex-col gap-[13px]">
           {closed.map((inv) => (
-            <ClosedInvoiceItem key={inv.invoiceNumber} inv={inv} href={href} />
+            <ClosedInvoiceItem key={inv.invoiceNumber} inv={inv} href={href} meta={metaOf.get(inv.invoiceNumber ?? '')} />
           ))}
         </ul>
       )}

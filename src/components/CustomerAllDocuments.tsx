@@ -8,11 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { EMPTY, HIDDEN_DOC_STATUSES, formatDate, formatForeignExtra, formatILS, formatMoney, formatNumber, isILS, round2 } from '@/utils/Format';
+import { EMPTY, HIDDEN_DOC_STATUSES, formatDate, formatForeignExtra, formatILS, formatMoney, formatNumber, isILS, PRIORITY_FORM_LABEL, round2 } from '@/utils/Format';
 
 const HEAD = 'text-xs font-semibold text-muted-foreground';
 const PAGE = 100;
-const FORM_LABEL: Record<string, string> = { CINVOICES: 'חשבונית', AINVOICES: 'חשבונית יצוא/מט״ח' };
 
 /** כל המסמכים: every Invoices mirror row of the customer, newest first, paged by 100. */
 export function CustomerAllDocuments({ customerCode }: { customerCode: string }) {
@@ -50,14 +49,16 @@ export function CustomerAllDocuments({ customerCode }: { customerCode: string })
       {rows.length === 0 ? (
         <p className="px-[21px] pb-[21px] text-sm text-muted-foreground">אין מסמכים ללקוח מפריוריטי.</p>
       ) : (
-        <Table className="min-w-[760px]">
+        <Table className="min-w-[980px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={cn(HEAD, 'ps-[21px]')}>מסמך</TableHead>
-              <TableHead className={HEAD}>סוג</TableHead>
+              <TableHead className={HEAD}>סוג מסמך</TableHead>
+              <TableHead className={HEAD}>טופס</TableHead>
               <TableHead className={HEAD}>תאריך</TableHead>
               <TableHead className={HEAD}>סכום</TableHead>
               <TableHead className={HEAD}>סטטוס בפריוריטי</TableHead>
+              <TableHead className={HEAD}>סוכן</TableHead>
               <TableHead className={cn(HEAD, 'pe-[21px]')}>תאריך התאמה</TableHead>
             </TableRow>
           </TableHeader>
@@ -67,10 +68,12 @@ export function CustomerAllDocuments({ customerCode }: { customerCode: string })
                 <TableCell className="ps-[21px]">
                   <InvoiceNumberLink invoiceNumber={d.invoiceNumber} customerLink={false} />
                 </TableCell>
-                <TableCell>{FORM_LABEL[d.priorityForm ?? ''] ?? EMPTY}</TableCell>
+                <TableCell>{d.documentType || EMPTY}</TableCell>
+                <TableCell>{PRIORITY_FORM_LABEL[d.priorityForm ?? ''] ?? EMPTY}</TableCell>
                 <TableCell className="tabular-nums">{formatDate(d.invoiceDate)}</TableCell>
                 <TableCell className="tabular-nums">{formatMoney(d.amount, d.currencyCode)}</TableCell>
                 <TableCell>{d.priorityDocStatus || EMPTY}</TableCell>
+                <TableCell>{d.salesAgentName || EMPTY}</TableCell>
                 <TableCell className="pe-[21px] tabular-nums">{formatDate(d.reconciledDate)}</TableCell>
               </TableRow>
             ))}

@@ -3,7 +3,8 @@ import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
 import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { DisputesEntity, InvoicesEntity } from '@/product-types';
 import { PaymentStateCell } from '@/components/InvoiceLayer';
-import { InvoiceNumberLink } from '@/components/receipts/InvoicePopup';
+import { useInvoiceRowOpener } from '@/components/receipts/InvoicePopup';
+import type { ComponentProps } from 'react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useCollectionsSettings } from '@/hooks/useCollectionsSettings';
 import { useIsraelToday } from '@/hooks/useIsraelToday';
@@ -97,13 +98,13 @@ export function HiddenDocsToggle({ checked, onChange }: { checked: boolean; onCh
   );
 }
 
-function InvoiceRow({ row }: { row: Row }) {
+function InvoiceRow({ row, rowProps }: { row: Row; rowProps: ComponentProps<typeof TableRow> }) {
   const { inv } = row;
   return (
-    <TableRow className="hover:bg-glass-faint">
+    <TableRow {...rowProps}>
       <TableCell className="ps-[21px] align-top">
         <span className="flex flex-col items-start gap-1">
-          <InvoiceNumberLink invoiceNumber={inv.invoiceNumber} customerLink={false} />
+          <span dir="ltr" className="font-semibold text-link tabular-nums">{inv.invoiceNumber || '—'}</span>
           <StatusBadge value={row.sub} className="h-5" />
           {(inv.receipts ?? []).length > 0 && (
             <span className="text-[11px] text-muted-foreground">
@@ -152,6 +153,7 @@ export function CustomerOpenInvoices({ customerCode, invoices }: { customerCode:
   const settings = useCollectionsSettings();
   const [sort, setSort] = useState<SortKey>('score');
   const [showFar, setShowFar] = useState(false);
+  const { rowProps, popup } = useInvoiceRowOpener();
   const byCode = { column: 'customerCode', value: customerCode };
   const disputes = useEntityGetAll(DisputesEntity, { where: byCode });
   const [showHidden, setShowHidden] = useState(false);
@@ -258,7 +260,7 @@ export function CustomerOpenInvoices({ customerCode, invoices }: { customerCode:
         </TableHeader>
         <TableBody>
           {near.map((r) => (
-            <InvoiceRow key={r.inv.invoiceNumber} row={r} />
+            <InvoiceRow key={r.inv.invoiceNumber} row={r} rowProps={rowProps(r.inv.invoiceNumber)} />
           ))}
           {far.length > 0 && (
             <TableRow className="hover:bg-transparent">
@@ -277,9 +279,10 @@ export function CustomerOpenInvoices({ customerCode, invoices }: { customerCode:
               </TableCell>
             </TableRow>
           )}
-          {showFar && far.map((r) => <InvoiceRow key={r.inv.invoiceNumber} row={r} />)}
+          {showFar && far.map((r) => <InvoiceRow key={r.inv.invoiceNumber} row={r} rowProps={rowProps(r.inv.invoiceNumber)} />)}
         </TableBody>
       </Table>
+      {popup}
     </div>
   );
 }

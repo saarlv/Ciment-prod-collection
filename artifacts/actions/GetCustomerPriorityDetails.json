@@ -34,5 +34,5 @@
     }
   },
   "exposedToUI": true,
-  "usageDescription": "This action is triggered by:\n\n- **Opening a customer card tab**: Clicking the \"פרטי לקוח\" or \"פיננסי\" tab on a customer's card\n  Reads the customer's full, current record from Priority (identity, address, contacts, agent, payment terms, credit and insurance, bank) so everything is shown in organised cards."
+  "usageDescription": "This action is triggered by:\n\n- **Opening a customer card**: the \"פרטי לקוח\" tab (opened first) and the \"פיננסי\" tab read the customer's full record live from Priority\n  Shows identity, address and contact details, assignment, payment terms, credit and insurance and bank details, as they are in Priority right now."
 }

@@ -3,7 +3,7 @@ import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
 import { InvoicesEntity } from '@/product-types';
 import { HiddenDocsToggle } from '@/components/CustomerOpenInvoices';
 import { LoadError, LoadingRows } from '@/components/PageStates';
-import { InvoiceNumberLink } from '@/components/receipts/InvoicePopup';
+import { useInvoiceRowOpener } from '@/components/receipts/InvoicePopup';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,11 +13,21 @@ import { EMPTY, HIDDEN_DOC_STATUSES, formatDate, formatForeignExtra, formatILS, 
 const HEAD = 'text-xs font-semibold text-muted-foreground';
 const PAGE = 100;
 
-/** כל המסמכים: every Invoices mirror row of the customer, newest first, paged by 100. */
-export function CustomerAllDocuments({ customerCode }: { customerCode: string }) {
+export type DocsFilter = 'open' | 'closed' | 'all';
+
+/**
+ * The customer's documents (Invoices mirror), newest first, paged by 100. open = no reconciliation date in Priority,
+ * closed = reconciled, all = every document. Every row opens the invoice pop-up.
+ */
+export function CustomerAllDocuments({ customerCode, filter = 'all' }: { customerCode: string; filter?: DocsFilter }) {
   const [showHidden, setShowHidden] = useState(false);
+  const { rowProps, popup } = useInvoiceRowOpener();
+  const byCustomer = { column: 'customerCode' as const, value: customerCode };
   const docs = useEntityGetAll(InvoicesEntity, {
-    where: { column: 'customerCode', value: customerCode },
+    where:
+      filter === 'all'
+        ? byCustomer
+        : { and: [byCustomer, { column: 'reconciledDate' as const, operator: filter === 'open' ? ('is null' as const) : ('is not null' as const) }] },
     orderBy: [
       { column: 'invoiceDate', direction: 'desc' },
       { column: 'invoiceNumber', direction: 'desc' },
@@ -47,7 +57,9 @@ export function CustomerAllDocuments({ customerCode }: { customerCode: string })
         {hiddenCount > 0 && <HiddenDocsToggle checked={showHidden} onChange={setShowHidden} />}
       </div>
       {rows.length === 0 ? (
-        <p className="px-[21px] pb-[21px] text-sm text-muted-foreground">אין מסמכים ללקוח מפריוריטי.</p>
+        <p className="px-[21px] pb-[21px] text-sm text-muted-foreground">
+          {filter === 'open' ? 'אין ללקוח מסמכים פתוחים.' : filter === 'closed' ? 'אין ללקוח מסמכים סגורים.' : 'אין מסמכים ללקוח מפריוריטי.'}
+        </p>
       ) : (
         <Table className="min-w-[980px]">
           <TableHeader>
@@ -64,9 +76,9 @@ export function CustomerAllDocuments({ customerCode }: { customerCode: string })
           </TableHeader>
           <TableBody>
             {rows.map((d) => (
-              <TableRow key={d.id} className="hover:bg-glass-faint">
-                <TableCell className="ps-[21px]">
-                  <InvoiceNumberLink invoiceNumber={d.invoiceNumber} customerLink={false} />
+              <TableRow key={d.id} {...rowProps(d.invoiceNumber)}>
+                <TableCell className="ps-[21px] font-semibold text-link tabular-nums" dir="ltr">
+                  {d.invoiceNumber || EMPTY}
                 </TableCell>
                 <TableCell>{d.documentType || EMPTY}</TableCell>
                 <TableCell>{PRIORITY_FORM_LABEL[d.priorityForm ?? ''] ?? EMPTY}</TableCell>
@@ -88,6 +100,7 @@ export function CustomerAllDocuments({ customerCode }: { customerCode: string })
           </Button>
         </div>
       )}
+      {popup}
     </div>
   );
 }

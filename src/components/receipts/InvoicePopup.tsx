@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ReactNode, SyntheticEvent } from 'react';
+import type { KeyboardEvent, ReactNode, SyntheticEvent } from 'react';
 import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
 import { FileQuestionIcon, FileTextIcon, ScanTextIcon } from 'lucide-react';
 import { CustomerNotesEntity, InvoicesEntity, ReceiptAllocationsEntity, ReceiptsEntity } from '@/product-types';
@@ -10,7 +10,8 @@ import { ReceiptStatusBadges } from '@/components/receipts/ReceiptStatusBadges';
 import { InvoiceLinesLive } from '@/components/receipts/InvoiceLinesLive';
 import { CustomerPopupLink } from '@/components/receipts/CustomerPopup';
 import { useElementWidth } from '@/hooks/useElementWidth';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { PdfViewer } from '@/components/ui/pdf-viewer';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -85,16 +86,33 @@ export function InvoicePopup({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="glass-menu flex h-[85vh] w-[92vw] max-w-[1200px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1200px]">
-        <DialogHeader className="border-b border-glass-edge px-[21px] py-[13px] pe-14">
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-lg font-bold">
+      <DialogContent className="glass-menu flex max-h-[calc(100dvh-2rem)] w-[92vw] max-w-[1200px] flex-col gap-0 overflow-hidden rounded-[26px] p-0 sm:max-w-[1200px] lg:h-[min(88dvh,920px)]">
+        <DialogHeader className="shrink-0 gap-[13px] border-b border-glass-edge px-[21px] pt-[21px] pb-[13px] pe-14">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-xl font-extrabold tracking-[-0.01em]">
             <FileTextIcon className="size-5 text-muted-foreground" />
             {inv?.documentType ?? 'חשבונית'} <span dir="ltr">{invoiceNumber}</span>
-            {inv?.status && <StatusBadge value={inv.status} />}
+            {inv && <StatusBadge value={inv.reconciledDate ? 'סגורה' : 'פתוחה'} tone={inv.reconciledDate ? 'done' : 'active'} />}
           </DialogTitle>
-          <DialogDescription>
-            {inv ? `${inv.customerName ?? inv.customerCode ?? ''} · ${formatMoney(inv.amount, inv.currencyCode)} · פירעון ${formatDate(inv.dueDate)}` : 'הנתונים שנשלפו מ-Priority לצד החשבונית כפי שנשלחה ללקוח.'}
-          </DialogDescription>
+          <DialogDescription>{inv ? inv.customerName ?? inv.customerCode ?? '' : 'הנתונים שנשלפו מ-Priority לצד החשבונית כפי שנשלחה ללקוח.'}</DialogDescription>
+          {inv && (
+            <dl className="flex flex-wrap gap-[13px]">
+              <div className="glass flex min-w-[150px] flex-col gap-0.5 rounded-[18px] border px-[13px] py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">סכום</dt>
+                <dd className="text-xl leading-tight font-extrabold tabular-nums">{formatMoney(inv.amount, inv.currencyCode)}</dd>
+              </div>
+              <div className="glass flex min-w-[150px] flex-col gap-0.5 rounded-[18px] border px-[13px] py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">נשאר לתשלום</dt>
+                <dd className="text-xl leading-tight font-extrabold tabular-nums">{inv.reconciledDate ? formatILS(0) : formatILS(inv.remainingAmount ?? inv.openAmount)}</dd>
+              </div>
+              <div className="glass flex min-w-[150px] flex-col gap-0.5 rounded-[18px] border px-[13px] py-2">
+                <dt className="text-xs font-semibold text-muted-foreground">פירעון</dt>
+                <dd className="text-base font-bold tabular-nums">
+                  {formatDate(inv.dueDate)}
+                  {!inv.reconciledDate && overdue && overdue > 0 ? <span className="ms-1.5 text-xs font-semibold text-critical-ink">באיחור {formatNumber(overdue)} ימים</span> : null}
+                </dd>
+              </div>
+            </dl>
+          )}
         </DialogHeader>
 
         {invoices.isError ? (
@@ -116,7 +134,7 @@ export function InvoicePopup({
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden', inv.sourceDocUrl && 'lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]')}>
+          <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden', inv.sourceDocUrl && 'lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]')}>
             <section aria-label="הנתונים שנשלפו" className="flex min-h-0 flex-col gap-[13px] p-[21px] lg:overflow-y-auto">
               <h3 className="text-sm font-bold">הנתונים שנשלפו</h3>
               {allocatedAmount != null && (
@@ -142,18 +160,8 @@ export function InvoicePopup({
                   )}
                 </Fact>
                 <Fact label="תאריך חשבונית">{formatDate(inv.invoiceDate)}</Fact>
-                <Fact label="תאריך פירעון">
-                  {formatDate(inv.dueDate)}
-                  {overdue && overdue > 0 && (inv.openAmount ?? 0) > 0 ? <span className="ms-1.5 text-xs font-semibold text-critical-ink">באיחור {formatNumber(overdue)} ימים</span> : null}
-                </Fact>
-                <Fact label="סכום">
-                  <span className="tabular-nums">{formatMoney(inv.amount, inv.currencyCode)}</span>
-                </Fact>
                 <Fact label="יתרה פתוחה ב-Priority">
                   <span className="tabular-nums">{formatILS(inv.openAmount)}</span>
-                </Fact>
-                <Fact label="נשאר לתשלום">
-                  <span className="tabular-nums">{formatILS(inv.remainingAmount ?? inv.openAmount)}</span>
                 </Fact>
                 <Fact label="מצב תשלום">{inv.paymentStatus ? <StatusBadge value={inv.paymentStatus} /> : '—'}</Fact>
                 <Fact label="סטטוס ב-Priority">{inv.status ? <StatusBadge value={inv.status} /> : '—'}</Fact>
@@ -245,6 +253,9 @@ export function InvoicePopup({
             )}
           </div>
         )}
+        <DialogFooter className="shrink-0 border-t border-glass-edge px-[21px] py-[13px]">
+          <DialogClose render={<Button variant="outline" className="rounded-full" />}>סגירה</DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -280,4 +291,29 @@ export function InvoiceNumberLink({
       {open && <InvoicePopup invoiceNumber={invoiceNumber} allocatedAmount={allocatedAmount} customerLink={customerLink} onClose={() => setOpen(false)} />}
     </span>
   );
+}
+
+/**
+ * Makes whole table rows open the invoice pop-up: spread `rowProps(invoiceNumber)` on a row (click, Enter / Space,
+ * pointer, hover) and render `popup` once beside the table.
+ */
+export function useInvoiceRowOpener() {
+  const [open, setOpen] = useState<string | null>(null);
+  function rowProps(invoiceNumber?: string | null) {
+    if (!invoiceNumber) return {};
+    return {
+      role: 'button' as const,
+      tabIndex: 0,
+      'aria-label': `פתיחת חשבונית ${invoiceNumber}`,
+      onClick: () => setOpen(invoiceNumber),
+      onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+        if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault();
+        setOpen(invoiceNumber);
+      },
+      className: 'cursor-pointer outline-none transition-colors duration-150 hover:bg-glass-soft focus-visible:bg-glass-soft focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+    };
+  }
+  const popup = open ? <InvoicePopup invoiceNumber={open} customerLink={false} onClose={() => setOpen(null)} /> : null;
+  return { rowProps, popup };
 }

@@ -2928,8 +2928,14 @@ export interface ICustomerActivityEntity {
   documentCount?: number;
   /** Max aggregation result  */
   lastDocumentDate?: number;
-  /** Sum aggregation result  */
+  /** Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)  */
+  openDebtRaw?: number;
+  /** Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)  */
+  openCountRaw?: number;
+  /** Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)  */
   openDebt?: number;
+  /** Unreconciled invoices  */
+  openInvoiceCount?: number;
 }
 
 export const CustomerActivityEntity = {

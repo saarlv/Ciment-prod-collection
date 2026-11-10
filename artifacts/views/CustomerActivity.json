@@ -1,7 +1,7 @@
 {
   "name": "CustomerActivity",
   "description": "Per customer: how many Priority documents the app holds, the latest one and the active debt",
-  "technicalDescription": "Invoices grouped by customerCode: document count and latest invoiceDate (all forms, all statuses). Customers without any row here have no documents in the app. Used by the customer list to show only customers with activity by default. openDebt = sum of remainingAmount (what is still open after our allocations) over the customer's documents.",
+  "technicalDescription": "Invoices grouped by customerCode: document count, latest invoiceDate, and the active debt = sum of amount over documents with no IVRECONDATE (open = not reconciled in Priority; credit notes are negative so unreconciled credits reduce it). Partial payments are not visible from the source.",
   "query": {
     "from": {
       "table": "Invoices",
@@ -23,16 +23,34 @@
         "as": "lastDocumentDate"
       },
       {
-        "column": "i.remainingAmount",
-        "function": "sum",
-        "as": "openDebt"
+        "expression": "SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)",
+        "as": "openDebtRaw",
+        "column": "openDebtRaw"
+      },
+      {
+        "expression": "SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)",
+        "as": "openCountRaw",
+        "column": "openCountRaw"
       }
     ],
     "groupBy": [
       "i.customerCode"
     ]
   },
-  "calculatedColumns": [],
+  "calculatedColumns": [
+    {
+      "name": "openDebt",
+      "type": "number",
+      "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+      "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100"
+    },
+    {
+      "name": "openInvoiceCount",
+      "type": "number",
+      "description": "Unreconciled invoices",
+      "expression": "Number(item.openCountRaw || 0)"
+    }
+  ],
   "permission": {
     "type": "public"
   }

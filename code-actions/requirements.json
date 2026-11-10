@@ -25849,7 +25849,7 @@
       "actionSetId": "app",
       "isFromDependency": false,
       "productId": "6af30b2e6221f0a7126bea1d",
-      "usageDescription": "This action is triggered by:\n\n- **Opening a customer card tab**: Clicking the \"פרטי לקוח\" or \"פיננסי\" tab on a customer's card\n  Reads the customer's full, current record from Priority (identity, address, contacts, agent, payment terms, credit and insurance, bank) so everything is shown in organised cards."
+      "usageDescription": "This action is triggered by:\n\n- **Opening a customer card**: the \"פרטי לקוח\" tab (opened first) and the \"פיננסי\" tab read the customer's full record live from Priority\n  Shows identity, address and contact details, assignment, payment terms, credit and insurance and bank details, as they are in Priority right now."
     },
     "GetFileBase64": {
       "isCurrentAppAction": false,
@@ -28316,10 +28316,29 @@
             "title": "lastDocumentDate",
             "description": "Max aggregation result"
           },
+          "openDebtRaw": {
+            "type": "number",
+            "title": "openDebtRaw",
+            "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
+          },
+          "openCountRaw": {
+            "type": "number",
+            "title": "openCountRaw",
+            "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
+          },
           "openDebt": {
             "type": "number",
             "title": "openDebt",
-            "description": "Sum aggregation result"
+            "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+            "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
+            "$id": "28c0b26803358e5a6b46d8ab"
+          },
+          "openInvoiceCount": {
+            "type": "number",
+            "title": "openInvoiceCount",
+            "description": "Unreconciled invoices",
+            "expression": "Number(item.openCountRaw || 0)",
+            "$id": "bec9e1b298276d5531ba3b4a"
           }
         },
         "required": [],
@@ -41781,10 +41800,29 @@
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
                 },
+                "openDebtRaw": {
+                  "type": "number",
+                  "title": "openDebtRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
+                },
+                "openCountRaw": {
+                  "type": "number",
+                  "title": "openCountRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
+                },
                 "openDebt": {
                   "type": "number",
                   "title": "openDebt",
-                  "description": "Sum aggregation result"
+                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
+                  "$id": "28c0b26803358e5a6b46d8ab"
+                },
+                "openInvoiceCount": {
+                  "type": "number",
+                  "title": "openInvoiceCount",
+                  "description": "Unreconciled invoices",
+                  "expression": "Number(item.openCountRaw || 0)",
+                  "$id": "bec9e1b298276d5531ba3b4a"
                 }
               }
             }
@@ -64387,10 +64425,29 @@
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
                 },
+                "openDebtRaw": {
+                  "type": "number",
+                  "title": "openDebtRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
+                },
+                "openCountRaw": {
+                  "type": "number",
+                  "title": "openCountRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
+                },
                 "openDebt": {
                   "type": "number",
                   "title": "openDebt",
-                  "description": "Sum aggregation result"
+                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
+                  "$id": "28c0b26803358e5a6b46d8ab"
+                },
+                "openInvoiceCount": {
+                  "type": "number",
+                  "title": "openInvoiceCount",
+                  "description": "Unreconciled invoices",
+                  "expression": "Number(item.openCountRaw || 0)",
+                  "$id": "bec9e1b298276d5531ba3b4a"
                 }
               },
               "additionalProperties": false
@@ -64431,10 +64488,29 @@
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
                 },
+                "openDebtRaw": {
+                  "type": "number",
+                  "title": "openDebtRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
+                },
+                "openCountRaw": {
+                  "type": "number",
+                  "title": "openCountRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
+                },
                 "openDebt": {
                   "type": "number",
                   "title": "openDebt",
-                  "description": "Sum aggregation result"
+                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
+                  "$id": "28c0b26803358e5a6b46d8ab"
+                },
+                "openInvoiceCount": {
+                  "type": "number",
+                  "title": "openInvoiceCount",
+                  "description": "Unreconciled invoices",
+                  "expression": "Number(item.openCountRaw || 0)",
+                  "$id": "bec9e1b298276d5531ba3b4a"
                 }
               }
             }
@@ -89108,10 +89184,29 @@
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
                 },
+                "openDebtRaw": {
+                  "type": "number",
+                  "title": "openDebtRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
+                },
+                "openCountRaw": {
+                  "type": "number",
+                  "title": "openCountRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
+                },
                 "openDebt": {
                   "type": "number",
                   "title": "openDebt",
-                  "description": "Sum aggregation result"
+                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
+                  "$id": "28c0b26803358e5a6b46d8ab"
+                },
+                "openInvoiceCount": {
+                  "type": "number",
+                  "title": "openInvoiceCount",
+                  "description": "Unreconciled invoices",
+                  "expression": "Number(item.openCountRaw || 0)",
+                  "$id": "bec9e1b298276d5531ba3b4a"
                 },
                 "id": {
                   "type": "string",
@@ -89159,10 +89254,29 @@
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
                 },
+                "openDebtRaw": {
+                  "type": "number",
+                  "title": "openDebtRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
+                },
+                "openCountRaw": {
+                  "type": "number",
+                  "title": "openCountRaw",
+                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
+                },
                 "openDebt": {
                   "type": "number",
                   "title": "openDebt",
-                  "description": "Sum aggregation result"
+                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
+                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
+                  "$id": "28c0b26803358e5a6b46d8ab"
+                },
+                "openInvoiceCount": {
+                  "type": "number",
+                  "title": "openInvoiceCount",
+                  "description": "Unreconciled invoices",
+                  "expression": "Number(item.openCountRaw || 0)",
+                  "$id": "bec9e1b298276d5531ba3b4a"
                 }
               }
             }

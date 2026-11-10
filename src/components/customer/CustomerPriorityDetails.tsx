@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { useExecuteAction } from '@blocksdiy/blocks-client-sdk/reactSdk';
+import { useEntityGetAll, useEntityUpdate, useExecuteAction } from '@blocksdiy/blocks-client-sdk/reactSdk';
 import { ChevronDownIcon, MailIcon, PhoneIcon } from 'lucide-react';
-import { GetCustomerPriorityDetailsAction } from '@/product-types';
+import { CustomerContactsEntity, GetCustomerPriorityDetailsAction } from '@/product-types';
+import { LoadError, LoadingRows } from '@/components/PageStates';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import type { CustomersEntity } from '@/product-types';
 import { useActionQuery } from '@/hooks/useActionQuery';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import type { Customer360Contact } from '@/utils/CollectionsTypes';
 import { formatDate, formatDateTime } from '@/utils/Format';
 
 type Rec = Record<string, unknown>;
@@ -236,32 +238,75 @@ function present(rows: FactRow[]): FactRow[] {
   return rows.filter((r) => r.value !== null && r.value !== undefined && r.value !== '');
 }
 
-function ContactsCard({ contacts }: { contacts: Customer360Contact[] }) {
+type ContactRow = (typeof CustomerContactsEntity)['instanceType'] & { id: string };
+
+/** One contact: name, title / roles, email and phone, the הנהלת חשבונות badge, and a switch to mark it here. */
+function ContactItem({ ct }: { ct: ContactRow }) {
+  const { updateFunction, isLoading } = useEntityUpdate(CustomerContactsEntity);
+  const [error, setError] = useState(false);
+  const name = ct.contactName || [ct.firstName, ct.lastName].filter(Boolean).join(' ') || '—';
+  const title = [ct.position || ct.signatureTitle, ct.roleFlags].filter(Boolean).join(' · ');
+  const switchId = `ap-${ct.id}`;
+  async function toggle(next: boolean) {
+    setError(false);
+    try {
+      await updateFunction({ id: ct.id, data: { isApContact: next } });
+    } catch {
+      setError(true);
+    }
+  }
   return (
-    <FactCard title={`אנשי קשר (${contacts.length})`} rows={[]}>
-      {contacts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">אין אנשי קשר בכרטיס הלקוח בפריוריטי.</p>
+    <li className="flex flex-col gap-1 py-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold">{name}</span>
+        {ct.isApContact && (
+          <Badge variant="outline" className="h-5 rounded-full border-transparent bg-primary/12 px-2 text-[11px] font-semibold text-link">
+            הנהלת חשבונות
+          </Badge>
+        )}
+        <label htmlFor={switchId} className="ms-auto flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          הנהלת חשבונות
+          <Switch id={switchId} size="sm" checked={!!ct.isApContact} disabled={isLoading} onCheckedChange={(v) => toggle(v)} />
+        </label>
+      </div>
+      {title && <span className="text-xs text-muted-foreground">{title}</span>}
+      <span className="flex flex-wrap gap-x-[13px]">
+        {ct.email && (
+          <a href={`mailto:${ct.email}`} dir="ltr" className="flex items-center gap-1 text-sm text-link hover:underline">
+            <MailIcon className="size-3.5" />
+            {ct.email}
+          </a>
+        )}
+        {ct.phone && (
+          <a href={`tel:${ct.phone}`} dir="ltr" className="flex items-center gap-1 text-sm text-link hover:underline">
+            <PhoneIcon className="size-3.5" />
+            {ct.phone}
+          </a>
+        )}
+      </span>
+      {error && <span className="text-xs font-semibold text-critical-ink">השינוי לא נשמר. נסו שוב.</span>}
+    </li>
+  );
+}
+
+/** אנשי קשר: the customer's CustomerContacts rows, accounts-payable contacts first, each with its הנהלת חשבונות switch. */
+function ContactsCard({ code }: { code: string }) {
+  const q = useEntityGetAll(CustomerContactsEntity, { where: { column: 'customerCode', value: code }, page: { size: 200 } });
+  const rows = (q.data ?? [])
+    .filter((c) => !c.deletedInSource)
+    .sort((a, b) => Number(!!b.isApContact) - Number(!!a.isApContact) || (a.contactName ?? '').localeCompare(b.contactName ?? '', 'he'));
+  return (
+    <FactCard title={q.isLoading || q.isError ? 'אנשי קשר' : `אנשי קשר (${rows.length})`} rows={[]}>
+      {q.isError ? (
+        <LoadError what="אנשי הקשר" />
+      ) : q.isLoading ? (
+        <LoadingRows rows={3} />
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">אין אנשי קשר בכרטיס הלקוח.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-glass-edge">
-          {contacts.map((ct, i) => (
-            <li key={`${ct.email}-${i}`} className="flex flex-col gap-0.5 py-2">
-              <span className="font-semibold">{ct.contactName ?? '—'}</span>
-              {ct.roleFlags && <span className="text-xs text-muted-foreground">{Array.isArray(ct.roleFlags) ? ct.roleFlags.join(', ') : ct.roleFlags}</span>}
-              <span className="flex flex-wrap gap-x-[13px]">
-                {ct.email && (
-                  <a href={`mailto:${ct.email}`} dir="ltr" className="flex items-center gap-1 text-sm text-link hover:underline">
-                    <MailIcon className="size-3.5" />
-                    {ct.email}
-                  </a>
-                )}
-                {ct.phone && (
-                  <a href={`tel:${ct.phone}`} dir="ltr" className="flex items-center gap-1 text-sm text-link hover:underline">
-                    <PhoneIcon className="size-3.5" />
-                    {ct.phone}
-                  </a>
-                )}
-              </span>
-            </li>
+          {rows.map((ct) => (
+            <ContactItem key={ct.id} ct={ct as ContactRow} />
           ))}
         </ul>
       )}
@@ -299,7 +344,7 @@ function ExtrasCard({ record }: { record: Rec }) {
 }
 
 /** "פרטי לקוח": the full Priority customer record (identity, address, assignment, remarks) with the contacts. */
-export function CustomerDetailsTab({ code, mirror, contacts, internalNotes }: { code: string; mirror?: Mirror; contacts: Customer360Contact[]; internalNotes?: string | null }) {
+export function CustomerDetailsTab({ code, mirror, internalNotes }: { code: string; mirror?: Mirror; internalNotes?: string | null }) {
   const p = useCustomerPriorityRecord(code);
   if (p.isLoading) return <LoadingCards />;
   const r = p.record;
@@ -335,7 +380,7 @@ export function CustomerDetailsTab({ code, mirror, contacts, internalNotes }: { 
         {identity.length > 0 && <FactCard title="זיהוי" rows={identity} />}
         {address.length > 0 && <FactCard title="כתובת והתקשרות" rows={address} />}
         {assign.length > 0 && <FactCard title="שיוך" rows={assign} />}
-        <ContactsCard contacts={contacts} />
+        <ContactsCard code={code} />
         {remarks.length > 0 && <FactCard title="הערות" rows={remarks} />}
         {r && <ExtrasCard record={r} />}
       </Grid>
@@ -343,8 +388,8 @@ export function CustomerDetailsTab({ code, mirror, contacts, internalNotes }: { 
   );
 }
 
-/** "פיננסי": the debt summary from the card, then payment terms, credit & insurance and bank from Priority. */
-export function CustomerFinanceTab({ code, mirror, summary }: { code: string; mirror?: Mirror; summary: FactRow[] }) {
+/** The finance tab's detail cards: payment terms, credit & insurance and bank from Priority (the debt summary sits above them). */
+export function CustomerFinanceTab({ code, mirror }: { code: string; mirror?: Mirror }) {
   const p = useCustomerPriorityRecord(code);
   if (p.isLoading) return <LoadingCards />;
   const r = p.record;
@@ -368,7 +413,6 @@ export function CustomerFinanceTab({ code, mirror, summary }: { code: string; mi
     <>
       <SourceLine readAt={p.readAt} failed={p.failed} message={p.message} />
       <Grid>
-        <FactCard title="חוב ויתרות" rows={summary} />
         {terms.length > 0 && <FactCard title="תנאי תשלום" rows={terms} />}
         {credit.length > 0 && <FactCard title="אשראי וביטוח" rows={credit} />}
         {bank.length > 0 && <FactCard title="בנק" rows={bank} />}

@@ -5,7 +5,9 @@ import { InvoicesEntity } from '@/product-types';
 import { Link } from 'react-router';
 import { ArrowUpLeftIcon, InfoIcon, ReceiptIcon } from 'lucide-react';
 import { AgentAvatar } from '@/components/AgentPanel';
-import { InvoiceNumberLink } from '@/components/receipts/InvoicePopup';
+import { InvoiceNumberLink, useInvoiceRowOpener } from '@/components/receipts/InvoicePopup';
+import type { HTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ReceiptStatusBadges } from '@/components/receipts/ReceiptStatusBadges';
 import { useReceiptLineLinks } from '@/hooks/useReceiptLineLinks';
@@ -23,7 +25,7 @@ function ReceiptLink({ bankLineId, href }: { bankLineId?: string | null; href: (
   const to = bankLineId ? href(bankLineId) : null;
   if (!to) return null;
   return (
-    <Link to={to}className="inline-flex items-center gap-1 text-xs font-semibold text-link hover:underline">
+    <Link to={to} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-semibold text-link hover:underline">
       לרשומה בתקבולים
       <ArrowUpLeftIcon className="size-3.5" />
     </Link>
@@ -37,6 +39,7 @@ function EstimateMark() {
         render={
           <button
             type="button"
+            onClick={(e) => e.stopPropagation()}
             aria-label={`הערכה: ${ESTIMATE_HINT}`}
             className="inline-flex h-5 cursor-help items-center gap-1 rounded-full bg-warning-soft px-2 text-[11px] font-semibold text-warning-ink outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
@@ -88,13 +91,24 @@ function ClosingReceiptRow({ r, href }: { r: ClosingReceipt; href: (id: string) 
 
 type DocMeta = { documentType?: string; salesAgentName?: string };
 
-function ClosedInvoiceItem({ inv, href, meta }: { inv: Customer360Invoice; href: (id: string) => string | null; meta?: DocMeta }) {
+function ClosedInvoiceItem({
+  inv,
+  href,
+  meta,
+  rowProps,
+}: {
+  inv: Customer360Invoice;
+  href: (id: string) => string | null;
+  meta?: DocMeta;
+  rowProps: HTMLAttributes<HTMLLIElement>;
+}) {
   const receipts = inv.closingReceipts ?? [];
+  const { className: rowClass, ...rowRest } = rowProps;
   return (
-    <li className="grid gap-[13px] rounded-[22px] bg-glass-inner p-[13px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.618fr)]">
+    <li {...rowRest} className={cn('grid gap-[13px] rounded-[22px] bg-glass-inner p-[13px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.618fr)]', rowClass)}>
       <div className="flex min-w-0 flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
-          <InvoiceNumberLink invoiceNumber={inv.invoiceNumber} customerLink={false} />
+          <span dir="ltr" className="font-semibold text-link tabular-nums">{inv.invoiceNumber || '—'}</span>
           <StatusBadge value="שולמה" tone="done" className="h-5 text-[11px]" />
         </span>
         <span className="text-[22px] leading-tight font-extrabold tabular-nums">{formatILS(inv.amount)}</span>
@@ -224,6 +238,7 @@ export function CustomerClosedInvoices({
   const closed = invoices
     .filter(isInvoiceClosed)
     .sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? '') || (b.dueDate ?? '').localeCompare(a.dueDate ?? ''));
+  const { rowProps, popup } = useInvoiceRowOpener();
   const href = useReceiptLineLinks([...closed.flatMap((i) => (i.closingReceipts ?? []).map((r) => r.bankLineId)), ...receipts.map((r) => r.bankLineId)]).href;
 
   if (closed.length === 0 && receipts.length === 0)
@@ -247,10 +262,11 @@ export function CustomerClosedInvoices({
       ) : (
         <ul className="flex flex-col gap-[13px]">
           {closed.map((inv) => (
-            <ClosedInvoiceItem key={inv.invoiceNumber} inv={inv} href={href} meta={metaOf.get(inv.invoiceNumber ?? '')} />
+            <ClosedInvoiceItem key={inv.invoiceNumber} inv={inv} href={href} meta={metaOf.get(inv.invoiceNumber ?? '')} rowProps={rowProps(inv.invoiceNumber)} />
           ))}
         </ul>
       )}
+      {popup}
     </div>
   );
 }

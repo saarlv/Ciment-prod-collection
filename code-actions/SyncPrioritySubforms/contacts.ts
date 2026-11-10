@@ -7,6 +7,9 @@ import { type RunCtx, type ScopeResult, newResult, loadCursor, saveCursor, verif
 
 const PAGE = 50;
 
+// accounts / bookkeeping contacts: only ever set isApContact true; never reset (a person may flag it in the app)
+const AP_RE = /הנה["״׳']?ח|הנהלת חשבונות|חשבונות|חשבי?ן|כספים|גבי[יה]|accounts?|bookkeep|\bAP\b|finance/i;
+
 function contactsOf(cust: Item): Item[] {
   let c = cust?.CUSTPERSONNEL_SUBFORM;
   if (typeof c === 'string') {
@@ -26,16 +29,19 @@ function mapContact(cust: Item, c: Item): Item {
   const key = `${code}:${c.PHONE}`;
   const first = textOrNull(c.FIRSTNAME);
   const last = textOrNull(c.LASTNAME);
+  const position = textOrNull(c.POSITIONDES);
+  const contactName = textOrNull(c.NAME) ?? ([first, last].filter(Boolean).join(' ') || null);
+  const isAp = AP_RE.test(position ?? '') || AP_RE.test(contactName ?? '');
   return {
     contactKey: key,
     priorityKey: key,
     priorityContactId: numOrNull(c.PHONE),
     customerCode: code,
     customerName: textOrNull(cust.CUSTDES),
-    contactName: textOrNull(c.NAME) ?? ([first, last].filter(Boolean).join(' ') || null),
+    contactName,
     firstName: first,
     lastName: last,
-    position: textOrNull(c.POSITIONDES),
+    position,
     email: textOrNull(c.EMAIL),
     phone: textOrNull(c.PHONENUM),
     mobile: textOrNull(c.CELLPHONE),
@@ -46,6 +52,7 @@ function mapContact(cust: Item, c: Item): Item {
     firm: textOrNull(c.FIRM),
     source: PD_SOURCE,
     deletedInSource: false,
+    ...(isAp ? { isApContact: true } : {}),
   };
 }
 

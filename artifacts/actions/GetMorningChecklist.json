@@ -1,0 +1,76 @@
+{
+  "name": "GetMorningChecklist",
+  "type": "code",
+  "description": "Read only. The mandatory morning uploads for asOfDate: yesterday's bank file (ImportBatches kind קובץ בנק, status נכתב, dataDate = the previous business day, Sun–Thu, so on Sunday it is Thursday's file) and the open-invoices file (kind חשבוניות פתוחות, status נכתב, dataDate on or after the previous business day). Each task says whether it is done and by which import.",
+  "iconName": "list-checks",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem",
+        "format": "date"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": ""
+      },
+      "previousBusinessDay": {
+        "type": "string",
+        "description": ""
+      },
+      "allDone": {
+        "type": "boolean",
+        "description": ""
+      },
+      "tasks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": ""
+            },
+            "label": {
+              "type": "string",
+              "description": "Hebrew task label"
+            },
+            "requiredDataDate": {
+              "type": "string",
+              "description": ""
+            },
+            "done": {
+              "type": "boolean",
+              "description": ""
+            },
+            "importBatchId": {
+              "type": "string",
+              "description": ""
+            },
+            "fileName": {
+              "type": "string",
+              "description": ""
+            },
+            "uploadedAt": {
+              "type": "string",
+              "description": ""
+            },
+            "uploadedBy": {
+              "type": "string",
+              "description": ""
+            }
+          }
+        },
+        "description": ""
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening the Today screen**: The \"היום\" screen runs it when it opens (the last result shows at once while a fresh one loads)\n  Shows the mandatory morning card for the open invoices file, whether it is done, and by which file, uploader and time. The bank file is uploaded on the receipts screen and is not shown here."
+}

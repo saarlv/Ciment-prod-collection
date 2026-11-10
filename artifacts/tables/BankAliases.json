@@ -1,0 +1,90 @@
+{
+  "name": "BankAliases",
+  "description": "Payer aliases",
+  "technicalDescription": "Maps a payer name as it appears on bank lines to a customer (rung 2 of payer identification). Since Iteration 9 an alias is written already approved when a person approves a match whose payer name differs from the customer name (source), and is not yet synced to Priority.",
+  "iconName": "link",
+  "columns": [
+    {
+      "name": "bankName",
+      "type": "string",
+      "description": "Payer name exactly as it appears on the bank line"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Alias status",
+      "enum": [
+        "מוצע",
+        "מאושר",
+        "נדחה"
+      ]
+    },
+    {
+      "name": "proposedFromBankLineId",
+      "type": "string",
+      "description": "Bank line that triggered the proposal (text link to BankLines.bankLineId)"
+    },
+    {
+      "name": "proposedAt",
+      "type": "datetime",
+      "description": "When the alias was proposed"
+    },
+    {
+      "name": "approvedBy",
+      "type": "string",
+      "description": "Who approved or rejected the alias"
+    },
+    {
+      "name": "approvedAt",
+      "type": "datetime",
+      "description": "When the alias was approved or rejected"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Where the alias came from",
+      "enum": [
+        "אישור התאמה",
+        "מייל",
+        "ידני"
+      ]
+    },
+    {
+      "name": "evidenceEmailId",
+      "type": "string",
+      "description": "InboundEmails id that identified the payer, when it came from mail"
+    },
+    {
+      "name": "prioritySync",
+      "type": "string",
+      "description": "Sync to Priority",
+      "enum": [
+        "לא סונכרן",
+        "סונכרן"
+      ]
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "bankName",
+  "uniqueKey": [
+    "bankName"
+  ],
+  "defaultUpsert": true
+}

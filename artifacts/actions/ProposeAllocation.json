@@ -1,0 +1,135 @@
+{
+  "name": "ProposeAllocation",
+  "type": "code",
+  "description": "Allocation proposal of plan 04.11 part B (stage 6), a separate step that never blocks the receipt. For one approved receipt returns the customer's open invoices grouped by due month — source of truth: OpenMovements rows of docType חשבונית (amount > 0, docNumber = invoice number; Invoices only adds invoiceDate / original amount); open balance of an invoice = its OpenMovements amount minus every ReceiptAllocations row on it across all OTHER receipts (the receipt's own rows are the ones an approval replaces) — and the automatic proposal: oldest to newest until the amount is used, starting with the months the debt check closed (debtCheckMonths) when it closed to zero; the last invoice is partial; any surplus stays as credit on account. allocationConfidence 0–100: 100 = the debt check closed to zero and the proposal uses the amount exactly on whole invoices of those months; 80 = zero close but those months' invoices don't add up exactly; 50 = no zero close, ends exactly on whole invoices; 30 = no zero close, partial or surplus; 0 = no open invoice. dryRun = read only (the allocation editor calls it this way). Otherwise writes allocationConfidence; for a zero-closed receipt with a proposal also matchStatus 'פיזור מוצע – לאישור' and the task 'קבלה – צריך פיזור' (taskKey allocate:<receiptKey>); a 'לברר מול הלקוח' receipt gets no proposed state (its debt-check:<receiptKey> task carries it). When allocationAutoApproveAt (AgentSettings) has a value and confidence ≥ it, the proposal is applied at once through ApplyAllocation's logic with approvedBy 'אושר אוטומטית'; empty = OFF. A receipt that already has allocations is never overwritten (alreadyAllocated, current[]). IssueReceipt runs the same function right after the debt check. Never writes to Priority.",
+  "iconName": "list-ordered",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "receiptKey"
+    ],
+    "properties": {
+      "receiptKey": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "receiptKey": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "number",
+        "description": "Receipt amount"
+      },
+      "debtCheckResult": {
+        "type": "string"
+      },
+      "closedMonths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Due months the debt check closed (YYYY-MM); the proposal starts there"
+      },
+      "months": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ dueMonth (YYYY-MM, '' = no due date), monthLabel, closedByDebtCheck, openTotal, invoices[{ invoiceNumber, invoiceDate, dueDate, invoiceAmount, openInPriority, allocatedByOthers, otherReceipts[{receiptKey, amount}], openBefore (the max that can be allocated), proposed (0 when not proposed), isPartial, current (this receipt's current allocation, 0 if none) }] }, oldest first"
+      },
+      "proposal": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "[{ invoiceNumber, amount, isPartial }] in allocation order – ready to send to ApplyAllocation"
+      },
+      "proposedTotal": {
+        "type": "number"
+      },
+      "surplus": {
+        "type": "number",
+        "description": "Credit on account beyond the open invoices"
+      },
+      "openTotal": {
+        "type": "number",
+        "description": "Sum of the customer's open balances"
+      },
+      "allocationConfidence": {
+        "type": "number"
+      },
+      "autoApproveAt": {
+        "type": "number",
+        "description": "allocationAutoApproveAt; null = OFF"
+      },
+      "wouldAutoApply": {
+        "type": "boolean"
+      },
+      "autoApplied": {
+        "type": "boolean"
+      },
+      "apply": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "ApplyAllocation's output when auto-applied"
+      },
+      "alreadyAllocated": {
+        "type": "boolean"
+      },
+      "current": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "The receipt's current allocation [{ invoiceNumber, amount }]"
+      },
+      "matchStatus": {
+        "type": "string"
+      },
+      "taskKey": {
+        "type": "string"
+      },
+      "taskChange": {
+        "type": "string"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening the allocation editor**: Clicking \"פיזור לחשבוניות\" (or \"עריכת הפיזור\") on an approved receipt on the \"תקבולים\" screen — in the identification list, in the field agents' cheques section, or in step 4 \"פיזור\" of the receipt record (also opened from a receipts task)\n  Loads the customer's open invoices grouped by due month, highlights the months the debt check closed, and pre-fills the suggested amount for each invoice (or the receipt's current allocation). It only reads; nothing is saved."
+}

@@ -1,0 +1,71 @@
+{
+  "name": "FetchEmailAttachments",
+  "type": "code",
+  "description": "Code, not an agent: stores every attachment of one inbound email that arrives with a downloadable url (no mail provider is connected; Gmail was removed 10.11, Outlook later — an attachment without a url is kept as ממתין and skipped), stores the file and writes one EmailAttachments row per file (unique messageId + fileName, idempotent). Extraction: PDF with a text layer → text (unpdf); Excel / CSV → each sheet as tab-separated text (xlsx); image or scanned PDF → extractionState דורש OCR (read by file name only); anything else → לא נתמך. A failed file is marked נכשל with the error and never stops the email. Then builds promptForAgent: the full Hebrew brief Maya sorts from, in the fixed format 'משימה: מיון מייל נכנס / שולח / מה ידוע על השולח / מועמדי לקוח (קוד | שם | איך נמצא) / נושא / קבצים מצורפים / גוף', with each file's extracted text (capped per file and in total). Sends nothing.",
+  "iconName": "paperclip",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailId"
+    ],
+    "properties": {
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id"
+      },
+      "messageId": {
+        "type": "string",
+        "description": "Provider message id"
+      },
+      "mailProvider": {
+        "type": "string",
+        "enum": [
+          "gmail",
+          "outlook"
+        ]
+      },
+      "attachments": {
+        "type": "array",
+        "description": "Attachment metadata from the provider (filename, mimeType, attachmentId, url when available)",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "attachments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ id, fileName, fileKind, extractionState, chars, error }"
+      },
+      "extractedCount": {
+        "type": "number"
+      },
+      "promptForAgent": {
+        "type": "string",
+        "description": "The full brief for Maya's sorting call"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

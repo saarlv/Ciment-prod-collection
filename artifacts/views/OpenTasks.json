@@ -1,0 +1,76 @@
+{
+  "name": "OpenTasks",
+  "description": "Open tasks counted by type, severity, source and bookkeeper",
+  "technicalDescription": "Counts and amounts of CollectionQueue rows in status ממתין or בטיפול, grouped by taskType, severity, source and assignedBookkeeperName. Feeds the tabs and the sidebar badge of the tasks page.",
+  "query": {
+    "from": {
+      "table": "CollectionQueue",
+      "as": "q"
+    },
+    "select": [
+      {
+        "column": "q.taskType",
+        "as": "taskType"
+      },
+      {
+        "column": "q.severity",
+        "as": "severity"
+      },
+      {
+        "column": "q.source",
+        "as": "source"
+      },
+      {
+        "column": "q.assignedBookkeeperName",
+        "as": "assignedBookkeeperName"
+      },
+      {
+        "column": "q.id",
+        "function": "count",
+        "as": "taskCount"
+      },
+      {
+        "column": "q.amount",
+        "function": "sum",
+        "as": "amountTotal"
+      }
+    ],
+    "where": {
+      "or": [
+        {
+          "column": "q.status",
+          "operator": "=",
+          "value": "ממתין"
+        },
+        {
+          "column": "q.status",
+          "operator": "=",
+          "value": "בטיפול"
+        }
+      ]
+    },
+    "groupBy": [
+      "q.taskType",
+      "q.severity",
+      "q.source",
+      "q.assignedBookkeeperName"
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "openCount",
+      "type": "number",
+      "description": "Open tasks",
+      "expression": "Number(item.taskCount || 0)"
+    },
+    {
+      "name": "openAmount",
+      "type": "number",
+      "description": "Amount at stake ILS",
+      "expression": "Number(item.amountTotal || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

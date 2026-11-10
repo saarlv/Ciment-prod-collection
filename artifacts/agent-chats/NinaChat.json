@@ -1,0 +1,11 @@
+{
+  "name": "NinaChat",
+  "description": "NinaChat",
+  "agentId": "CollectionsAgent",
+  "isPersistent": true,
+  "hideToolsUi": false,
+  "disableGeneratingDynamicChatComponent": false,
+  "disableAttachments": true,
+  "isAdmin": true,
+  "allowRunningActions": false
+}

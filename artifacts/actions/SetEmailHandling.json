@@ -1,0 +1,61 @@
+{
+  "name": "SetEmailHandling",
+  "type": "code",
+  "description": "Sets the handling state of one or more inbound emails from the inbox screen: לא טופל, ממתין (requires waitingFor; sets waitingSince) or טופל (sets handledBy and handledAt). Moving away from טופל clears handledBy / handledAt; moving away from ממתין clears waitingFor / waitingSince. Writes one Interactions row per email for a linked customer. Sends nothing.",
+  "iconName": "circle-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailIds",
+      "state"
+    ],
+    "properties": {
+      "inboundEmailIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "InboundEmails row ids"
+      },
+      "state": {
+        "type": "string",
+        "enum": [
+          "לא טופל",
+          "ממתין",
+          "טופל"
+        ]
+      },
+      "waitingFor": {
+        "type": "string",
+        "description": "Required for ממתין: who we wait for"
+      },
+      "by": {
+        "type": "string",
+        "description": "Display name of the person changing the state"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "updated": {
+        "type": "number"
+      },
+      "emails": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Closing a mail**: \"סימון טופל\" at the top of the mail panel on the Inbox page (פניות → דואר נכנס), opened by clicking a mail\n  Marks the mail as handled (shown in green) with who closed it and when; its 24-hour ring stops.\n- **Putting a mail on hold**: \"סימון ממתין\" in the same panel, then writing who we wait for (e.g. \"ממתין ללקוח\") and confirming\n  Marks the mail as waiting, with for whom and since when.\n- **Reopening a mail**: \"החזרה ל״לא טופל״\" in the same panel\n  Puts the mail back in the open list.\n- **Handling several mails at once**: tick mails in the inbox list, then the same three buttons in the bar above the list\n  Changes the handling state of all the ticked mails together."
+}

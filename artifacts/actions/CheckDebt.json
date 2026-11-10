@@ -1,0 +1,68 @@
+{
+  "name": "CheckDebt",
+  "type": "code",
+  "description": "Debt check of plan 04.11 part B (stage 5). IssueReceipt runs the same shared function in-process right after every approval (modes certain / one and the customerAutoApproveAt auto-approval; and PullAgentReceipts for field agents' cheques); this action is the on-demand entry. For each receipt (Receipts by receiptKey; approved / issued only – others are returned with skippedReason) the receipt amount is compared with the customer's OpenMovements summed per due month (dueMonth, else the month of dueDate), oldest month first: equal (±0.01 ₪) to the CUMULATIVE balance through some due month → debtCheckResult 'נסגר לאפס – מצטבר', debtCheckMonths = every month with a balance up to and including it (comma separated YYYY-MM, the first such month wins); else exactly equal to the balance of ONE due month → 'נסגר לאפס – חודש אחד' with that month (the oldest when several months have the same balance, the others in sameBalanceMonths). Both → matchStatus 'פיזור מוצע – לאישור' and the alert 'נסגר לאפס' in CollectionQueue (isAlert true, nothing to do, taskKey debt-zero:<receiptKey>, source תקבולים, relatedTable Receipts); the allocation proposal itself comes from ProposeAllocation. Otherwise → 'לברר מול הלקוח', no proposal, matchStatus 'על חשבון – צריך פיזור' and an open task 'לברר מול הלקוח – סכום לא סוגר חודש' for the customer's bookkeeper (taskKey debt-check:<receiptKey>). The receipt's own movement in Priority (a קבלה whose docNumber is its priorityReceiptNumber or receiptKey – e.g. an agent's cheque already issued in Priority) is never counted against it. A customer with no rows in a non-empty mirror has no open debt → לברר מול הלקוח. matchStatus is written only while the receipt is not allocated yet (empty / על חשבון / פיזור מוצע). Replaces the old invoice matching ladder (due date, 'סוגר עד פה', unique amount, manager approval). An OpenMovements mirror with no rows at all = unknown: nothing is decided, nothing written, ok false with an error. Idempotent per receipt: a receipt that already has a debtCheckResult is never judged again (the stored result stands, also when the movements changed – they may include the receipt itself); its task / alert is only re-ensured, and a task a person closed stays closed. dryRun reports and writes nothing. Never writes to Priority; sends nothing.",
+  "iconName": "scale",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "receiptKeys"
+    ],
+    "properties": {
+      "receiptKeys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Receipts.receiptKey values"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ receiptKey, customerCode, customerName, amount, result, months[], matchStatus, taskKey, isAlert, explanation (Hebrew), already?, sameBalanceMonths?, taskChange?, writeVerified?, skippedReason? }"
+      },
+      "alerts": {
+        "type": "number",
+        "description": "Receipts that closed to zero (alert נסגר לאפס)"
+      },
+      "tasks": {
+        "type": "number",
+        "description": "Receipts that need a לברר מול הלקוח task"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "ok": {
+        "type": "boolean",
+        "description": "false when nothing could be decided (no receiptKeys, unreadable data, or an empty OpenMovements mirror)"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      }
+    }
+  },
+  "exposedToUI": false
+}

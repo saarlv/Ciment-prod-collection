@@ -1,0 +1,62 @@
+{
+  "name": "AgentSettings",
+  "description": "Agent settings",
+  "technicalDescription": "Settings the agents and engines read (thresholds, days, approvers). Each setting carries its basis so assumptions not yet confirmed with Yaniv are visible.",
+  "iconName": "sliders-horizontal",
+  "columns": [
+    {
+      "name": "settingKey",
+      "type": "string",
+      "description": "Setting key, unique (e.g. remittanceEscalationDays)"
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "description": "Value as text"
+    },
+    {
+      "name": "valueType",
+      "type": "string",
+      "description": "Value type",
+      "enum": [
+        "מספר",
+        "טקסט",
+        "כן או לא"
+      ]
+    },
+    {
+      "name": "label",
+      "type": "string",
+      "description": "Hebrew label"
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "description": "What the setting controls"
+    },
+    {
+      "name": "basis",
+      "type": "string",
+      "description": "Where the value comes from",
+      "enum": [
+        "החלטת יניב",
+        "הנחה",
+        "ברירת מחדל",
+        "הוגדר במסך"
+      ]
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "label",
+  "uniqueKey": [
+    "settingKey"
+  ],
+  "defaultUpsert": true
+}

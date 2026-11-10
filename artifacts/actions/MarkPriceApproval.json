@@ -1,0 +1,72 @@
+{
+  "name": "MarkPriceApproval",
+  "type": "code",
+  "description": "A bookkeeper records an approval given outside the app on a מחיר case. Order is enforced: סוכן אישר first, then מנהל אישר; evidence (pasted email text or a link) is mandatory on every mark, and who marked and when are stored. Refuses without evidence, refuses מנהל אישר before סוכן אישר, refuses a second mark of the same step. After סוכן אישר the case moves to ממתינה לאישור מנהל; after מנהל אישר to ממתינה לזיכוי with creditDraftNote (the summary for the credit note a person creates in Priority). Only people call it; Maya has no access to it.",
+  "iconName": "stamp",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "disputeId",
+      "step",
+      "evidence",
+      "markedBy"
+    ],
+    "properties": {
+      "disputeId": {
+        "type": "string"
+      },
+      "step": {
+        "type": "string",
+        "enum": [
+          "סוכן אישר",
+          "מנהל אישר"
+        ]
+      },
+      "evidence": {
+        "type": "string",
+        "description": "Pasted approval email text or a link. Mandatory"
+      },
+      "evidenceInboundEmailId": {
+        "type": "string",
+        "description": "Optional InboundEmails row the evidence came from"
+      },
+      "markedBy": {
+        "type": "string",
+        "description": "Display name of the bookkeeper marking"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "refused": {
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "dispute": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Recording the agent's approval**: \"סימון: סוכן אישר\" on a price case page, then \"סימון סוכן אישר\" in the evidence window after pasting the approval email or a link (or picking one of the customer's emails)\n  Saves who marked it, when, and the evidence, and moves the case to waiting for the manager.\n- **Recording the manager's approval**: \"סימון: מנהל אישר\" on the same page, then confirming in the evidence window\n  Saves the mark and moves the case to \"ממתינה לזיכוי\" with the summary for the credit note. Marking before the agent's approval, or without evidence, is refused and the reason is shown.\n- **Recording an approval from the mail**: the same \"סימון: סוכן אישר\" / \"סימון: מנהל אישר\" buttons in the price section of the mail panel on the Inbox page (פניות → דואר נכנס)\n  Works exactly as on the case page."
+}

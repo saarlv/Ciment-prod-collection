@@ -1,0 +1,148 @@
+{
+  "name": "IngestEmail",
+  "type": "code",
+  "description": "Provider-independent intake of one inbound email (called by ProcessInboundEmail after a mailbox adapter normalised it; no adapter connected now, Outlook later). Skips a duplicate messageId. Looks up the mailbox in Mailboxes (mailboxId) among active mailboxes (or the test mailbox, isTestFixture); an inactive mailbox is not linked and is reported in errors. Threading, in order: the provider threadId of an outbox row (Approvals.threadId, works once real sending exists), a reference code CIM-<id> in the subject or body (Approvals.referenceCode), the threadId of an earlier InboundEmails row; a match sets isThreadReply, threadOf, linkedTable, linkedId. Builds customer candidates (registered contact address, authorised SalesAgent, signature, domain, customer name in the text, invoice number, thread) into classificationQuotes.candidates and picks the strongest for customerCode / customerMatchMethod. Hard verification in code: מאומת only when the sender is a contact of that customer flagged isApContact, or a SalesAgent whose authorizedCustomerCodes include it (verificationBasis says which); senderRole from the same data. Sets dueAt = receivedAt + replySlaHours (AgentSettings, default 24), the owning bookkeeper, handlingState לא טופל, and writes one InboundEmails row. Mail from the test mailbox label, or linked to a TEST- customer, is test data (isTestFixture). Classification is left to Maya (ApplyMailClassification checks it). Sends nothing.",
+  "iconName": "mail-plus",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "messageId",
+      "mailProvider",
+      "mailbox",
+      "fromAddress",
+      "receivedAt"
+    ],
+    "properties": {
+      "messageId": {
+        "type": "string",
+        "description": "Provider message id (dedupe key)"
+      },
+      "threadId": {
+        "type": "string",
+        "description": "Provider thread id"
+      },
+      "mailProvider": {
+        "type": "string",
+        "enum": [
+          "gmail",
+          "outlook"
+        ]
+      },
+      "mailbox": {
+        "type": "string",
+        "description": "Mailbox address the mail arrived in"
+      },
+      "mailboxOwnerName": {
+        "type": "string",
+        "description": "Mailbox owner display name"
+      },
+      "sourceLabel": {
+        "type": "string",
+        "description": "Label / folder the mail was read from (e.g. Ciment-Test)"
+      },
+      "fromAddress": {
+        "type": "string",
+        "description": "Sender; a bare address or 'Name <address>' (the address is extracted)"
+      },
+      "fromName": {
+        "type": "string",
+        "description": "Sender display name when the provider gives it separately"
+      },
+      "to": {
+        "type": "string",
+        "description": "Recipients as given by the provider"
+      },
+      "subject": {
+        "type": "string"
+      },
+      "bodyText": {
+        "type": "string",
+        "description": "Plain-text body"
+      },
+      "receivedAt": {
+        "type": "string",
+        "description": "ISO date-time or epoch milliseconds"
+      },
+      "attachments": {
+        "type": "array",
+        "description": "Attachment metadata from the provider (filename, mimeType, url when available)",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false,
+        "description": "When true, only report what would be written"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "duplicate": {
+        "type": "boolean",
+        "description": "messageId already ingested; nothing written"
+      },
+      "shouldProcess": {
+        "type": "boolean",
+        "description": "True when a new row was written that is NOT a thread reply (Maya sorts it)"
+      },
+      "inboundEmailId": {
+        "type": "string"
+      },
+      "inboundEmail": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "identification": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{ customerCode, customerName, method, detail }"
+      },
+      "verification": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{ status, contactName, reason }"
+      },
+      "promptForAgent": {
+        "type": "string",
+        "description": "Hebrew brief (sender, what is known about the sender, candidates, subject, body). FetchEmailAttachments builds the final brief with the attachments"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "isThreadReply": {
+        "type": "boolean",
+        "description": "True when the email answers an outbox row or an earlier inbound email (AttachThreadReply handles it, no new inquiry)"
+      },
+      "threadMatch": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{ method: threadId-outbox | reference-code | threadId-inbound, table, id, referenceCode }"
+      },
+      "candidates": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ customerCode, customerName, method }"
+      },
+      "mailboxId": {
+        "type": "string"
+      }
+    }
+  },
+  "exposedToUI": false
+}

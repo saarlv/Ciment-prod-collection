@@ -1,0 +1,232 @@
+{
+  "name": "ReadBankFile",
+  "type": "dag",
+  "description": "Reads an uploaded bank file on the receipts screen: CreateImportBatch (batch בקריאה), then the nameless reader agent BankFileReader reads the attached file (PDF, Excel, CSV or image) into structured lines, then WriteExtractedLines checks totals, required fields and duplicates and writes BankLines (חדשה / ממתינה לבדיקה) and the batch (נקרא – לאימות or נכשל). Returns the batch; the screen then reads ImportBatches and BankLines. Nothing is matched yet and nothing is written to Priority.",
+  "iconName": "scan-text",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "fileUrl",
+      "fileName"
+    ],
+    "properties": {
+      "fileUrl": {
+        "type": "string",
+        "description": "Uploaded file url"
+      },
+      "fileName": {
+        "type": "string",
+        "description": "Original file name"
+      },
+      "fileSize": {
+        "type": "number",
+        "description": "File size in bytes"
+      },
+      "fileType": {
+        "type": "string",
+        "description": "MIME type"
+      },
+      "fileText": {
+        "type": "string",
+        "description": "For spreadsheets (CSV/Excel): the sheet rendered as text by the browser, so the reader sees every cell. Empty for PDF and images."
+      },
+      "uploadedBy": {
+        "type": "string",
+        "description": "Display name of the person uploading"
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "Retry an existing failed batch"
+      },
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock for tests: YYYY-MM-DD",
+        "format": "date"
+      }
+    }
+  },
+  "usageDescription": "This action is triggered by:\n\n- **Uploading today's bank file**: Clicking \"בחירת קובץ\" (or dropping a file) in the upload card on the \"תקבולים\" screen, when the bank lines source in the settings is \"קובץ\"\n  Uploads the bank statement (PDF, Excel, CSV or an image) and has the reader take the transfers out of it into lines for the person to check. It takes a minute or two.\n- **Reading a file again**: Clicking \"קרא שוב\" when reading a file failed or got stuck\n  Sends the same file to the reader again.",
+  "exposedToUI": true,
+  "output": "ReadStepCreateBatch",
+  "actionNodes": [
+    {
+      "name": "ReadStepCreateBatch",
+      "actionTypeId": "CreateImportBatch",
+      "input": {
+        "fileUrl": "{{input.fileUrl}}",
+        "fileName": "{{input.fileName}}",
+        "fileSize": "{{input.fileSize}}",
+        "fileType": "{{input.fileType}}",
+        "uploadedBy": "{{input.uploadedBy}}",
+        "importBatchId": "{{input.importBatchId}}",
+        "asOfDate": "{{input.asOfDate}}"
+      }
+    },
+    {
+      "name": "ReadStepReader",
+      "actionTypeId": "ai_tools/SendAgentMessage",
+      "input": {
+        "agentBlockId": "BankFileReader",
+        "promptSummary": "קריאת קובץ בנק לשורות",
+        "threadId": "bankfile-{{ReadStepCreateBatch.importBatchId}}",
+        "prompt": "קרא את קובץ הבנק המצורף והחזר את כל התנועות לפי הסכמה.\nשם הקובץ: {{input.fileName}}\nסוג: {{input.fileType}}\n\nתוכן הגיליון כטקסט (רק לקובצי CSV / Excel, אחרת ריק):\n{{input.fileText}}",
+        "files": [
+          {
+            "url": "{{input.fileUrl}}",
+            "fileName": "{{input.fileName}}",
+            "fileType": "{{input.fileType}}"
+          }
+        ],
+        "structuredOutputJsonSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "account",
+            "bankName",
+            "periodFrom",
+            "periodTo",
+            "linesInFile",
+            "totalInFile",
+            "lines",
+            "warnings"
+          ],
+          "properties": {
+            "account": {
+              "type": "string",
+              "description": "Our account number as printed, empty if not shown"
+            },
+            "bankName": {
+              "type": "string",
+              "description": "Bank as printed (מזרחי, בינלאומי, other), empty if not shown"
+            },
+            "periodFrom": {
+              "type": "string",
+              "description": "First date the file covers, YYYY-MM-DD, empty if not shown"
+            },
+            "periodTo": {
+              "type": "string",
+              "description": "Last date the file covers, YYYY-MM-DD, empty if not shown"
+            },
+            "linesInFile": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Credit transaction count stated in the file's own summary row; null if the file states none"
+            },
+            "totalInFile": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "Credit total stated in the file's own summary row; null if the file states none"
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "lineNo",
+                  "valueDate",
+                  "amount",
+                  "payerName",
+                  "reference",
+                  "lineType",
+                  "sourceRef",
+                  "rawText",
+                  "legibility"
+                ],
+                "properties": {
+                  "lineNo": {
+                    "type": "number"
+                  },
+                  "valueDate": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD, empty if unreadable"
+                  },
+                  "amount": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Credit positive; a bounced cheque debit negative; null if unreadable"
+                  },
+                  "payerName": {
+                    "type": "string"
+                  },
+                  "reference": {
+                    "type": "string"
+                  },
+                  "lineType": {
+                    "type": "string",
+                    "enum": [
+                      "העברה",
+                      "צ׳ק",
+                      "צ׳ק חוזר",
+                      "אחר"
+                    ]
+                  },
+                  "sourceRef": {
+                    "type": "string",
+                    "description": "p<page>:r<row> for documents, row <n> for spreadsheets"
+                  },
+                  "rawText": {
+                    "type": "string",
+                    "description": "The line exactly as printed"
+                  },
+                  "legibility": {
+                    "type": "string",
+                    "enum": [
+                      "טובה",
+                      "בינונית",
+                      "נמוכה"
+                    ]
+                  }
+                }
+              }
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "ReadStepWrite",
+      "actionTypeId": "WriteExtractedLines",
+      "input": {
+        "importBatchId": "{{ReadStepCreateBatch.importBatchId}}",
+        "extraction": "{{ReadStepReader}}"
+      }
+    }
+  ],
+  "conditionNodes": [
+    {
+      "name": "ReadStepShouldRead",
+      "conditionExpression": "ReadStepCreateBatch.shouldRead === true"
+    }
+  ],
+  "edges": [
+    {
+      "name": "batch-to-shouldread",
+      "source": "ReadStepCreateBatch",
+      "target": "ReadStepShouldRead"
+    },
+    {
+      "name": "shouldread-to-reader",
+      "source": "ReadStepShouldRead",
+      "target": "ReadStepReader",
+      "label": "true"
+    },
+    {
+      "name": "reader-to-write",
+      "source": "ReadStepReader",
+      "target": "ReadStepWrite"
+    }
+  ]
+}

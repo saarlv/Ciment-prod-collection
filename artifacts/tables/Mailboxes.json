@@ -1,0 +1,55 @@
+{
+  "name": "Mailboxes",
+  "description": "Connected mailboxes",
+  "technicalDescription": "The mailboxes the app reads (one adapter workflow per mailbox feeding ProcessInboundEmail). Today one row: the Gmail test mailbox saar@blocks.diy, label Ciment-Test. Outlook mailboxes of the bookkeepers are a gap. InboundEmails.mailboxId and Approvals.mailboxId point here (text link).",
+  "iconName": "inbox",
+  "columns": [
+    {
+      "name": "address",
+      "type": "string",
+      "description": "Mailbox email address"
+    },
+    {
+      "name": "provider",
+      "type": "string",
+      "description": "Mail provider",
+      "enum": [
+        "gmail",
+        "outlook"
+      ]
+    },
+    {
+      "name": "ownerName",
+      "type": "string",
+      "description": "Owner display name (bookkeeper, or shared)"
+    },
+    {
+      "name": "sourceLabel",
+      "type": "string",
+      "description": "Label / folder read (e.g. Ciment-Test); empty = whole inbox"
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "description": "Read by its adapter"
+    },
+    {
+      "name": "notes",
+      "type": "string",
+      "description": "Notes"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "address",
+  "uniqueKey": [
+    "address"
+  ],
+  "defaultUpsert": true
+}

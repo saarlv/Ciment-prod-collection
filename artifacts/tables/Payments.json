@@ -1,0 +1,201 @@
+{
+  "name": "Payments",
+  "description": "Priority payment mirror",
+  "iconName": "banknote",
+  "columns": [
+    {
+      "name": "paymentRef",
+      "type": "string",
+      "description": "Payment reference, unique"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "paymentDate",
+      "type": "date",
+      "description": "Payment date"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Amount ILS"
+    },
+    {
+      "name": "method",
+      "type": "string",
+      "description": "Payment method",
+      "enum": [
+        "העברה בנקאית",
+        "צ׳ק",
+        "צ׳ק דחוי",
+        "כרטיס אשראי"
+      ]
+    },
+    {
+      "name": "checkDueDate",
+      "type": "date",
+      "description": "Due date of a postdated check"
+    },
+    {
+      "name": "matchedInvoiceNumbers",
+      "type": "string",
+      "description": "Matched invoice numbers, comma-separated"
+    },
+    {
+      "name": "matchStatus",
+      "type": "string",
+      "description": "Match status",
+      "enum": [
+        "מותאם",
+        "מותאם חלקית",
+        "לא מותאם"
+      ]
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced from Priority"
+    },
+    {
+      "name": "receiptNumber",
+      "type": "string",
+      "description": "Receipt number in Priority"
+    },
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "Bank line the receipt was built from (text link to BankLines.bankLineId)"
+    },
+    {
+      "name": "collectedBy",
+      "type": "string",
+      "description": "Plan 04.11 part B: the field sales agent who issued the receipt in Priority (agent cheques); empty for office receipts"
+    },
+    {
+      "name": "priorityKey",
+      "type": "string",
+      "description": "Mirror key from Priority (see table description); null on rows the app added"
+    },
+    {
+      "name": "syncRunId",
+      "type": "string",
+      "description": "SyncRuns.runId of the SyncPrioritySubforms run that last wrote the row"
+    },
+    {
+      "name": "deletedInSource",
+      "type": "boolean",
+      "description": "True when a full read of this scope no longer found the row in Priority; never deleted"
+    },
+    {
+      "name": "lineNumber",
+      "type": "number",
+      "description": "TPAYMENT_SUBFORM.KLINE"
+    },
+    {
+      "name": "paymentId",
+      "type": "number",
+      "description": "TPAYMENT_SUBFORM.PAYMENT (Priority payment id)"
+    },
+    {
+      "name": "receiptDate",
+      "type": "date",
+      "description": "Receipt header IVDATE"
+    },
+    {
+      "name": "receiptTotal",
+      "type": "number",
+      "description": "Receipt header TOTPRICE"
+    },
+    {
+      "name": "receiptStatus",
+      "type": "string",
+      "description": "Receipt header STATDES (טיוטא / סופית …)"
+    },
+    {
+      "name": "receiptAgentName",
+      "type": "string",
+      "description": "Receipt header AGENTNAME"
+    },
+    {
+      "name": "receiptDetails",
+      "type": "string",
+      "description": "Receipt header DETAILS"
+    },
+    {
+      "name": "paymentType",
+      "type": "string",
+      "description": "Line payment type as Priority describes it (line DETAILS, e.g. קבלת תשלום בצ׳קים)"
+    },
+    {
+      "name": "cashflowCode",
+      "type": "string",
+      "description": "CASHFLOWCODE"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "description": "CODE (e.g. שח)"
+    },
+    {
+      "name": "lineTotal",
+      "type": "number",
+      "description": "TOTPRICE of the line"
+    },
+    {
+      "name": "chequeNumber",
+      "type": "string",
+      "description": "CARDNUM (cheque / card number)"
+    },
+    {
+      "name": "bankCode",
+      "type": "string",
+      "description": "BANKCODE"
+    },
+    {
+      "name": "bankName",
+      "type": "string",
+      "description": "BANKNAME"
+    },
+    {
+      "name": "branch",
+      "type": "string",
+      "description": "BRANCH"
+    },
+    {
+      "name": "bankAccount",
+      "type": "string",
+      "description": "PAYACCOUNT"
+    },
+    {
+      "name": "withholdingTax",
+      "type": "number",
+      "description": "WTAX+WTAX2+WTAX3"
+    },
+    {
+      "name": "isReversal",
+      "type": "boolean",
+      "description": "STORNOFLAG set"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "paymentRef",
+  "uniqueKey": [
+    "paymentRef"
+  ],
+  "defaultUpsert": true
+}

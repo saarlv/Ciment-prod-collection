@@ -1,0 +1,75 @@
+{
+  "name": "CheckDocumentScans",
+  "type": "code",
+  "description": "Timer engine of 2c, run hourly by DocumentChase and from the case page. For every open תעודת משלוח חסרה case (or one disputeId), as of asOfDate: recounts the scans; all scanned → status מוכנה לשליחה ללקוח and the customer package draft; still missing and past nextReminderAt with no reminder yet → a logistics reminder draft (CreateDocumentRequest kind תזכורת), status תזכורת בטיוטה, reminderCount+1, nextReminderAt += logisticsReminderHours; past nextReminderAt again after a reminder → status הוסלמה (ballWith מנהל הגבייה, an Interactions הסלמה row) so it enters the collections manager's summary. asOfDate other than now acts on test cases only (demo clock). Nothing is sent.",
+  "iconName": "timer",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock: YYYY-MM-DD or an ISO date-time. Defaults to now. A clock other than now only acts on test cases"
+      },
+      "disputeId": {
+        "type": "string",
+        "description": "Only this case"
+      },
+      "scheduled": {
+        "type": "boolean",
+        "description": "Set by the DocumentChase workflow",
+        "default": false
+      },
+      "requestedBy": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "asOf": {
+        "type": "string"
+      },
+      "cases": {
+        "type": "array",
+        "description": "Per case: disputeId, disputeNumber, customerCode, invoiceNumbers, scanned, expected, before, after, action, approvalId",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "cancelledDraftIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Pending פנייה ללוגיסטיקה drafts (request and reminder) of fully scanned cases moved to נדחה with decisionNote בוטלה – כל התעודות נסרקו (listed only on dryRun)"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "skipped": {
+        "type": "boolean",
+        "description": "true when documentChaseActive is off and the run was scheduled"
+      },
+      "reason": {
+        "type": "string"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Rechecking a documents case**: \"בדיקה מחדש\" on a missing-delivery-notes case page (מסמכים ומחירים → a case)\n  Recounts the scanned delivery notes on the real clock: prepares the customer package when everything is scanned, or the reminder / escalation when the deadline passed. Nothing is sent."
+}

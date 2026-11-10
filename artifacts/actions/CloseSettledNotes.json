@@ -1,0 +1,78 @@
+{
+  "name": "CloseSettledNotes",
+  "type": "code",
+  "description": "Closes the notes of every customer + due month whose open balance reached 0 ₪ (plan 04.11 part A, stage 2), run by RunDaySchedule after each successful PullOpenMovements (06:00 and after the bank-check receipts run). For each customer + dueMonth with active CustomerNotes (status פעילה) it sums OpenMovements.amount of that customer and month; a total of 0 or less (no debt left) closes the notes: status נסגרה – החודש התאפס, closedAt; an active commitment (התחייבות לתשלום) whose outcome is not final also gets outcome קוימה, checkedAt and amountRemaining 0. Any balance above 0 keeps the notes active. A customer + month with no OpenMovements rows left (paid in full) has balance 0. Guards: when OpenMovements has no rows at all (empty source / failed pull) nothing is closed and the run reports it; RunDaySchedule calls it only after a successful pull. Closed notes stay in the history. Afterwards the grouped note tasks drop the rows of closed notes (a task left with no rows closes automatically). Optional customerCode limits the run to one customer. dryRun (default true) only reports. Never writes to Priority or contacts anyone.",
+  "iconName": "circle-check-big",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Only this customer"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Testing: the day, YYYY-MM-DD (default today, Asia/Jerusalem)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "monthsChecked": {
+        "type": "number",
+        "description": "Customer + month pairs with active notes"
+      },
+      "monthsSettled": {
+        "type": "number"
+      },
+      "notesClosed": {
+        "type": "number"
+      },
+      "commitmentsKept": {
+        "type": "number",
+        "description": "Commitments set to קוימה because the month reached 0"
+      },
+      "closed": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{noteId, customerCode, dueMonth, noteType, balance}"
+      },
+      "skipped": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{customerCode, dueMonth, reason}"
+      },
+      "taskSync": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "toolEffect": "mutation"
+}

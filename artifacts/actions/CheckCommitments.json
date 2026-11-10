@@ -1,0 +1,78 @@
+{
+  "name": "CheckCommitments",
+  "type": "code",
+  "description": "Sets the outcome of payment commitments (CustomerNotes noteType התחייבות לתשלום) — plan 04.11 part A, stage 2. Run by RunDaySchedule in the bank-check phase (09:00 / 10:00) only after the bank statement was found in Priority, the receipts run and the second PullOpenMovements. Checks every active commitment whose check day has come: check day = actionDate + noteTask.promise.offsetDays (AgentSettings, default 1) ≤ asOfDate, and outcome פתוחה, קוימה חלקית or לא קוימה (קוימה is final). A commitment whose check day passed on a day the bank never loaded is simply checked on the next run — nothing is lost. Promised = amount, else balanceAtNote. Received = every receipt of the customer since noteCreatedAt (date ≥ the note's day): Priority receipts (Payments mirror) plus, until the Priority API exists, our receipts approved here (Receipts receiptStatus אושרה – לא נשלחה or later) — a receipt present in both is counted once; credit notes never count. Outcome: the month's open balance (OpenMovements) is 0 or less, or received ≥ promised → קוימה; 0 < received < promised → קוימה חלקית; nothing received → לא קוימה. Writes outcome, amountReceived, amountRemaining (max(promised − received, 0)) and checkedAt. The note stays active until its month reaches 0 (CloseSettledNotes). Then the grouped task התחייבויות שלא קוימו – ליצור קשר (key notes:promise:<date>:<bookkeeper>) is synced. Optional customerCode / noteIds limit the run. dryRun (default true) only reports. Never writes to Priority or contacts anyone.",
+  "iconName": "handshake",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Only this customer"
+      },
+      "noteIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only these notes"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Testing: the day, YYYY-MM-DD (default today, Asia/Jerusalem)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "checked": {
+        "type": "number"
+      },
+      "kept": {
+        "type": "number"
+      },
+      "partlyKept": {
+        "type": "number"
+      },
+      "notKept": {
+        "type": "number"
+      },
+      "commitments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{noteId, customerCode, dueMonth, promised, received, remaining, monthBalance, outcome, previousOutcome, receipts}"
+      },
+      "taskSync": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "toolEffect": "mutation"
+}

@@ -1,0 +1,104 @@
+{
+  "name": "ReceiptAllocations",
+  "description": "Receipt allocations",
+  "technicalDescription": "Many-to-many between Receipts and Invoices: how much of a receipt closes each invoice, and on what evidence. Written with the receipt when the person approves the split. The invoice layer (paymentStatus, remainingAmount, paidSeen*) is computed from these rows.",
+  "iconName": "split",
+  "columns": [
+    {
+      "name": "receiptKey",
+      "type": "string",
+      "description": "Receipts.receiptKey"
+    },
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "The transfer"
+    },
+    {
+      "name": "invoiceNumber",
+      "type": "string",
+      "description": "Invoices.invoiceNumber"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "dueDate",
+      "type": "date",
+      "description": "The invoice's due date (denormalised)"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Amount of this receipt allocated to the invoice"
+    },
+    {
+      "name": "openBefore",
+      "type": "number",
+      "description": "The invoice's open amount before this receipt"
+    },
+    {
+      "name": "kind",
+      "type": "string",
+      "description": "מלאה = closes the invoice; חלקית = leaves a remainder",
+      "enum": [
+        "מלאה",
+        "חלקית"
+      ]
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "סכום = ProposeAllocation (oldest first after the debt check), ידני = edited in the allocation editor",
+      "enum": [
+        "סכום",
+        "ידני"
+      ]
+    },
+    {
+      "name": "sourceRef",
+      "type": "string",
+      "description": "The evidence row: InboundEmails id, CustomerNotes id, or empty; since 05.11 (b/debt-allocation) the approver of an allocation: the person's display name or אושר אוטומטית"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Mirrors the receipt status",
+      "enum": [
+        "מוכנה",
+        "הונפקה ב-Priority"
+      ]
+    },
+    {
+      "name": "at",
+      "type": "datetime",
+      "description": "When it was written"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "isPartial",
+      "type": "boolean",
+      "description": "Plan 04.11 part B: the invoice is only partly covered by this allocation"
+    },
+    {
+      "name": "openAfter",
+      "type": "number",
+      "description": "The invoice's open amount after this allocation"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "invoiceNumber"
+}

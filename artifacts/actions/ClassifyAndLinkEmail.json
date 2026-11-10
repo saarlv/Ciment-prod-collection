@@ -1,0 +1,89 @@
+{
+  "name": "ClassifyAndLinkEmail",
+  "type": "code",
+  "description": "Stores Maya's classification of one InboundEmails row: category, linked customer (name and owning bookkeeper taken from the data, never from the caller), mentioned invoice numbers and a short summary. Rules enforced here, not in the prompt: category לא רלוונטי deletes the body, attachments and summary in the same write (bodyStored=false, status לא רלוונטית); a כרטסת or חובות פתוחים request from a sender who is not מאומת creates one CollectionQueue task לאמת שולח (recommendedAction להתקשר, 'לאמת בטלפון') and sets status ממתינה לגורם פנימי. Relevant mail adds an Interactions row (דואל, נכנס) for a linked customer. A פירוט תשלום email is only linked to the customer: IdentifyCustomers' recent-mail rung reads linked mails when it identifies a payer. Idempotent per email. Sends nothing.",
+  "iconName": "tags",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailId",
+      "category"
+    ],
+    "properties": {
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id"
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "כרטסת",
+          "חובות פתוחים",
+          "תעודות וחשבוניות חסרות",
+          "הפרש מחיר",
+          "פירוט תשלום",
+          "הבטחת תשלום",
+          "אחר",
+          "לא רלוונטי"
+        ]
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Customer code when Maya linked the email to a customer (from GetCustomer360 / VerifySender)"
+      },
+      "mentionedInvoiceNumbers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Invoice numbers mentioned in the email"
+      },
+      "agentSummary": {
+        "type": "string",
+        "description": "Short Hebrew summary and analysis. Ignored for לא רלוונטי"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "inboundEmail": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "bodyDeleted": {
+        "type": "boolean"
+      },
+      "verifyTask": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The לאמת שולח task created or already open, if any"
+      },
+      "interaction": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "nextStep": {
+        "type": "string",
+        "description": "Hebrew: what Maya should do next (e.g. prepare a statement PDF, or stop: task created)"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

@@ -1,0 +1,83 @@
+{
+  "name": "GetReceiptRecord",
+  "type": "code",
+  "description": "Read-only. One receipt's whole story in the receipt-first flow (plan 04.11 part B), for Nina (the receipts screen reads the tables directly): the bank line (or the agent cheque), the customer, how the customer was identified (confidence, method, candidates, steps), the receipt (status, send status and its mail draft, Priority number), the debt check against the customer's open movements per due month (result, months, the per-month balances it compared), and the allocation to invoices (proposal or applied rows, allocated / on account) plus the customer's open notes per month. Writes nothing.",
+  "iconName": "clipboard-list",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "bankLineId": {
+        "type": "string",
+        "description": "BankLines row id (a bank-file / Priority line)"
+      },
+      "receiptId": {
+        "type": "string",
+        "description": "Receipts row id (works for agent cheques too)"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      }
+    },
+    "description": "Exactly one of bankLineId / receiptId"
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "line": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "null for an agent cheque: {bankLineId, valueDate, amount, payerName, reference, lineType, status, checkStage}"
+      },
+      "customer": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "null until identified: {customerCode, customerName, priorityStatus, paymentTermsLabel, paymentMethod, collectionNote, salesAgentName, assignedBookkeeperName, apContact {name, email, phone} | null}"
+      },
+      "identify": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{status ודאי / לא ודאי / אושר / אושר אוטומטית / לא זוהה | null, confidence 0–100, method, candidates[{customerCode, customerName, confidence, method}], steps[{rung, result, summary, actor, at}]}; for an agent cheque {status: null, method: 'צ׳ק סוכן'}"
+      },
+      "receipt": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "null when no receipt yet: {receiptId, receiptKey, receiptSource, amount, valueDate, receiptStatus, sendStatus, mailApprovalId, mailApprovalStatus, priorityReceiptNumber, preparedBy, preparedAt, issuedBy, issuedAt}"
+      },
+      "debtCheck": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "null until checked: {result נסגר לאפס – מצטבר / נסגר לאפס – חודש אחד / לברר מול הלקוח, months[] (dueMonth keys the receipt closed), monthBalances[{dueMonth, openAmount, cumulative}] at the time of reading, taskKey}"
+      },
+      "allocation": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "null until the debt check: {matchStatus, allocatedAmount, unallocatedAmount, allocationConfidence, rows[{id, invoiceNumber, dueDate, amount, openBefore, openAfter, kind, isPartial, source, status}], taskKey}"
+      },
+      "customerNotes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "The customer's open CustomerNotes: {id, dueMonth, noteType, actionDate, noteAmount, noteText, outcome, authorName}"
+      },
+      "priorityInstruction": {
+        "type": "string",
+        "description": "The text to copy into Priority once the receipt is approved; null otherwise"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "asOfDate": {
+        "type": "string"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "Not called by the UI; Nina's chat tool."
+}

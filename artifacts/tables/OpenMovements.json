@@ -1,0 +1,104 @@
+{
+  "name": "OpenMovements",
+  "description": "Open movements from Priority (mirror): every unmatched movement per customer by due month — the base of the aging report",
+  "technicalDescription": "Mirror of Priority's unmatched customer movements (plan 04.11, part A). Written ONLY by PullOpenMovements (morning pull 06:00, the re-pull after the receipts run, and the manual button); each pull replaces the snapshot of every customer it returns. Nothing points at a movement row: notes point at customer + dueMonth, so replacing rows is safe. Includes invoices, receipts on account, partial balances and journal entries. amount > 0 = debt, < 0 = credit. dueMonth = YYYY-MM of dueDate. Until the Priority API exists the source is a test source derived from TEST-001..029 (source test-fixture), so the aging report and the customer card show the same totals.",
+  "iconName": "list-tree",
+  "columns": [
+    {
+      "name": "movementId",
+      "type": "string",
+      "description": "Priority key of the movement (unique per customer)"
+    },
+    {
+      "name": "customer",
+      "type": "number",
+      "description": "Link to the customer row (real reference); customerCode and customerName are kept beside it for agents and display",
+      "reference": {
+        "table": "Customers",
+        "column": "id",
+        "relationshipHint": "manyToOne"
+      }
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "docType",
+      "type": "string",
+      "description": "Movement document type",
+      "enum": [
+        "חשבונית",
+        "קבלה",
+        "זיכוי",
+        "פקודת יומן",
+        "אחר"
+      ]
+    },
+    {
+      "name": "docNumber",
+      "type": "string",
+      "description": "Priority document number"
+    },
+    {
+      "name": "docDate",
+      "type": "date",
+      "description": "Document date"
+    },
+    {
+      "name": "dueDate",
+      "type": "date",
+      "description": "Due date (פירעון)"
+    },
+    {
+      "name": "dueMonth",
+      "type": "string",
+      "description": "Due month YYYY-MM, the aging report column"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Open amount in ILS, 2 decimals: positive = debt, negative = credit"
+    },
+    {
+      "name": "details",
+      "type": "string",
+      "description": "Priority details / description of the movement"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Where the row came from",
+      "enum": [
+        "priority-mock",
+        "test-fixture",
+        "priority-api"
+      ]
+    },
+    {
+      "name": "importBatchId",
+      "type": "string",
+      "description": "ImportBatches row of the pull that wrote it"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When the pull wrote it"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "docNumber",
+  "uniqueKey": [
+    "customerCode",
+    "movementId"
+  ],
+  "defaultUpsert": true
+}

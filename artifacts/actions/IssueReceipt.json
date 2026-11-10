@@ -1,0 +1,147 @@
+{
+  "name": "IssueReceipt",
+  "type": "code",
+  "description": "Plan 04.11 part B, stage 4 (b/identify-receipt): a person approves the customer of one or more identified bank lines, and that approval issues the receipt. Modes: certain = \"אשר את כל הוודאיים\" (bankLineIds of the screen; each line is re-checked server-side and only a draft with identifyStatus ודאי is issued, the rest are returned in skipped); one = one line, with the customer the person confirmed or picked (customerCode; required for an uncertain or unidentified line – a picked customer different from the proposal, or a payer name different from the customer name, saves an approved alias in BankAliases). Per line: the receipt RCPT-<bankLineId> (created when the line had no draft) gets receiptStatus אושרה – לא נשלחה, identifyStatus אושר (אושר אוטומטית when approvedBy is the automatic actor), matchStatus על חשבון – צריך פיזור, preparedBy/At, receiptSource דף בנק; BankLines gets customerCode/customerName, receiptKey, checkStage אושרה. Then the receipt PDF (the same shared template as GenerateReceiptPdf) and a mail draft to the customer's accounts-payable contact (CustomerContacts.isApContact with an email): one Approvals row (kind דואל, component תקבולים, status ממתין, relatedTable Receipts, relatedId receiptKey, attachmentUrls = the PDF, signed by the customer's bookkeeper), sendStatus טיוטה – בדיקה and sentToEmail on the receipt; a person approves the draft in the outbox and it stops at אושר – לא נשלח – nothing is sent. No such contact → no draft, sendStatus חסר איש קשר and one task חסר איש קשר הנהלת חשבונות per customer (key missing-ap:<customerCode>, source תקבולים, relatedTable Receipts). The line's open identification tasks (זיהוי לקוח – לאישור / לא זוהה, and the legacy receipt tasks of the same line) close. Right after (stage 5, b/debt-allocation) the debt check runs in-process (the same function as CheckDebt) for every receipt approved now and for already-approved receipts of the call that were never checked: נסגר לאפס – מצטבר / חודש אחד → debtCheckResult + debtCheckMonths, matchStatus פיזור מוצע – לאישור and the alert נסגר לאפס (debt-zero:<receiptKey>); otherwise לברר מול הלקוח, matchStatus על חשבון – צריך פיזור and the task debt-check:<receiptKey>. A debt-check failure (e.g. an empty OpenMovements mirror) never undoes the receipt: it is reported in errors as 'בדיקת חוב: …' and in debtCheck, ok stays true, and issuing the same line again runs only the missing check. Idempotent: an already approved receipt is skipped and never gets a second draft. Write order: compute → write → read back → status fields last, rolled back on failure. Never writes to Priority. Stage 6: right after a decided debt check, the allocation proposal runs in-process (the same function as ProposeAllocation): allocationConfidence on the receipt; a zero-closed receipt also gets the task 'קבלה – צריך פיזור' (allocate:<receiptKey>); with allocationAutoApproveAt on and reached it is allocated at once ('אושר אוטומטית'). Its failure never undoes the receipt ('פיזור: …' in errors). Each issued item adds allocationConfidence, autoAllocated, matchStatus.",
+  "iconName": "receipt",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "mode",
+      "bankLineIds"
+    ],
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": [
+          "certain",
+          "one"
+        ],
+        "description": "certain = approve all certain lines given; one = one line with a confirmed / picked customer"
+      },
+      "bankLineIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The lines (mode one: exactly one)"
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Mode one: the customer the person confirmed or picked. Required unless the line's draft is certain"
+      },
+      "approvedBy": {
+        "type": "string",
+        "description": "Display name of the person"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false,
+        "description": "Only report what would be written"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "issued": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "bankLineId": {
+              "type": "string"
+            },
+            "receiptKey": {
+              "type": "string"
+            },
+            "customerCode": {
+              "type": "string"
+            },
+            "customerName": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            },
+            "identifyStatus": {
+              "type": "string"
+            },
+            "sendStatus": {
+              "type": "string"
+            },
+            "sentToEmail": {
+              "type": "string"
+            },
+            "approvalId": {
+              "type": "string",
+              "description": "The mail draft (Approvals.id), empty when no contact"
+            },
+            "pdfUrl": {
+              "type": "string"
+            },
+            "aliasSaved": {
+              "type": "boolean"
+            },
+            "taskKey": {
+              "type": "string",
+              "description": "missing-ap:<customerCode> when a contact is missing"
+            }
+          }
+        }
+      },
+      "skipped": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "bankLineId": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "taskSync": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "debtCheck": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The debt check run right after the approval (CheckDebt output: ok, results[], alerts, tasks, writeVerified, errors). issued[] / skipped[] items also carry debtCheckResult, debtCheckMonths and debtTaskKey."
+      },
+      "allocation": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Per receipt whose debt check was decided: { receiptKey, ok, allocationConfidence, proposedTotal, surplus, autoApplied, matchStatus, taskKey, alreadyAllocated }"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Approving all certain lines**: Clicking \"אשר את כל הוודאיים\" at the top of the customer identification list on the \"תקבולים\" screen, then confirming in the dialog that shows how many receipts and the total\n  Approves the identified customer of every certain line on the screen and issues their receipts: each receipt is approved, its PDF is made, and a mail draft to the customer's accounts-payable contact waits in the outbox for a person to approve. A customer with no such contact gets a \"חסר איש קשר הנהלת חשבונות\" task instead. Lines that are no longer certain or were already approved are listed with the reason.\n- **Approving one line**: Clicking \"אשר לקוח והוצא קבלה\" (after picking or confirming the customer) or the small \"אשר\" on a line of the list, or \"אשר והוצא קבלה\" / \"אשר לקוח והוצא קבלה\" in step 1 \"זיהוי\" of the receipt record (opened from the list or from a receipts task)\n  Does the same for that one line with the customer the person chose, and remembers the payer's name for that customer.\n- **Preparing a receipt's mail again**: Clicking \"הכנה שוב\" on an approved line whose mail was not prepared\n  Retries only the PDF and the mail draft; it never creates a second receipt or a second draft."
+}

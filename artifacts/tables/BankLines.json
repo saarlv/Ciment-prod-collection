@@ -1,0 +1,182 @@
+{
+  "name": "BankLines",
+  "description": "Bank statement lines",
+  "technicalDescription": "Bank lines. Since plan r3 stage 2 (03.11) they are a mirror of Priority's screen שורות דפי בנק, written by SyncPriorityBankLines (source priority-mock until the API is connected, priorityLineId, syncedAt; deduped on priorityLineId; bankLineId = PL-<priorityLineId>, or an older file line with the same account, date, amount, payer and reference is adopted instead of duplicated). Only lineType העברה / זיכוי בנק are checked. Lines without priorityLineId came from an uploaded file and stay as they are, view only. Before stage 2: since Iteration 9 they are written by WriteExtractedLines from the reader agent's output (lineNo, sourceRef, rawText for the verify-beside-the-original view) and identified by IdentifyCustomers (checkStage). customerCode/customerName are written when the customer is identified and approved.",
+  "iconName": "landmark",
+  "columns": [
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "Unique bank line id"
+    },
+    {
+      "name": "bankName",
+      "type": "string",
+      "description": "Bank",
+      "enum": [
+        "מזרחי",
+        "בינלאומי",
+        "אחר"
+      ]
+    },
+    {
+      "name": "valueDate",
+      "type": "date",
+      "description": "Value date"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Amount ILS"
+    },
+    {
+      "name": "payerName",
+      "type": "string",
+      "description": "Payer name as it appears on the bank line"
+    },
+    {
+      "name": "reference",
+      "type": "string",
+      "description": "Bank reference / free text"
+    },
+    {
+      "name": "bankAccount",
+      "type": "string",
+      "description": "Our bank account the money arrived in"
+    },
+    {
+      "name": "lineType",
+      "type": "string",
+      "description": "Line type. Since plan r3 stage 2 (Priority's bank statement lines): העברה / זיכוי בנק go into the receipt check; פירעון צ׳ק / אחר are shown apart and not handled. צ׳ק / צ׳ק חוזר are kept for the older file lines",
+      "enum": [
+        "העברה",
+        "זיכוי בנק",
+        "פירעון צ׳ק",
+        "צ׳ק",
+        "צ׳ק חוזר",
+        "אחר"
+      ]
+    },
+    {
+      "name": "priorityLineId",
+      "type": "string",
+      "description": "The line's id on Priority's bank statement lines screen (שורות דפי בנק). The import dedupes on it; empty = an older line that came from an uploaded file (legacy, view only)"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Customer the line was assigned to after an approved match (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "importBatchId",
+      "type": "string",
+      "description": "Import batch that loaded the line (text link to ImportBatches.id)"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Line status: חדשה (written by the file confirm / Priority sync), לא מזוהה, קבלה הונפקה (the receipt was marked issued in Priority). The identify / receipt progress is in checkStage",
+      "enum": [
+        "חדשה",
+        "לא מזוהה",
+        "קבלה הונפקה"
+      ]
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)",
+      "enum": [
+        "priority-mock",
+        "priority-file",
+        "priority-api",
+        "test-fixture"
+      ]
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last loaded from Priority / the bank file"
+    },
+    {
+      "name": "lineNo",
+      "type": "number",
+      "description": "Order of the line in the file (1-based)"
+    },
+    {
+      "name": "sourceRef",
+      "type": "string",
+      "description": "Where the line sits in the original, e.g. p2:r14 (page 2 row 14) or row 14"
+    },
+    {
+      "name": "rawText",
+      "type": "string",
+      "description": "The line exactly as the reader read it"
+    },
+    {
+      "name": "legibility",
+      "type": "string",
+      "description": "How legible the line was to the reader",
+      "enum": [
+        "טובה",
+        "בינונית",
+        "נמוכה"
+      ]
+    },
+    {
+      "name": "extractionFlags",
+      "type": "string",
+      "description": "Check flags, comma-separated: שדה חסר, קריאות נמוכה, כפילות"
+    },
+    {
+      "name": "correctedBy",
+      "type": "string",
+      "description": "Who corrected a field the reader misread"
+    },
+    {
+      "name": "correctedAt",
+      "type": "datetime",
+      "description": "When the line was corrected"
+    },
+    {
+      "name": "checkStage",
+      "type": "string",
+      "description": "Where the line stands: ממתינה לבדיקה → זיהוי לקוח → ממתינה לאישור (identified, receipt draft) or לא מזוהה → אושרה (IssueReceipt)",
+      "enum": [
+        "ממתינה לבדיקה",
+        "זיהוי לקוח",
+        "ממתינה לאישור",
+        "אושרה",
+        "לא מזוהה"
+      ]
+    },
+    {
+      "name": "lastCheckRunId",
+      "type": "string",
+      "description": "checkRunId of the latest identification run (ReceiptCheckSteps.checkRunId)"
+    },
+    {
+      "name": "lastCheckedAt",
+      "type": "datetime",
+      "description": "When the line was last checked"
+    },
+    {
+      "name": "receiptKey",
+      "type": "string",
+      "description": "Receipts.receiptKey once the person approved the split (one receipt per transfer)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "payerName",
+  "uniqueKey": [
+    "bankLineId"
+  ],
+  "defaultUpsert": true
+}

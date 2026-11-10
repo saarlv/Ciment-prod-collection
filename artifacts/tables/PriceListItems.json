@@ -1,0 +1,82 @@
+{
+  "name": "PriceListItems",
+  "description": "Price list items from Priority",
+  "technicalDescription": "Read-only mirror of customer / site price lists. The price list is the source of truth for price disputes.",
+  "iconName": "tag",
+  "columns": [
+    {
+      "name": "priceKey",
+      "type": "string",
+      "description": "Unique price key (priceListCode + sku + site + validFrom)"
+    },
+    {
+      "name": "priceListCode",
+      "type": "string",
+      "description": "Price list code"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code when the list is per customer (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "siteName",
+      "type": "string",
+      "description": "Site name when the price is per site"
+    },
+    {
+      "name": "sku",
+      "type": "string",
+      "description": "Item code"
+    },
+    {
+      "name": "itemName",
+      "type": "string",
+      "description": "Item name"
+    },
+    {
+      "name": "price",
+      "type": "number",
+      "description": "Price ILS"
+    },
+    {
+      "name": "validFrom",
+      "type": "date",
+      "description": "Valid from"
+    },
+    {
+      "name": "validTo",
+      "type": "date",
+      "description": "Valid to"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)",
+      "enum": [
+        "priority-mock",
+        "priority-file",
+        "priority-api",
+        "test-fixture"
+      ]
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last loaded from Priority / the bank file"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "itemName",
+  "uniqueKey": [
+    "priceKey"
+  ],
+  "defaultUpsert": true
+}

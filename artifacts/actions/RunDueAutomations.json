@@ -1,0 +1,46 @@
+{
+  "name": "RunDueAutomations",
+  "type": "code",
+  "description": "Hourly check (MailAutomationsRunner workflow → MailAutomationsPipeline). For each active MailAutomations row: due when, in Asia/Jerusalem, today's day of month >= dayOfMonth and the current hour >= hour, and no MailAutomationRuns row with trigger מתוזמן and status הושלמה exists for it this month (a day past the end of a short month counts as the last day). Each due automation runs through the RunMailAutomation logic with dryRun=false, trigger מתוזמן, requestedBy 'ריצה מתוזמנת'. A failed run is recorded with status נכשלה and does not stop the others. Sends nothing.",
+  "iconName": "calendar-clock",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "now": {
+        "type": "string",
+        "description": "ISO time to evaluate against; default now"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "checked": {
+        "type": "number"
+      },
+      "ran": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ automationId, automationName, runId, draftsCreated, status }"
+      },
+      "skipped": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ automationName, reason }"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

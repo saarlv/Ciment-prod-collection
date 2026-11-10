@@ -1,0 +1,52 @@
+{
+  "name": "ProductLineContacts",
+  "description": "Logistics contacts by product line",
+  "technicalDescription": "Who to ask for missing delivery-note scans, per product line.",
+  "iconName": "truck",
+  "columns": [
+    {
+      "name": "productLine",
+      "type": "string",
+      "description": "Product line"
+    },
+    {
+      "name": "logisticsOwnerName",
+      "type": "string",
+      "description": "Logistics owner display name"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "description": "Email"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "description": "Phone"
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "description": "Active"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "whatsapp",
+      "type": "string",
+      "description": "WhatsApp number of the logistics contact (button shown, not active yet)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "logisticsOwnerName",
+  "uniqueKey": [
+    "productLine",
+    "email"
+  ],
+  "defaultUpsert": true
+}

@@ -1,0 +1,202 @@
+{
+  "name": "PullAgentReceipts",
+  "type": "code",
+  "description": "Field agents' cheque receipts (plan 04.11 part B, stage 7). Reads the Payments mirror: method צ׳ק / צ׳ק דחוי with collectedBy set (the sales agent who issued the receipt in Priority; office receipts have it empty), paymentDate from asOfDate − sinceDays (default 14) to asOfDate. For each one not yet handled it creates ONE Receipts row, receiptKey RCPT-AGT-<paymentRef> (stable → idempotent): receiptSource 'צ׳ק סוכן', the customer already known (no identification step: identifyStatus אושר, identifyConfidence 100), receiptStatus 'אושרה – לא נשלחה', matchStatus 'על חשבון – צריך פיזור', priorityReceiptNumber = Payments.receiptNumber, valueDate = paymentDate (a post-dated cheque's due date is in reference), preparedBy = the agent. Skipped (in receipts[] with skippedReason): no paymentRef, no customer code, amount ≤ 0, a customer missing from Customers, a payment built from a bank line, or one whose receiptNumber is already another receipt's priorityReceiptNumber; an existing agent receipt is skipped, unless its debt check never decided (then only the missing check runs, status 'נבדקה שוב'). Then, in-process, the same path as an approved bank receipt: the debt check (CheckDebt's logic) and, for each decided one, the allocation proposal (ProposeAllocation's logic – allocationAutoApproveAt applies, 'אושר אוטומטית'). A failure there never undoes the receipt (errors; ok stays true). Notes: the customer's ACTIVE CustomerNotes of type 'צ׳ק אצל סוכן' whose dueMonth is a month the cheque pays (the months the debt check closed plus every month the proposal puts money on) close through the notes engine (UpdateCustomerNote's logic, close → status 'נסגרה ידנית' + closedAt, a sentence naming the cheque appended to noteText, grouped note tasks refreshed) – when the note has no amount or the cheque is at least the note's amount (otherwise listed in notesKept). No identification, no receipt mail or draft. Runs in RunDaySchedule's bank-check phase right after the receipts run, and on demand. dryRun (default false) writes nothing and previews the debt check and the notes. Never writes to Priority; sends nothing.",
+  "iconName": "hand-coins",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "The run's day (Israel); default today"
+      },
+      "sinceDays": {
+        "type": "number",
+        "default": 14,
+        "description": "How many days back of paymentDate to read (0–365)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false,
+        "description": "Report only, write nothing"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "sinceDate": {
+        "type": "string"
+      },
+      "found": {
+        "type": "number",
+        "description": "Agent cheques in the window"
+      },
+      "created": {
+        "type": "number",
+        "description": "Receipts created now (dryRun: would be created)"
+      },
+      "skipped": {
+        "type": "number",
+        "description": "Already handled or missing details"
+      },
+      "rechecked": {
+        "type": "number",
+        "description": "Existing agent receipts whose missing debt check ran now"
+      },
+      "receipts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "paymentRef": {
+              "type": "string"
+            },
+            "receiptKey": {
+              "type": "string"
+            },
+            "customerCode": {
+              "type": "string"
+            },
+            "customerName": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            },
+            "method": {
+              "type": "string"
+            },
+            "paymentDate": {
+              "type": "string"
+            },
+            "checkDueDate": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "collectedBy": {
+              "type": "string"
+            },
+            "priorityReceiptNumber": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "description": "נוצרה / נבדקה שוב / קיימת / דולגה / נכשלה"
+            },
+            "skippedReason": {
+              "type": "string"
+            },
+            "debtCheckResult": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "debtCheckMonths": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "debtTaskKey": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "explanation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "allocationConfidence": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "autoAllocated": {
+              "type": "boolean"
+            },
+            "matchStatus": {
+              "type": "string"
+            },
+            "allocateTaskKey": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "paidMonths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notesClosed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "notesClosed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "CustomerNotes ids closed"
+      },
+      "notesKept": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "noteId": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "summary": {
+        "type": "string",
+        "description": "One Hebrew sentence for a toast"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Pulling field agents' cheques**: Clicking \"משוך צ׳קים של סוכנים\" in the \"צ׳קים של סוכנים\" section of the Receipts screen\n  Brings in the cheques the sales agents collected in the last 14 days as receipts, runs the debt check on each, and closes matching \"cheque with agent\" notes. A one-line summary appears when it finishes, and any problems are listed in the section. It also runs on its own every morning at 09:00.",
+  "toolEffect": "mutation"
+}

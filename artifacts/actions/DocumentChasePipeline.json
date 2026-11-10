@@ -1,0 +1,28 @@
+{
+  "name": "DocumentChasePipeline",
+  "type": "dag",
+  "description": "Hourly business-hours run of the missing delivery-note chase (DocumentChase workflow): CheckDocumentScans with scheduled=true on every open תעודת משלוח חסרה case — package when scanned, logistics reminder draft after logisticsReminderHours, escalation to the collections manager after another period. Drafts land in Approvals with status ממתין; nothing is sent.",
+  "iconName": "timer",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "triggerTime": {
+        "type": "string",
+        "description": "Scheduler trigger time"
+      }
+    }
+  },
+  "exposedToUI": false,
+  "output": "DocumentChaseStepCheck",
+  "actionNodes": [
+    {
+      "name": "DocumentChaseStepCheck",
+      "actionTypeId": "CheckDocumentScans",
+      "input": {
+        "scheduled": true,
+        "requestedBy": "ריצה מתוזמנת",
+        "dryRun": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "building-dbt-semantic-layer": {
+      "source": "dbt-labs/dbt-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dbt/skills/building-dbt-semantic-layer/SKILL.md",
+      "computedHash": "48fc28760a4c850a827d00405c3e931da31f21f52285c5ab04f02fa3f68a6bbd"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "b864a958765563321f485a96f4d59c0bb6539f4286ab6d8b8b66895b7ebd302d"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "MayaChat",
+  "description": "MayaChat",
+  "agentId": "CollectionsInboxAgent",
+  "isPersistent": true,
+  "hideToolsUi": false,
+  "disableGeneratingDynamicChatComponent": false,
+  "disableAttachments": true,
+  "isAdmin": true,
+  "allowRunningActions": false
+}

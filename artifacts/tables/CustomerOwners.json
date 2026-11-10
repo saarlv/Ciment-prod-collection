@@ -1,0 +1,46 @@
+{
+  "name": "CustomerOwners",
+  "description": "Customer owners",
+  "technicalDescription": "Bookkeeper assignment set in the app. Overrides assignedBookkeeperName from Priority; a customer with no owner shows for everyone.",
+  "iconName": "user-check",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "bookkeeperName",
+      "type": "string",
+      "description": "Owning bookkeeper display name (matches TeamMembers.name)"
+    },
+    {
+      "name": "setBy",
+      "type": "string",
+      "description": "Who set the owner"
+    },
+    {
+      "name": "setAt",
+      "type": "datetime",
+      "description": "When it was set"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerName",
+  "uniqueKey": [
+    "customerCode"
+  ],
+  "defaultUpsert": true
+}

@@ -1,0 +1,80 @@
+{
+  "name": "DeliveryNotes",
+  "description": "Priority delivery note mirror",
+  "iconName": "truck",
+  "columns": [
+    {
+      "name": "noteNumber",
+      "type": "string",
+      "description": "Delivery note number, unique"
+    },
+    {
+      "name": "invoiceNumber",
+      "type": "string",
+      "description": "Related invoice number"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "siteName",
+      "type": "string",
+      "description": "Construction site name"
+    },
+    {
+      "name": "deliveryDate",
+      "type": "date",
+      "description": "Delivery date"
+    },
+    {
+      "name": "scanned",
+      "type": "boolean",
+      "description": "Note was scanned"
+    },
+    {
+      "name": "signed",
+      "type": "boolean",
+      "description": "Note is signed"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced from Priority"
+    },
+    {
+      "name": "productLine",
+      "type": "string",
+      "description": "Product line of the delivery"
+    },
+    {
+      "name": "scanUrl",
+      "type": "string",
+      "description": "Link to the scanned delivery note"
+    },
+    {
+      "name": "scannedAt",
+      "type": "datetime",
+      "description": "When the note was scanned"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "noteNumber",
+  "uniqueKey": [
+    "noteNumber"
+  ],
+  "defaultUpsert": true
+}

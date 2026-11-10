@@ -1,0 +1,79 @@
+{
+  "name": "GetOpenDebts",
+  "type": "code",
+  "description": "Read-only. A customer's open documents as of a date: the customer's OpenMovements rows (Priority's unmatched movements per due month – invoices, credit notes, receipts on account; the same source as the aging and the notes engine, never Invoices.openAmount) with due date, days overdue, open amount, and the original amount / movement type / details from the LedgerEntries row of the same document; totals (open, overdue, not yet due), the end-of-card balance (last LedgerEntries running balance, else Customers.ledgerBalance), and open receipts not yet matched (bank lines of the customer whose proposal is not decided). source is always OpenMovements; movementsMirrorEmpty = true when the whole OpenMovements table is empty (the pull never ran): the documents are unknown, not zero. The same builder feeds the open-debts PDF. Writes nothing.",
+  "iconName": "receipt",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "customerCode"
+    ],
+    "properties": {
+      "customerCode": {
+        "type": "string"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Default today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "documents": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "totalOpen": {
+        "type": "number"
+      },
+      "totalOverdue": {
+        "type": "number"
+      },
+      "totalNotDue": {
+        "type": "number"
+      },
+      "endOfCardBalance": {
+        "type": "number"
+      },
+      "balanceSource": {
+        "type": "string",
+        "description": "כרטסת or כרטיס לקוח"
+      },
+      "openReceipts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "note": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "description": "Always OpenMovements"
+      },
+      "movementsMirrorEmpty": {
+        "type": "boolean",
+        "description": "True when the OpenMovements table is empty (pull never ran / failed)"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "toolEffect": "read-only"
+}

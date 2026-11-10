@@ -1,0 +1,32 @@
+# Standalone pnpm root (installed at compiler image build, on compile pods and in Vercel sandboxes).
+# pnpm 11+ reads only registry/auth from .npmrc and ignores package.json "pnpm", so every setting lives here.
+# Never run dependency lifecycle scripts (postinstall/install/preinstall) — enforced at config level so it
+# applies to EVERY install here (incl. an agent's `pnpm add`), not just commands that remember the flag.
+# Untrusted app deps must never execute code at install time.
+ignoreScripts: true
+# node_modules is installed at image-build time and then symlinked across concurrent compilations. pnpm 11+
+# defaults this to "install", so any `pnpm run` could rebuild (and wipe) the shared tree at runtime.
+verifyDepsBeforeRun: false
+# pnpm 12 answers a repeat install "Already up to date" from its own state file without checking
+# node_modules, and trusts a lockfile older than its last run. A tree changed underneath it (missing
+# package links) then survived every install, the agent's own included (BLK-2005). Off, every install
+# verifies the tree as pnpm 10 did, so a plain `pnpm install` repairs it.
+optimisticRepeatInstall: false
+engineStrict: true
+nodeOptions: '--max_old_space_size=4096'
+linkWorkspacePackages: true
+shamefullyHoist: true
+hoistPattern:
+  - '*vite*'
+  - '@vitejs/*'
+  - '*opentelemetry*'
+  - '@opentelemetry/*'
+# Keep the default 1-day minimumReleaseAge supply-chain gate, but not for our published SDK packages.
+minimumReleaseAgeExclude:
+  - '@blocksdiy/*'
+
+overrides:
+  'react': '19.3.1'
+  'react-dom': '19.3.1'
+  '@types/react': '19.3.0'
+  '@types/react-dom': '19.3.0'

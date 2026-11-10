@@ -1,0 +1,246 @@
+{
+  "name": "Invoices",
+  "description": "Priority invoice mirror",
+  "iconName": "file-text",
+  "columns": [
+    {
+      "name": "invoiceNumber",
+      "type": "string",
+      "description": "Invoice number, unique"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "salesAgentName",
+      "type": "string",
+      "description": "Sales agent name"
+    },
+    {
+      "name": "invoiceDate",
+      "type": "date",
+      "description": "Invoice date"
+    },
+    {
+      "name": "dueDate",
+      "type": "date",
+      "description": "Due date"
+    },
+    {
+      "name": "dueMonth",
+      "type": "string",
+      "description": "Due month YYYY-MM"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Invoice amount ILS"
+    },
+    {
+      "name": "openAmount",
+      "type": "number",
+      "description": "Open amount ILS"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Invoice status",
+      "enum": [
+        "פתוחה",
+        "שולמה חלקית",
+        "שולמה",
+        "בזיכוי"
+      ]
+    },
+    {
+      "name": "deliveryNotesExpected",
+      "type": "number",
+      "description": "Delivery notes expected"
+    },
+    {
+      "name": "deliveryNotesAttached",
+      "type": "number",
+      "description": "Delivery notes attached"
+    },
+    {
+      "name": "missingDeliveryNotes",
+      "type": "boolean",
+      "description": "Some delivery notes are missing"
+    },
+    {
+      "name": "hasZeroPriceLines",
+      "type": "boolean",
+      "description": "Invoice has zero-price lines"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced from Priority"
+    },
+    {
+      "name": "documentType",
+      "type": "string",
+      "description": "Document type",
+      "enum": [
+        "חשבונית",
+        "חשבונית זיכוי"
+      ]
+    },
+    {
+      "name": "sourceDocUrl",
+      "type": "string",
+      "description": "The invoice as it was sent to the customer (image/PDF from the Priority attachments). Test invoices get a stamped copy from BuildTestInvoiceDocuments"
+    },
+    {
+      "name": "productLine",
+      "type": "string",
+      "description": "Product line, used to route missing delivery-note chases to logistics"
+    },
+    {
+      "name": "paymentState",
+      "type": "string",
+      "description": "App layer (never written by the Priority sync): payment we have seen. נראה תשלום = an approved receipt match pays this invoice and the receipt is not yet in Priority; נקלט ב-Priority = the match was marked done in Priority. Empty = no payment seen by the app. Recomputed by the shared invoice-layer code",
+      "enum": [
+        "נראה תשלום",
+        "נקלט ב-Priority"
+      ]
+    },
+    {
+      "name": "paidSeenAmount",
+      "type": "number",
+      "description": "App layer: ILS of this invoice paid by approved receipt matches (sum of their allocations)"
+    },
+    {
+      "name": "paidSeenAt",
+      "type": "datetime",
+      "description": "App layer: when the latest approved match on this invoice was approved"
+    },
+    {
+      "name": "paidSeenBankLineIds",
+      "type": "string",
+      "description": "App layer: comma-separated bank line ids of the approved matches"
+    },
+    {
+      "name": "paidPriorityDoneAt",
+      "type": "datetime",
+      "description": "App layer: when the receipt was marked done in Priority (latest of the matches)"
+    },
+    {
+      "name": "layerUpdatedAt",
+      "type": "datetime",
+      "description": "App layer: when the payment and note fields above were last recomputed"
+    },
+    {
+      "name": "paymentStatus",
+      "type": "string",
+      "description": "App layer (never written by the Priority sync): payment status from our receipt allocations. פתוחה = nothing allocated; שולמה חלקית = allocated less than Priority's open amount; שולמה = fully allocated. Priority's own status stays in status.",
+      "enum": [
+        "פתוחה",
+        "שולמה חלקית",
+        "שולמה"
+      ]
+    },
+    {
+      "name": "remainingAmount",
+      "type": "number",
+      "description": "App layer: what is still open after our receipt allocations = openAmount − paidSeenAmount while Priority has not reflected them, else openAmount. The aging report and the customer card show this"
+    },
+    {
+      "name": "receiptKeys",
+      "type": "string",
+      "description": "App layer: comma-separated Receipts.receiptKey of the receipts allocated to this invoice"
+    },
+    {
+      "name": "subStatus",
+      "type": "string",
+      "description": "Our layer: the one sub-status shown, by precedence בבירור > שולמה חלקית > פתוחה; סגורה when nothing is left open (הובטחה is no longer set: commitments are CustomerNotes per customer + due month)",
+      "enum": [
+        "פתוחה",
+        "שולמה חלקית",
+        "בבירור",
+        "הובטחה",
+        "סגורה"
+      ]
+    },
+    {
+      "name": "openDisputeId",
+      "type": "string",
+      "description": "Our layer: the open dispute on the invoice (text link to Disputes.id)"
+    },
+    {
+      "name": "priorityKey",
+      "type": "string",
+      "description": "Sync: Priority natural key (<priorityForm>:<IVNUM>, e.g. CINVOICES:MF26001079). Written only by SyncFromBrain."
+    },
+    {
+      "name": "sourceUpdatedAt",
+      "type": "datetime",
+      "description": "Sync: last change time in Priority when the source reports one, else null."
+    },
+    {
+      "name": "syncRunId",
+      "type": "string",
+      "description": "Sync: SyncRuns.runId of the run that last wrote this row."
+    },
+    {
+      "name": "lastAppWriteAt",
+      "type": "datetime",
+      "description": "Sync: when the app last wrote this row to Priority (write-through). A sync whose Brain data is older skips the row."
+    },
+    {
+      "name": "pendingBrainConfirm",
+      "type": "boolean",
+      "description": "Sync: true after an app write-through until a Brain sync newer than lastAppWriteAt confirms it."
+    },
+    {
+      "name": "deletedInSource",
+      "type": "boolean",
+      "description": "Sync: true when a fully-read Brain table no longer contains this key. Row and enrichment are kept."
+    },
+    {
+      "name": "priorityForm",
+      "type": "string",
+      "description": "Mirror: the Priority form the document comes from",
+      "enum": [
+        "CINVOICES",
+        "AINVOICES"
+      ]
+    },
+    {
+      "name": "priorityDocStatus",
+      "type": "string",
+      "description": "Mirror: document status in Priority (STATDES verbatim: סופית / מבוטלת / טיוטא). Not the payment status."
+    },
+    {
+      "name": "reconciledDate",
+      "type": "date",
+      "description": "Mirror: reconciliation date in Priority (IVRECONDATE); null while not reconciled"
+    },
+    {
+      "name": "currencyCode",
+      "type": "string",
+      "description": "Mirror: document currency (CODE, e.g. שח / USD)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "invoiceNumber",
+  "uniqueKey": [
+    "priorityForm",
+    "invoiceNumber"
+  ],
+  "defaultUpsert": true
+}

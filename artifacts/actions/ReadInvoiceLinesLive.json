@@ -1,0 +1,50 @@
+{
+  "name": "ReadInvoiceLinesLive",
+  "type": "code",
+  "description": "Reads the lines of ONE invoice live from Priority (CINVOICES or AINVOICES /CINVOICEITEMS_SUBFORM via the Priority integration, read-only) and upserts them into InvoiceLines (priorityKey = <form>:<IVNUM>:<KLINE>, source priority-direct). Called when someone opens an invoice or a price dispute. No bulk load.",
+  "iconName": "list-restart",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "invoiceNumber": {
+        "type": "string",
+        "description": "Priority IVNUM"
+      },
+      "form": {
+        "type": "string",
+        "enum": [
+          "CINVOICES",
+          "AINVOICES"
+        ],
+        "default": "CINVOICES",
+        "description": "Invoice form"
+      }
+    },
+    "required": [
+      "invoiceNumber"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "lines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "The InvoiceLines rows written"
+      },
+      "readAt": {
+        "type": "string",
+        "description": ""
+      },
+      "error": {
+        "type": "string",
+        "description": "Set when Priority could not be read; lines then holds the mirror's last copy"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Anyone opening an invoice**: Opening the invoice pop-up from any invoice number\n  Reads the invoice's current lines straight from Priority so the lines shown are up to date; if Priority can't be reached, the last saved copy is shown.\n- **Collections team, price dispute case page**: Opening a price dispute\n  Reads the disputed invoice's lines live from Priority and shows them on the case."
+}

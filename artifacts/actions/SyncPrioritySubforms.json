@@ -1,0 +1,79 @@
+{
+  "name": "SyncPrioritySubforms",
+  "type": "code",
+  "description": "Reads Priority subforms directly through the Priority integration (read-only, ReadEntitySet only) into mirror tables. contacts: CUSTOMERS?$expand=CUSTPERSONNEL_SUBFORM for non-internal customers, 50 per read, into CustomerContacts (priorityKey = CUSTNAME:PHONE). payments: lists receipts from TINVOICES (last 12 months), then reads TINVOICES(...)/TPAYMENT_SUBFORM one receipt at a time into Payments (priorityKey = IVNUM:KLINE), with the receipt header copied on each line. 2 calls at a time, 429 backoff, 10-minute read budget with a resume cursor in PrioritySyncCursors. After the first full load, payments run as a delta. Writes one SyncRuns row (syncKind priority-direct), closed in finally. dryRun reads and reports only.",
+  "iconName": "git-pull-request-arrow",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Read and compare only; write nothing except the SyncRuns row"
+      },
+      "scopes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "contacts",
+            "payments"
+          ]
+        },
+        "description": "Default both"
+      },
+      "resume": {
+        "type": "boolean",
+        "default": true,
+        "description": "Continue from the saved cursor when one is open; false starts the scope over"
+      },
+      "trigger": {
+        "type": "string",
+        "enum": [
+          "מתוזמן",
+          "ידני",
+          "אחרי כתיבה"
+        ],
+        "description": "Default ידני"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "runId": {
+        "type": "string",
+        "description": ""
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": ""
+      },
+      "status": {
+        "type": "string",
+        "description": "רץ | הצליח | הצליח חלקית | נעצר בשער | נכשל"
+      },
+      "perScope": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{scope, mode, calls, sourceRows, inserted, updated, unchanged, skippedAppRows, markedDeletedInSource, pendingCount, complete, error}"
+      },
+      "needsResume": {
+        "type": "boolean",
+        "description": "True when a scope stopped at the time budget; call again to continue"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": ""
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Collections team, Settings > Imports**: Clicks \"סנכרן עכשיו\" in the direct Priority sync section\n  Reads customer contacts and receipt payment lines from Priority into the app (or only checks what would change when \"check only\" is on). If a read stops partway, the screen continues it automatically up to 5 times.\n- **Daily schedule**: Runs automatically every day at 07:00."
+}

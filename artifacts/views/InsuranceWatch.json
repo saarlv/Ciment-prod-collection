@@ -1,0 +1,95 @@
+{
+  "name": "InsuranceWatch",
+  "description": "Insured customers with limit use and open increase requests",
+  "technicalDescription": "One row per customer with an insured limit (insuranceApprovedAmount > 0): use % = obligoUsed / insuranceApprovedAmount, and how many increase requests are still open. The threshold (AgentSettings insuranceThresholdPct, 80) is applied by the UI and by ProposeInsuranceRequests, so the view holds no hard-coded rule.",
+  "query": {
+    "from": {
+      "table": "Customers",
+      "as": "c"
+    },
+    "join": [
+      {
+        "table": "CreditLimitRequests",
+        "as": "r",
+        "type": "left",
+        "on": [
+          {
+            "left": "c.customerCode",
+            "right": "r.customerCode"
+          }
+        ]
+      }
+    ],
+    "select": [
+      {
+        "column": "c.customerCode",
+        "as": "customerCode"
+      },
+      {
+        "column": "c.customerName",
+        "as": "customerName"
+      },
+      {
+        "column": "c.assignedBookkeeperName",
+        "as": "assignedBookkeeperName"
+      },
+      {
+        "column": "c.insuranceApprovedAmount",
+        "as": "insuranceApprovedAmount"
+      },
+      {
+        "column": "c.obligoUsed",
+        "as": "obligoUsed"
+      },
+      {
+        "column": "c.creditInsurer",
+        "as": "creditInsurer"
+      },
+      {
+        "column": "c.insurerCaseNumber",
+        "as": "insurerCaseNumber"
+      },
+      {
+        "column": "c.companyId",
+        "as": "companyId"
+      },
+      {
+        "column": "openRequestsRaw",
+        "expression": "SUM(CASE WHEN r.status IN ('טיוטה','הוצעה ע״י הסוכנת','אושר – לא הוגש','ממתינה להגשה','הוגשה למבטח') THEN 1 ELSE 0 END)",
+        "as": "openRequestsRaw"
+      }
+    ],
+    "where": {
+      "column": "c.insuranceApprovedAmount",
+      "operator": ">",
+      "value": "0"
+    },
+    "groupBy": [
+      "c.customerCode",
+      "c.customerName",
+      "c.assignedBookkeeperName",
+      "c.insuranceApprovedAmount",
+      "c.obligoUsed",
+      "c.creditInsurer",
+      "c.insurerCaseNumber",
+      "c.companyId"
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "usePct",
+      "type": "number",
+      "description": "Insured-limit use %",
+      "expression": "Math.round((Number(item.obligoUsed || 0) / item.insuranceApprovedAmount) * 1000) / 10"
+    },
+    {
+      "name": "openRequests",
+      "type": "number",
+      "description": "Open increase requests",
+      "expression": "Number(item.openRequestsRaw || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "skill_name": "roles-and-authentication",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "This app has two roles: Admin and Employee. Build the layout so Admins see a navigation with Dashboard, Users, Reports, and Settings, while Employees only see Dashboard and their own Profile. Both see a user menu with logout.",
+      "expected_output": "Role-based layout branching on user.role, each role getting the correct nav items. User menu present on both. useUser() used correctly.",
+      "files": [],
+      "expectations": [
+        "Uses useUser() to get the current user and their role",
+        "Branches on user.role === 'Admin' and user.role === 'Employee'",
+        "Admin nav includes Dashboard, Users, Reports, Settings",
+        "Employee nav includes only Dashboard and Profile",
+        "Both layouts include a user menu with logout via logOut() from @blocksdiy/blocks-client-sdk/reactSdk",
+        "Does not create a role-switcher UI or store role in state"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Show the current user's full name, email, role, and a profile picture (falling back to their initials if no picture). Add a logout button. This is a standalone profile widget, not a full page.",
+      "expected_output": "A component using useUser(), Avatar with AvatarImage + AvatarFallback, and logOut(). Shows all requested user fields.",
+      "files": [],
+      "expectations": [
+        "Uses useUser() from reactSdk",
+        "Shows user.name or user.firstName + user.lastName",
+        "Shows user.email",
+        "Shows user.role (if present)",
+        "Uses AvatarImage with profileImageUrl when available, AvatarFallback with initials otherwise",
+        "Calls logOut() from @blocksdiy/blocks-client-sdk/reactSdk for logout"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "MorningRun",
+  "description": "Sun–Thu at 07:30 Israel time runs MorningRunPipeline (code, no agent): writes the morning briefing (WriteBriefing → AgentBriefings). Promise checks run earlier, in the 06:00 TaskScan.",
+  "iconName": "sunrise",
+  "triggerTypeId": "686255085f46e24c41a1b536",
+  "triggerData": {
+    "cronExpression": "30 7 * * 0-4",
+    "timezone": "Asia/Jerusalem"
+  },
+  "actionTypeId": "MorningRunPipeline",
+  "actionInstanceInputs": {
+    "triggerTime": "{{input.triggerTime}}"
+  }
+}

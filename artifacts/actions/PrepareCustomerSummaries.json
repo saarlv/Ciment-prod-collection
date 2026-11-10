@@ -1,0 +1,55 @@
+{
+  "name": "PrepareCustomerSummaries",
+  "type": "code",
+  "description": "First step of the daily customer summaries (code). Picks the customers to summarise — one customerCode, or every customer with an open balance, an open task or an open promise — and computes each one's facts as of asOfDate: open balance, overdue amount and oldest overdue days (Invoices layer), open commitment (CustomerNotes התחייבות לתשלום, outcome פתוחה: amount and date), commitments not kept or partly kept (with what came in and what is left), active notes, open disputes, open tasks (CollectionQueue ממתין / בטיפול titles), latest customer note, last contact (Interactions / CustomerNotes / InboundEmails). Returns a Hebrew prompt for Iris (CustomerCardAgent) starting with \"משימה: סיכום יומי ללקוחות\", one line per customer, plus the facts per customer for WriteCustomerSummaries. Reads only; writes nothing.",
+  "iconName": "list-tree",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Only this customer (the card's refresh button). Default: every customer with an open balance, task or promise"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string"
+      },
+      "customerCount": {
+        "type": "number"
+      },
+      "hasCustomers": {
+        "type": "boolean",
+        "description": "False when there is nothing to summarise; the run then skips the agent"
+      },
+      "prompt": {
+        "type": "string",
+        "description": "The message for Iris"
+      },
+      "facts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Per customer: {customerCode, customerName, isTestFixture, basis}"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "toolEffect": "read-only"
+}

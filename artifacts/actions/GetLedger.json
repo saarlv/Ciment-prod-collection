@@ -1,0 +1,79 @@
+{
+  "name": "GetLedger",
+  "type": "code",
+  "description": "Read-only. A customer's ledger (כרטסת) from the LedgerEntries mirror for a date range: entries in date order with debit, credit and running balance, the opening balance before the range and the closing balance at the end of the card. Says plainly when the mirror has no ledger rows for the customer. Writes nothing.",
+  "iconName": "book-open",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "customerCode"
+    ],
+    "properties": {
+      "customerCode": {
+        "type": "string"
+      },
+      "fromDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Default: 1 January of the asOfDate year"
+      },
+      "toDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Default: asOfDate"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for the demo; default today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "fromDate": {
+        "type": "string"
+      },
+      "toDate": {
+        "type": "string"
+      },
+      "openingBalance": {
+        "type": "number"
+      },
+      "closingBalance": {
+        "type": "number"
+      },
+      "totalDebit": {
+        "type": "number"
+      },
+      "totalCredit": {
+        "type": "number"
+      },
+      "entries": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "hasLedger": {
+        "type": "boolean"
+      },
+      "syncedAt": {
+        "type": "string",
+        "description": "Latest syncedAt of the rows: the 'נכון ל' date"
+      },
+      "note": {
+        "type": "string"
+      }
+    }
+  },
+  "exposedToUI": true
+}

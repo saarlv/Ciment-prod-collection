@@ -1,0 +1,141 @@
+{
+  "name": "RunDaySchedule",
+  "type": "code",
+  "description": "The work-day decision code (plan 04.11, part A), called hourly by DayRunner and by the button \"משוך עכשיו מפריוריטי\". Reads the hours from AgentSettings (morningPullAt 06:00, bankCheckAt 09:00, bankRecheckAt 10:00; an hour with minutes runs at the next round hour) and today's ImportBatches rows (kind משיכת בוקר – Priority / בדיקת דף בנק, runPhase), and runs only the phases that are due and have not run successfully today. Ensures the plan's AgentSettings rows exist (creates a missing row once from the plan default with its basis, reported in settingsCreated; bankRecheckAt takes the old receiptsReadyBy value when present). 06:00 phase: PullPriorityCustomers → PullOpenMovements → PullOpenOrders → CloseSettledNotes (months at 0 ₪ close their notes) → the existing morning task scan (RefreshInvoiceLayer → BuildTasks, which since stage 2 also builds the grouped note tasks whose noteTask.<type>.runAt is morningPullAt: להתקשר לפרטי אשראי, צ׳ק אצל סוכן – אין קבלה, לחזור ללקוח, תזכורות) → one ImportBatches row (kind משיכת בוקר – Priority, runMode, runPhase 06:00, runSummary per step). If a pull fails nothing is deleted or closed, the phase is not counted as run (retried next hour) and one task משיכת הבוקר נכשלה (key day-pull-failed:<date>) is opened; it closes on the next successful pull. Bank-check phase (09:00 bankCheckAt; 10:00 bankRecheckAt only when 09:00 did not find the bank statement; when both are due in the same run — a missed hour — they run once as the 10:00 check): is the bank statement in Priority? (until the API: the test source of SyncPriorityBankLines has lines for the day). Loaded → the existing receipts run (SyncPriorityBankLines, dryRun false) → the field agents' cheques (PullAgentReceipts' shared logic, in-process; its failure is recorded in runSummary as a failed step and never stops the phase; reported in bankCheck.agentReceipts) → PullOpenMovements → CloseSettledNotes → CheckCommitments → the grouped commitment task התחייבויות שלא קוימו – ליצור קשר (runAt bankCheckAt) → the urgent task closes. Not loaded at 09:00 → recorded (bankLoaded false), nothing else. Not loaded at 10:00 → one urgent task דף הבנק לא עלה לפריוריטי (key bank-missing:<date>, severity קריטית, source תקבולים) and no commitment check that day (commitments are checked on the next day the bank loads). Each bank-check run writes one ImportBatches row (kind בדיקת דף בנק, runPhase 09:00 / 10:00, bankLoaded, runSummary). A failed step leaves the phase uncounted (retried next hour). mode ידני runs only the 06:00 phase now regardless of the hour (the button). dryRun (default true) reports the decision and each step's dryRun. Never writes to Priority or contacts anyone.",
+  "iconName": "sunrise",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": [
+          "מתוזמן",
+          "ידני"
+        ],
+        "default": "ידני",
+        "description": "מתוזמן = hourly DayRunner; ידני = the button, runs the 06:00 phase now"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report what would run and be written"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Testing: the day, YYYY-MM-DD (default today, Asia/Jerusalem)"
+      },
+      "asOfTime": {
+        "type": "string",
+        "description": "Testing: HH:MM clock (default now, Asia/Jerusalem)"
+      },
+      "bankScenario": {
+        "type": "string",
+        "enum": [
+          "יום מלא",
+          "יום ריק"
+        ],
+        "default": "יום מלא",
+        "description": "Test source only: whether the bank statement is in Priority today (passed to the bank-lines test source)"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "mode": {
+        "type": "string"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "asOfTime": {
+        "type": "string"
+      },
+      "settings": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The hours as read"
+      },
+      "settingsCreated": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "due": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Phases due now"
+      },
+      "alreadyRan": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "ran": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "importBatchId": {
+              "type": "string"
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      },
+      "notBuiltYet": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Phases not built yet (empty since stage 2)"
+      },
+      "pulledAt": {
+        "type": "string",
+        "description": "When the 06:00 phase finished (for \"נמשך מפריוריטי ב-HH:MM\")"
+      },
+      "failedTask": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{action: open / close / none, taskKey}"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "bankCheck": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{phase, loaded, linesFound, receiptsRun, commitments, urgentTask: open / close / none}"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Bookkeeper on the aging report**: Clicks \"משוך עכשיו מפריוריטי\" at the top of the aging report (גבייה → דוח גיול), whenever they want fresher numbers\n  Pulls customers, open balances and open orders from Priority right away, then refreshes the collection tasks. A line on the screen says what was pulled, or what failed, and the report reloads. Until the Priority connection is set up, it shows a calm notice that the connection is not set up yet.\n- **Every work-day morning, automatically**: Runs each round hour between 06:00 and 12:00, Sunday to Thursday\n  Does the day's scheduled steps at the hours set in Settings → לוח זמנים, so the report is up to date before the team starts.",
+  "toolEffect": "mutation"
+}

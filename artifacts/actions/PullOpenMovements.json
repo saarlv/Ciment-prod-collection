@@ -1,0 +1,74 @@
+{
+  "name": "PullOpenMovements",
+  "type": "code",
+  "description": "Morning pull, step 2 (plan 04.11, part A): pulls Priority's unmatched customer movements into OpenMovements and replaces the snapshot of every customer the source returns (rows of that customer not returned are deleted; nothing points at a movement). Each row gets the real customer link (Customers.id by customerCode), customerCode, customerName, docType, docNumber, docDate, dueDate, dueMonth (YYYY-MM of dueDate), amount (+ debt / − credit), details, source, importBatchId, syncedAt. Priority is not connected yet: the source is a stub, so the action returns ok:false, reason \"Priority sync not connected yet\" and writes nothing; rewritten in the sync turn. An empty source never empties the table (reported as failed). Run again after the receipts run (09:00 / 10:00). dryRun (default true) only reports. Never writes to Priority or contacts anyone.",
+  "iconName": "list-tree",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report what would be written"
+      },
+      "customerCodes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional: only these customers"
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "ImportBatches row of the run this pull belongs to (optional)"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "source": {
+        "type": "string"
+      },
+      "customers": {
+        "type": "number",
+        "description": "Customers whose snapshot was replaced"
+      },
+      "fromSource": {
+        "type": "number"
+      },
+      "written": {
+        "type": "number"
+      },
+      "deleted": {
+        "type": "number"
+      },
+      "unknownCustomers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Codes not in Customers (skipped)"
+      },
+      "totalsByCustomer": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{customerCode: {dueMonth: total}}"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "toolEffect": "mutation"
+}

@@ -1,0 +1,122 @@
+{
+  "name": "ImportPriorityFile",
+  "type": "code",
+  "description": "Imports an uploaded Priority export into the mirror tables. Since Iteration 9 the bank-file path is closed: bank files are uploaded on /collections/receipts and read by ReadBankFile, so kind \"קובץ בנק\" returns an error pointing there and writes nothing. The other kinds (דוח גיול, חשבוניות פתוחות, כרטיסי לקוח, אנשי קשר) are kept for the future and still return \"not active yet\". dryRun (default true). Never writes to Priority.",
+  "iconName": "file-up",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "kind",
+      "fileName",
+      "csvText"
+    ],
+    "properties": {
+      "kind": {
+        "type": "string",
+        "description": "File kind; only קובץ בנק is active",
+        "enum": [
+          "דוח גיול",
+          "קובץ בנק",
+          "חשבוניות פתוחות",
+          "כרטיסי לקוח",
+          "אנשי קשר"
+        ]
+      },
+      "fileName": {
+        "type": "string",
+        "description": "Original file name"
+      },
+      "csvText": {
+        "type": "string",
+        "description": "Full file content as text (UTF-8, BOM allowed)"
+      },
+      "uploadedBy": {
+        "type": "string",
+        "description": "Display name of the person uploading"
+      },
+      "dataDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Bank day the file covers (YYYY-MM-DD). Defaults to the latest valueDate in the file"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report what would be written; nothing changes",
+        "default": true
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "fileName": {
+        "type": "string"
+      },
+      "dataDate": {
+        "type": "string"
+      },
+      "isTestFile": {
+        "type": "boolean"
+      },
+      "expectedColumns": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "rowsRead": {
+        "type": "number"
+      },
+      "toWrite": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "BankLines rows that will be (or were) written"
+      },
+      "skippedExisting": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Rows whose bankLineId already exists (not rewritten)"
+      },
+      "rowErrors": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ row, error } per rejected row, Hebrew messages"
+      },
+      "importBatch": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean",
+        "description": "True only when every written row was read back and the counts match the plan"
+      },
+      "verifyDetails": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is no longer triggered from the app's screens.\n\n- **Bank files**: are uploaded and read on the receipts screen (\"תקבולים\") instead; \"הגדרות › ייבוא קבצים\" now only points there.\n- **Other Priority file kinds**: are listed on the import screen as not active yet, so nothing calls this action today."
+}

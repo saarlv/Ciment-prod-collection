@@ -1,0 +1,29 @@
+{
+  "skill_name": "app-layout",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build the app layout. This is a project management tool with pages for Dashboard, Projects, Tasks, Team Members, and Settings. Users must be logged in. Show a user menu with logout.",
+      "expected_output": "A sidebar layout using shadcn Sidebar components, with auth-aware branching, a nav with all 5 pages, and a user menu (name + logout). Should feel like a proper tool, not a copy-paste template.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Create the layout for a recipe sharing app. Pages: Home, Browse Recipes, My Recipes, Favorites. Has light/dark mode toggle. Public pages visible without login, but My Recipes and Favorites require auth.",
+      "expected_output": "A top nav or creative layout (not necessarily sidebar) with a theme mode switcher, auth-aware nav that shows sign-in for unauthenticated users. Should feel warm and consumer-facing, not like an enterprise tool.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Build the layout. This is a client portal — Clients see their own projects and invoices, Admins manage all clients and can invite new ones. Different nav per role. Include a user menu.",
+      "expected_output": "Role-based layout branching between Admin and Client shells. Each role gets appropriate nav items. User menu present. Uses correct useUser() and role-checking patterns.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Create the layout for a simple QR code generator tool. Single main page. No authentication needed.",
+      "expected_output": "A minimal layout — no sidebar, no complex nav. Maybe a slim header with the app name. Should not force unnecessary navigation structure onto a single-page utility.",
+      "files": []
+    }
+  ]
+}

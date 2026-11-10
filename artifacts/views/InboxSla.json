@@ -1,0 +1,68 @@
+{
+  "name": "InboxSla",
+  "description": "Inbound emails by handling state and bookkeeper, with 24h reply-deadline counts",
+  "technicalDescription": "InboundEmails grouped by handlingState and owning bookkeeper (component 04). openCount counts mails still open (handlingState לא טופל or ממתין, or empty on rows from before handling states; לא רלוונטי excluded); overdue = past dueAt, dueSoon = dueAt within 2 hours. טופל rows are never counted as open. dueAt is set at ingest from replySlaHours (24).",
+  "query": {
+    "from": {
+      "table": "InboundEmails",
+      "as": "e"
+    },
+    "select": [
+      {
+        "column": "e.handlingState",
+        "as": "handlingState"
+      },
+      {
+        "column": "e.assignedBookkeeperName",
+        "as": "assignedBookkeeperName"
+      },
+      {
+        "column": "e.id",
+        "function": "count",
+        "as": "totalCount"
+      },
+      {
+        "column": "openRaw",
+        "expression": "SUM(CASE WHEN COALESCE(e.handlingState, 'לא טופל') <> 'טופל' AND COALESCE(e.category, '') <> 'לא רלוונטי' THEN 1 ELSE 0 END)",
+        "as": "openRaw"
+      },
+      {
+        "column": "overdueRaw",
+        "expression": "SUM(CASE WHEN COALESCE(e.handlingState, 'לא טופל') <> 'טופל' AND COALESCE(e.category, '') <> 'לא רלוונטי' AND e.dueAt < NOW() THEN 1 ELSE 0 END)",
+        "as": "overdueRaw"
+      },
+      {
+        "column": "dueSoonRaw",
+        "expression": "SUM(CASE WHEN COALESCE(e.handlingState, 'לא טופל') <> 'טופל' AND COALESCE(e.category, '') <> 'לא רלוונטי' AND e.dueAt >= NOW() AND e.dueAt < NOW() + INTERVAL '2 hours' THEN 1 ELSE 0 END)",
+        "as": "dueSoonRaw"
+      }
+    ],
+    "groupBy": [
+      "e.handlingState",
+      "e.assignedBookkeeperName"
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "openCount",
+      "type": "number",
+      "description": "Open (לא טופל or ממתין)",
+      "expression": "Number(item.openRaw || 0)"
+    },
+    {
+      "name": "overdueCount",
+      "type": "number",
+      "description": "Open and past the reply deadline",
+      "expression": "Number(item.overdueRaw || 0)"
+    },
+    {
+      "name": "dueSoonCount",
+      "type": "number",
+      "description": "Open with deadline within 2 hours",
+      "expression": "Number(item.dueSoonRaw || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

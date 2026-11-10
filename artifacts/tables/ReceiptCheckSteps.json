@@ -1,0 +1,341 @@
+{
+  "name": "ReceiptCheckSteps",
+  "description": "Receipt check steps",
+  "technicalDescription": "One row per step of the receipts process for a bank file or line: the reader's summary (stage קריאה), each identification step, the receipt, the debt check and the allocation with result and evidence, and each human decision. Written by WriteExtractedLines, IdentifyCustomers, IssueReceipt, CheckDebt, ApplyAllocation and DecideMatchProposal. The receipts panel shows exactly these rows; they are also the raw material for evals.",
+  "iconName": "list-checks",
+  "columns": [
+    {
+      "name": "importBatchId",
+      "type": "string",
+      "description": "Import batch (text link to ImportBatches.id)"
+    },
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "Bank line (text link to BankLines.bankLineId); empty for a file-level step"
+    },
+    {
+      "name": "checkRunId",
+      "type": "string",
+      "description": "One identification run; the panel shows the latest run of a line"
+    },
+    {
+      "name": "stepNo",
+      "type": "number",
+      "description": "Order of the step inside the run"
+    },
+    {
+      "name": "stage",
+      "type": "string",
+      "description": "Stage",
+      "enum": [
+        "קריאה",
+        "זיהוי לקוח",
+        "החלטה"
+      ]
+    },
+    {
+      "name": "rung",
+      "type": "string",
+      "description": "Identification rung or the decision",
+      "enum": [
+        "קריאת הקובץ",
+        "צ׳ק חוזר",
+        "כרטיס לקוח",
+        "כינוי",
+        "מיילים 7 ימים",
+        "אישור",
+        "תיקון"
+      ]
+    },
+    {
+      "name": "result",
+      "type": "string",
+      "description": "Result of the step",
+      "enum": [
+        "נמצא",
+        "לא נמצא",
+        "דו-משמעי",
+        "דולג"
+      ]
+    },
+    {
+      "name": "detail",
+      "type": "string",
+      "description": "One Hebrew sentence: what was checked and what came out"
+    },
+    {
+      "name": "evidence",
+      "type": "object",
+      "description": "Evidence shown in the panel",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "customers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "customerCode": {
+                  "type": "string"
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "matchedOn": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "invoiceNumber": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "openAmount": {
+                  "type": "number"
+                },
+                "dueDate": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "inboundEmailId": {
+                  "type": "string"
+                },
+                "fromName": {
+                  "type": "string"
+                },
+                "fromAddress": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "receivedAt": {
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "equation": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "mailSearch": {
+            "type": "object",
+            "description": "Where the automatic mail search looked (shown even when it found 0)",
+            "properties": {
+              "mailbox": {
+                "type": "string"
+              },
+              "addresses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dateFrom": {
+                "type": "string"
+              },
+              "dateTo": {
+                "type": "string"
+              },
+              "keywords": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "foundCount": {
+                "type": "number"
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          },
+          "detailRequest": {
+            "type": "object",
+            "properties": {
+              "toName": {
+                "type": "string"
+              },
+              "toAddress": {
+                "type": "string"
+              },
+              "contactSource": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "approvalId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string"
+                },
+                "noteType": {
+                  "type": "string"
+                },
+                "invoiceNumber": {
+                  "type": "string"
+                },
+                "noteAmount": {
+                  "type": "number"
+                },
+                "actionDate": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "remittanceRead": {
+            "type": "array",
+            "description": "Per found email: the reader agent's verdict and what passed the code check (rung פירוט מייל)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "inboundEmailId": {
+                  "type": "string"
+                },
+                "fromName": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "receivedAt": {
+                  "type": "string"
+                },
+                "relevant": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "invoiceNumber": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "number"
+                      },
+                      "quote": {
+                        "type": "string"
+                      },
+                      "verified": {
+                        "type": "boolean"
+                      },
+                      "rejectReason": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "total": {
+                  "type": "number"
+                },
+                "totalQuote": {
+                  "type": "string"
+                },
+                "paymentDate": {
+                  "type": "string"
+                },
+                "paymentDateQuote": {
+                  "type": "string"
+                },
+                "remarks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "quote": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "rejectReasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "actor",
+      "type": "string",
+      "description": "Who did the step",
+      "enum": [
+        "סוכן הקריאה",
+        "נינה",
+        "משתמש",
+        "מערכת"
+      ]
+    },
+    {
+      "name": "actorName",
+      "type": "string",
+      "description": "Display name of the person (for משתמש) or the agent"
+    },
+    {
+      "name": "at",
+      "type": "datetime",
+      "description": "When the step happened"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "detail"
+}

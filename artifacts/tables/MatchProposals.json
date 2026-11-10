@@ -1,0 +1,194 @@
+{
+  "name": "MatchProposals",
+  "description": "Receipt match proposals",
+  "technicalDescription": "Customer proposal of a bank line, written by IdentifyCustomers (since 08.11 identification only; invoices are allocated after the debt check): who paid, how they were identified, which invoices the bank line pays, with the evidence. A human approves (אושרה – לביצוע ב-Priority), then marks done in Priority. Never auto-posted.",
+  "iconName": "git-merge",
+  "columns": [
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "Bank line (text link to BankLines.bankLineId)"
+    },
+    {
+      "name": "valueDate",
+      "type": "date",
+      "description": "Value date of the bank line"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Bank line amount ILS"
+    },
+    {
+      "name": "payerName",
+      "type": "string",
+      "description": "Payer name on the bank line"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Identified customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "customerIdMethod",
+      "type": "string",
+      "description": "How the customer was identified",
+      "enum": [
+        "שם זהה",
+        "איש קשר",
+        "היסטוריה",
+        "כינוי",
+        "ידני",
+        "מייל"
+      ]
+    },
+    {
+      "name": "invoiceNumbers",
+      "type": "string",
+      "description": "Invoices in the proposal, comma-separated"
+    },
+    {
+      "name": "allocations",
+      "type": "object",
+      "description": "Allocation of the amount to invoices",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "invoiceNumber": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "dueDate": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "description": "מלאה / חלקית"
+                },
+                "source": {
+                  "type": "string",
+                  "description": "פירוט במייל / הערה בגיול / סכום / תשובת לקוח / ידני"
+                },
+                "openBefore": {
+                  "type": "number",
+                  "description": "The invoice's open amount before this receipt"
+                }
+              }
+            }
+          },
+          "splitKind": {
+            "type": "string",
+            "description": "מלאה (receipt = one invoice) / חלקית (receipt < invoice) / מרובה (several invoices)"
+          },
+          "unallocated": {
+            "type": "number",
+            "description": "Part of the transfer not allocated to any invoice (על חשבון)"
+          }
+        }
+      }
+    },
+    {
+      "name": "confidence",
+      "type": "string",
+      "description": "Confidence",
+      "enum": [
+        "ודאי",
+        "גבוה",
+        "נמוך"
+      ]
+    },
+    {
+      "name": "reasoning",
+      "type": "string",
+      "description": "Human-readable proof, e.g. 3 חשבוניות, פירעון 30.9, סכום זהה בדיוק"
+    },
+    {
+      "name": "assignedBookkeeperName",
+      "type": "string",
+      "description": "Bookkeeper who owns the customer (display name)"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Proposal status",
+      "enum": [
+        "מוצעת",
+        "אושרה – לביצוע ב-Priority",
+        "בוצעה ב-Priority",
+        "נדחתה",
+        "הוחלפה"
+      ]
+    },
+    {
+      "name": "proposedAt",
+      "type": "datetime",
+      "description": "When the proposal was created"
+    },
+    {
+      "name": "decidedBy",
+      "type": "string",
+      "description": "Who approved or rejected"
+    },
+    {
+      "name": "decidedAt",
+      "type": "datetime",
+      "description": "When approved or rejected"
+    },
+    {
+      "name": "priorityDoneBy",
+      "type": "string",
+      "description": "Who marked it done in Priority"
+    },
+    {
+      "name": "priorityDoneAt",
+      "type": "datetime",
+      "description": "When it was marked done in Priority"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "evidenceEmailIds",
+      "type": "string",
+      "description": "InboundEmails ids that were the evidence, comma-separated"
+    },
+    {
+      "name": "evidenceQuote",
+      "type": "string",
+      "description": "Exact quote from the evidence email"
+    },
+    {
+      "name": "checkRunId",
+      "type": "string",
+      "description": "Identification run that produced the proposal"
+    },
+    {
+      "name": "importBatchId",
+      "type": "string",
+      "description": "Import batch of the bank line (text link to ImportBatches.id)"
+    },
+    {
+      "name": "receiptKey",
+      "type": "string",
+      "description": "Receipts.receiptKey created when this proposal was approved"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerName"
+}

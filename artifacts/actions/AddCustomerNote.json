@@ -1,0 +1,121 @@
+{
+  "name": "AddCustomerNote",
+  "type": "code",
+  "description": "Adds a note for a customer and a due month to CustomerNotes (plan 04.11 part A, stage 2) — the note engine (a payment promise is a note of type התחייבות לתשלום). One note = one customer (customer = real reference to Customers.id, plus customerCode and customerName copied for the agents) + one due month (dueMonth YYYY-MM). Types: התחייבות לתשלום / תשלום באשראי / צ׳ק אצל סוכן / חזור אליי (the four active types — actionDate required; each opens a grouped task by the AgentSettings rule noteTask.<type>.* when its month has not reached 0 ₪) and אחר (customTypeLabel = the free type, noteText required). reminderDate optional on every type (→ grouped task תזכורות). amount optional. balanceAtNote = the month's open total from OpenMovements at writing time (what was promised when no amount). status פעילה; a commitment starts with outcome פתוחה, the other types have no outcome. noteSource צוות / מאיה ממייל / תמר בכרטיס (default צוות). authorName defaults to the signed-in user. Always inserts a new row (history is kept). Refuses (writes nothing) when the customer code is unknown, the month is not YYYY-MM, an active type has no actionDate, אחר has no text, or the amount is negative. From the email panel (sourceEmailId): approves Maya's promise proposal stored on the email (InboundEmails.classificationQuotes.promise) as ONE התחייבות לתשלום note, noteSource מאיה ממייל, amount / date default to the proposal's, dueMonth = the given month, else the oldest due month of the quoted invoices, else the customer's oldest open month; the quoted invoice numbers go into noteText. The proposal becomes אושרה (approvedNoteId, approvedBy, approvedAt) and the email טופל; a second approval of the same email is refused (refused, refusalReason, existingNoteId) and writes nothing. Afterwards the note's grouped tasks are synced (taskSync, never fails the write). Test customers (TEST-) produce rows with isTestFixture true. dryRun (default false) only reports. Never writes to Priority or contacts anyone.",
+  "iconName": "notebook-pen",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "customerCode",
+      "noteType"
+    ],
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Customer code (the reference to Customers is resolved from it)"
+      },
+      "dueMonth": {
+        "type": "string",
+        "description": "YYYY-MM due month the note is about. Required except when approving an email promise (then derived)"
+      },
+      "noteType": {
+        "type": "string",
+        "enum": [
+          "התחייבות לתשלום",
+          "תשלום באשראי",
+          "צ׳ק אצל סוכן",
+          "חזור אליי",
+          "אחר"
+        ],
+        "description": "Note type. The four first are active and need actionDate"
+      },
+      "customTypeLabel": {
+        "type": "string",
+        "description": "For אחר: the free type the person wrote (e.g. בירור – מחיר)"
+      },
+      "noteText": {
+        "type": "string",
+        "description": "Free text. Required for אחר"
+      },
+      "actionDate": {
+        "type": "string",
+        "format": "date",
+        "description": "YYYY-MM-DD: commitment date / card payment day / day the cheque is with the sales agent / call-back day"
+      },
+      "reminderDate": {
+        "type": "string",
+        "format": "date",
+        "description": "YYYY-MM-DD optional reminder (any type)"
+      },
+      "amount": {
+        "type": "number",
+        "description": "Optional ILS amount"
+      },
+      "authorName": {
+        "type": "string",
+        "description": "Who wrote it. Default: the signed-in user"
+      },
+      "noteSource": {
+        "type": "string",
+        "enum": [
+          "צוות",
+          "מאיה ממייל",
+          "תמר בכרטיס"
+        ],
+        "default": "צוות",
+        "description": "Where the note came from"
+      },
+      "sourceEmailId": {
+        "type": "string",
+        "description": "InboundEmails id when approving Maya's promise proposal from the email panel"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false,
+        "description": "When true only report what would be written"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "note": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The written (or planned) CustomerNotes row"
+      },
+      "taskPreview": {
+        "type": "string",
+        "description": "Hebrew line: which grouped task will open and when, e.g. תיפתח משימה ב-12.11 אם החודש לא יתאפס"
+      },
+      "refused": {
+        "type": "boolean"
+      },
+      "refusalReason": {
+        "type": "string"
+      },
+      "existingNoteId": {
+        "type": "string"
+      },
+      "taskSync": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Adding a note on the aging report**: On \"דוח גיול\", the user clicks the notes chip (or the \"+\" that appears on hover) under a customer's month, clicks \"הערה\" in the small notes window, picks the type, fills the date, text, reminder or amount, and clicks \"שמירת הערה\"\n  Saves the note on that customer and month. The window then says which follow-up task will open and when, for example \"תיפתח משימה ב-12.11 אם החודש לא יתאפס\".\n- **Adding a note from a customer card**: On a customer card, the user clicks \"הערה\" on a month row of \"חודשים פתוחים\" (or the main button \"הוספת הערה\", then picks the month), and saves the note the same way\n  Saves the note for that month; the card's feed, the \"התחייבויות\" strip and the months table update.\n- **Adding a note from a grouped task**: On \"משימות\", the user opens a grouped task's rows, clicks a customer and month, and adds a note in the same window\n  Saves the note for that customer and month, with the same line about the task it will open.\n- **Approving a payment commitment from an email**: In \"פניות\", the user opens an email where Maya found a payment promise, checks the amount, date and invoices in the \"הצעת התחייבות מהמייל\" card, and clicks \"אשר התחייבות\"\n  Records one payment commitment for the customer on the due month of the oldest invoice picked, marks Maya's proposal as approved and the email as handled. Approving the same email twice is refused.",
+  "toolEffect": "mutation"
+}

@@ -1,0 +1,269 @@
+{
+  "name": "CollectionQueue",
+  "description": "Tasks (משימות): one row per problem that needs handling, keyed by taskKey. Written by the 06:00 task scan (aging), the inbox and the receipts flow; closed automatically when the problem is gone",
+  "iconName": "list-todo",
+  "columns": [
+    {
+      "name": "queueDate",
+      "type": "date",
+      "description": "Queue date"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "assignedBookkeeperName",
+      "type": "string",
+      "description": "Assigned bookkeeper"
+    },
+    {
+      "name": "priorityScore",
+      "type": "number",
+      "description": "Priority score"
+    },
+    {
+      "name": "reasons",
+      "type": "string",
+      "description": "Short Hebrew list of why the customer is in today's queue (long text)"
+    },
+    {
+      "name": "recommendedAction",
+      "type": "string",
+      "description": "Recommended action",
+      "enum": [
+        "לשלוח תזכורת",
+        "לשלוח WhatsApp",
+        "להתקשר",
+        "להסלים למנהל",
+        "לטפל במחלוקת",
+        "לבדוק הבטחה",
+        "לשחרר הזמנה חסומה",
+        "לדבר עם הסוכן",
+        "לפנות ללוגיסטיקה",
+        "לטפל במייל",
+        "לאשר טיוטה",
+        "להתאים תקבול"
+      ]
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Queue item status",
+      "enum": [
+        "ממתין",
+        "בטיפול",
+        "טופל",
+        "נדחה",
+        "נסגר אוטומטית"
+      ]
+    },
+    {
+      "name": "handledBy",
+      "type": "string",
+      "description": "Who handled it"
+    },
+    {
+      "name": "handledAt",
+      "type": "datetime",
+      "description": "When it was handled"
+    },
+    {
+      "name": "taskType",
+      "type": "string",
+      "description": "Task type",
+      "enum": [
+        "צ׳ק חוזר",
+        "הבטחה הופרה",
+        "לאמת שולח",
+        "ביטוח 80%",
+        "אחר",
+        "לגבות מהלקוח",
+        "מעקב בירור – מחיר",
+        "מעקב בירור – תעודה חסרה",
+        "מעקב בירור – אחר",
+        "תעודות משלוח חסרות",
+        "מייל לטיפול",
+        "טיוטה לאישור",
+        "לא זוהה",
+        "דפי בנק לא נטענו",
+        "התחייבויות שלא קוימו – ליצור קשר",
+        "להתקשר לפרטי אשראי",
+        "צ׳ק אצל סוכן – אין קבלה",
+        "לחזור ללקוח",
+        "תזכורות",
+        "משיכת הבוקר נכשלה",
+        "דף הבנק לא עלה לפריוריטי",
+        "זיהוי לקוח – לאישור",
+        "קבלה – צריך פיזור",
+        "לברר מול הלקוח – סכום לא סוגר חודש",
+        "חסר איש קשר הנהלת חשבונות",
+        "נסגר לאפס",
+        "להוסיף איש קשר בפריוריטי",
+        "תעודות / חשבוניות חסרות – טיפול ידני",
+        "זיכוי / הפרש מחיר – טיפול ידני"
+      ]
+    },
+    {
+      "name": "itemsJson",
+      "type": "object",
+      "description": "Grouped tasks (plan 04.11): one task per note type + date + bookkeeper (taskKey notes:<type>:<date>:<bookkeeper>), one item per customer + month. An item leaves when its month's balance reaches 0 or a person marks it handled; the task closes when no items are left",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "customerCode": {
+              "type": "string"
+            },
+            "customerName": {
+              "type": "string"
+            },
+            "dueMonth": {
+              "type": "string",
+              "description": "YYYY-MM"
+            },
+            "promised": {
+              "type": "number",
+              "description": "Promised amount (commitments) or the note amount"
+            },
+            "received": {
+              "type": "number"
+            },
+            "remaining": {
+              "type": "number"
+            },
+            "outcome": {
+              "type": "string",
+              "description": "קוימה חלקית / לא קוימה for commitments"
+            },
+            "noteIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "handled": {
+              "type": "boolean",
+              "description": "Marked טופל by a person"
+            },
+            "handledBy": {
+              "type": "string"
+            },
+            "handledAt": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "isAlert",
+      "type": "boolean",
+      "description": "True for notices with nothing to do (e.g. נסגר לאפס): shown under the התראות filter, without a handle button. Writers always set it"
+    },
+    {
+      "name": "needsManagerApproval",
+      "type": "boolean",
+      "description": "True when the task must be approved by a manager (e.g. a receipt whose match is not one-to-one). Writers always set it"
+    },
+    {
+      "name": "relatedTable",
+      "type": "string",
+      "description": "Table of the record the task is about"
+    },
+    {
+      "name": "relatedId",
+      "type": "string",
+      "description": "Id of the related record, as text"
+    },
+    {
+      "name": "dueAt",
+      "type": "datetime",
+      "description": "When the task is due"
+    },
+    {
+      "name": "taskKey",
+      "type": "string",
+      "description": "Unique key per problem, e.g. aging-overdue:<invoiceNumber>, promise-broken:<promiseId>, inbox:<emailId>, draft:<approvalId>, receipt-customer:<bankLineId>. Writers upsert by it, so a problem has one task"
+    },
+    {
+      "name": "title",
+      "type": "string",
+      "description": "Short Hebrew title shown in the tasks list"
+    },
+    {
+      "name": "severity",
+      "type": "string",
+      "description": "Severity level",
+      "enum": [
+        "קריטית",
+        "גבוהה",
+        "בינונית",
+        "נמוכה"
+      ]
+    },
+    {
+      "name": "severityScore",
+      "type": "number",
+      "description": "Severity score 0–100 (higher first): weighted amount and days overdue, weights and level thresholds from AgentSettings (severityWeightAmount, severityWeightDays, severityScoreCritical/High/Medium)"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Which part of the app opened the task",
+      "enum": [
+        "דוח גיול",
+        "פניות",
+        "תקבולים",
+        "הבטחות",
+        "ביטוח"
+      ]
+    },
+    {
+      "name": "invoiceNumbers",
+      "type": "string",
+      "description": "Invoice numbers the task is about, comma-separated (text links to Invoices)"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Amount at stake ILS"
+    },
+    {
+      "name": "openedAt",
+      "type": "datetime",
+      "description": "When the task was first opened (stays the same while the problem lasts)"
+    },
+    {
+      "name": "lastCheckedAt",
+      "type": "datetime",
+      "description": "When a writer or the daily scan last confirmed the problem is still there"
+    },
+    {
+      "name": "resolvedAt",
+      "type": "datetime",
+      "description": "When the task was closed (by a person or automatically)"
+    },
+    {
+      "name": "resolvedReason",
+      "type": "string",
+      "description": "Why it was closed: the person's short note, or the automatic reason (e.g. the invoice was paid)"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerName"
+}

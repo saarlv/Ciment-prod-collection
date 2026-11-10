@@ -1,0 +1,16 @@
+{
+  "name": "CustomerCardChat",
+  "description": "The chat bubble inside the customer card: tell Iris what the customer said and she records it, or ask about the account",
+  "agentId": "CustomerCardAgent",
+  "initialMessages": [
+    {
+      "content": "היי, אני איריס. ספרי לי מה הלקוח אמר (למשל \"ישלם ב-18 את מרץ בהעברה\") ואני ארשום את זה על החשבוניות הנכונות אחרי שתאשרי. אפשר גם לשאול אותי על מצב החשבון."
+    }
+  ],
+  "isPersistent": true,
+  "hideToolsUi": true,
+  "disableGeneratingDynamicChatComponent": false,
+  "disableAttachments": true,
+  "isAdmin": false,
+  "allowRunningActions": false
+}

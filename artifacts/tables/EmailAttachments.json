@@ -1,0 +1,96 @@
+{
+  "name": "EmailAttachments",
+  "description": "Email attachments and their extracted content",
+  "technicalDescription": "One row per attachment of an InboundEmails row. FetchEmailAttachments downloads each file from the provider (GMAIL_GET_ATTACHMENT), stores it (fileUrl) and extracts text by code: PDF with a text layer → text, Excel/CSV → table as text, image or scanned PDF → דורש OCR (gap). Maya and the remittance reader receive extractedText, not just file names.",
+  "iconName": "paperclip",
+  "columns": [
+    {
+      "name": "inboundEmailId",
+      "type": "string",
+      "description": "InboundEmails.id (text link)"
+    },
+    {
+      "name": "messageId",
+      "type": "string",
+      "description": "Provider message id of the email"
+    },
+    {
+      "name": "providerAttachmentId",
+      "type": "string",
+      "description": "Provider attachment id"
+    },
+    {
+      "name": "fileName",
+      "type": "string",
+      "description": "File name"
+    },
+    {
+      "name": "mimeType",
+      "type": "string",
+      "description": "MIME type"
+    },
+    {
+      "name": "fileKind",
+      "type": "string",
+      "description": "File kind",
+      "enum": [
+        "PDF",
+        "Excel",
+        "CSV",
+        "תמונה",
+        "אחר"
+      ]
+    },
+    {
+      "name": "fileUrl",
+      "type": "string",
+      "description": "Stored file link"
+    },
+    {
+      "name": "sizeBytes",
+      "type": "number",
+      "description": "Size in bytes"
+    },
+    {
+      "name": "extractionState",
+      "type": "string",
+      "description": "Extraction state",
+      "enum": [
+        "ממתין",
+        "חולץ",
+        "דורש OCR",
+        "לא נתמך",
+        "נכשל"
+      ]
+    },
+    {
+      "name": "extractedText",
+      "type": "string",
+      "description": "Extracted text (long text; tables as tab-separated lines)"
+    },
+    {
+      "name": "extractionError",
+      "type": "string",
+      "description": "Why extraction failed"
+    },
+    {
+      "name": "extractedAt",
+      "type": "datetime",
+      "description": "When extracted"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "fileName",
+  "uniqueKey": [
+    "messageId",
+    "fileName"
+  ],
+  "defaultUpsert": true
+}

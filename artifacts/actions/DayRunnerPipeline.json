@@ -1,0 +1,28 @@
+{
+  "name": "DayRunnerPipeline",
+  "type": "dag",
+  "description": "The hourly work-day run (workflow DayRunner, round hours 06:00–12:00 Sun–Thu): RunDaySchedule in scheduled mode decides from AgentSettings and today's ImportBatches which phase is due and runs it. Code only, no agent; nothing is sent or written to Priority.",
+  "iconName": "sunrise",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "triggerTime": {
+        "type": "string",
+        "description": "Scheduler trigger time"
+      }
+    }
+  },
+  "exposedToUI": false,
+  "output": "DayRunnerStepSchedule",
+  "toolEffect": "mutation",
+  "actionNodes": [
+    {
+      "name": "DayRunnerStepSchedule",
+      "actionTypeId": "RunDaySchedule",
+      "input": {
+        "mode": "מתוזמן",
+        "dryRun": false
+      }
+    }
+  ]
+}

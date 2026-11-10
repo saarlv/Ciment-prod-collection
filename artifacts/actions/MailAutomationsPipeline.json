@@ -1,0 +1,24 @@
+{
+  "name": "MailAutomationsPipeline",
+  "type": "dag",
+  "description": "Hourly run of the mail automations (MailAutomationsRunner workflow): RunDueAutomations runs every active automation whose day and hour have arrived and that has not yet run this month. Replaces the daily open-debts batch (OpenDebtsBatch) and the openDebtsDay setting. Drafts land in the outbox (Approvals); nothing is sent.",
+  "iconName": "calendar-clock",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "triggerTime": {
+        "type": "string",
+        "description": "Scheduler trigger time"
+      }
+    }
+  },
+  "exposedToUI": false,
+  "output": "AutomationsStepRunDue",
+  "actionNodes": [
+    {
+      "name": "AutomationsStepRunDue",
+      "actionTypeId": "RunDueAutomations",
+      "input": {}
+    }
+  ]
+}

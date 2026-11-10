@@ -1,0 +1,130 @@
+{
+  "name": "ReceiptsByBatch",
+  "description": "Receipts progress per bank file",
+  "technicalDescription": "One row per import batch (BankLines grouped by importBatchId): lines, total, approved, pending check, awaiting a decision, unidentified, skipped. The receipts week strip joins it in the UI to ImportBatches (workDay, extractionStatus, checkStatus) to show each day's state (e.g. 7/12 נבדקו). Read the *N calculated columns (numbers); the SQL expression columns arrive as strings.",
+  "query": {
+    "from": {
+      "table": "BankLines",
+      "as": "b"
+    },
+    "select": [
+      {
+        "column": "b.importBatchId",
+        "as": "importBatchId"
+      },
+      {
+        "column": "b.id",
+        "function": "count",
+        "as": "lineCount"
+      },
+      {
+        "column": "b.amount",
+        "function": "sum",
+        "as": "amountTotal"
+      },
+      {
+        "column": "approvedCount",
+        "expression": "SUM(CASE WHEN b.checkStage = 'אושרה' OR b.status IN ('אושרה – לביצוע ב-Priority','בוצעה ב-Priority','קבלה הונפקה') THEN 1 ELSE 0 END)",
+        "as": "approvedCount"
+      },
+      {
+        "column": "pendingCount",
+        "expression": "SUM(CASE WHEN (b.checkStage IS NULL OR b.checkStage IN ('ממתינה לבדיקה','זיהוי לקוח','התאמת חשבוניות')) AND b.status NOT IN ('אושרה – לביצוע ב-Priority','בוצעה ב-Priority','קבלה הונפקה','ממתינה לפירוט') THEN 1 ELSE 0 END)",
+        "as": "pendingCount"
+      },
+      {
+        "column": "awaitingDetailCount",
+        "expression": "SUM(CASE WHEN b.status = 'ממתינה לפירוט' THEN 1 ELSE 0 END)",
+        "as": "awaitingDetailCount"
+      },
+      {
+        "column": "issuedCount",
+        "expression": "SUM(CASE WHEN b.status = 'קבלה הונפקה' THEN 1 ELSE 0 END)",
+        "as": "issuedCount"
+      },
+      {
+        "column": "awaitingDecisionCount",
+        "expression": "SUM(CASE WHEN b.checkStage = 'ממתינה לאישור' THEN 1 ELSE 0 END)",
+        "as": "awaitingDecisionCount"
+      },
+      {
+        "column": "unidentifiedCount",
+        "expression": "SUM(CASE WHEN b.checkStage = 'לא מזוהה' THEN 1 ELSE 0 END)",
+        "as": "unidentifiedCount"
+      },
+      {
+        "column": "skippedCount",
+        "expression": "SUM(CASE WHEN b.checkStage = 'דולגה' THEN 1 ELSE 0 END)",
+        "as": "skippedCount"
+      }
+    ],
+    "groupBy": [
+      "b.importBatchId"
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "lineCountN",
+      "type": "number",
+      "description": "Lines in the file",
+      "expression": "Number(item.lineCount || 0)"
+    },
+    {
+      "name": "awaitingDetailCountN",
+      "type": "number",
+      "description": "Waiting for the customer's detail (open ticket)",
+      "expression": "Number(item.awaitingDetailCount || 0)"
+    },
+    {
+      "name": "issuedCountN",
+      "type": "number",
+      "description": "Receipt issued in Priority",
+      "expression": "Number(item.issuedCount || 0)"
+    },
+    {
+      "name": "amountTotalN",
+      "type": "number",
+      "description": "Total ILS",
+      "expression": "Number(item.amountTotal || 0)"
+    },
+    {
+      "name": "approvedCountN",
+      "type": "number",
+      "description": "Approved",
+      "expression": "Number(item.approvedCount || 0)"
+    },
+    {
+      "name": "pendingCountN",
+      "type": "number",
+      "description": "Not yet checked",
+      "expression": "Number(item.pendingCount || 0)"
+    },
+    {
+      "name": "awaitingDecisionCountN",
+      "type": "number",
+      "description": "Checked, waiting for a person",
+      "expression": "Number(item.awaitingDecisionCount || 0)"
+    },
+    {
+      "name": "unidentifiedCountN",
+      "type": "number",
+      "description": "Unidentified",
+      "expression": "Number(item.unidentifiedCount || 0)"
+    },
+    {
+      "name": "skippedCountN",
+      "type": "number",
+      "description": "Skipped",
+      "expression": "Number(item.skippedCount || 0)"
+    },
+    {
+      "name": "checkedN",
+      "type": "number",
+      "description": "Lines Nina has checked",
+      "expression": "Number(item.lineCount || 0) - Number(item.pendingCount || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

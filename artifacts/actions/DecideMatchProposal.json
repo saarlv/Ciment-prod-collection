@@ -1,0 +1,95 @@
+{
+  "name": "DecideMatchProposal",
+  "type": "code",
+  "description": "Marks an approved receipt as issued in Priority: a person issued it in Priority by the copied instruction and types Priority's receipt number. decision priorityDone {receiptId | proposalIds, priorityReceiptNumber?}: Receipts.receiptStatus → הונפקה ב-Priority (issuedBy / issuedAt / priorityReceiptNumber), its ReceiptAllocations → הונפקה ב-Priority, the customer proposal (MatchProposals) → בוצעה ב-Priority and BankLines.status → קבלה הונפקה when the receipt came from a bank line; writes a ReceiptCheckSteps step (stage החלטה, actor משתמש). Refused (ok:false, Hebrew reason) when the receipt is still a draft or already issued. Writes fields first, status last, read-back; a failure rolls back. dryRun writes nothing. Nothing is written to Priority. (The old decisions approve / correct / reject / skip / resolveCustomer / approveReceipt / aliases were removed on 08.11: the customer and the receipt are approved by IssueReceipt, the allocation by ApplyAllocation.)",
+  "iconName": "check-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "decision",
+      "decidedBy"
+    ],
+    "properties": {
+      "decision": {
+        "type": "string",
+        "enum": [
+          "priorityDone"
+        ],
+        "description": "priorityDone = the receipt was issued in Priority"
+      },
+      "proposalIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "MatchProposals row ids, when the caller has the proposal rather than the receipt"
+      },
+      "decidedBy": {
+        "type": "string",
+        "description": "Display name of the person deciding"
+      },
+      "note": {
+        "type": "string",
+        "description": "Optional reason (e.g. why rejected)"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report what would be written; nothing changes",
+        "default": false
+      },
+      "decidedByEmail": {
+        "type": "string",
+        "description": "Email of the person deciding (AgentFeedback.byEmail on a correction)"
+      },
+      "priorityReceiptNumber": {
+        "type": "string",
+        "description": "priorityDone: the receipt number Priority gave"
+      },
+      "receiptId": {
+        "type": "string",
+        "description": "Receipts row id (preferred; agent cheques have no proposal)"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "decision": {
+        "type": "string"
+      },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Per receipt: previous / new receiptStatus, bank line and proposal updates"
+      },
+      "writeVerified": {
+        "type": "boolean",
+        "description": "True only when every written row was read back and matches"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "receipt": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{receiptKey, receiptId, bankLineId, customerCode, customerName, amount, receiptStatus, matchStatus, priorityReceiptNumber, issuedBy, issuedAt}; null when refused"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Marking a receipt issued in Priority**: In step 2 \"קבלה\" of the receipt record on the \"תקבולים\" screen (or from a receipts task), for a bank receipt or an agent cheque, after the bookkeeper copied the instruction and issued the receipt in Priority, typing Priority's receipt number and clicking \"הונפקה ב-Priority\"\n  Marks the receipt \"הונפקה ב-Priority\" with that number, together with its allocation lines and, for a bank receipt, its bank line. Shown for every approved receipt — bank receipt or agent cheque — that was not issued yet; hidden for drafts and for receipts already issued. Nothing is written to Priority."
+}

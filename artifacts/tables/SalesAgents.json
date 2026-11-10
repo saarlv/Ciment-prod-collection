@@ -1,0 +1,61 @@
+{
+  "name": "SalesAgents",
+  "description": "Sales agents and their managers",
+  "technicalDescription": "Who approves a disputed price: each sales agent (Customers/Invoices.salesAgentName) with email and the manager who approves after the agent. Read by AnalyzePriceGap / CreatePriceApprovalRequest. Agents and managers never log in; the bookkeeper marks their approvals with evidence.",
+  "iconName": "briefcase",
+  "columns": [
+    {
+      "name": "agentName",
+      "type": "string",
+      "description": "Sales agent display name, as on Customers.salesAgentName"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "description": "Sales agent email"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "description": "Sales agent phone"
+    },
+    {
+      "name": "managerName",
+      "type": "string",
+      "description": "Manager who approves after the agent (display name)"
+    },
+    {
+      "name": "managerEmail",
+      "type": "string",
+      "description": "Manager email"
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "description": "Active"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "authorizedCustomerCodes",
+      "type": "string",
+      "description": "Customer codes this agent may request statements / open debts for, comma-separated. A mail from this agent's address about one of them is מאומת"
+    },
+    {
+      "name": "authorizedCustomerNames",
+      "type": "string",
+      "description": "Display names of those customers, comma-separated, same order (denormalised)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "agentName",
+  "uniqueKey": [
+    "agentName"
+  ],
+  "defaultUpsert": true
+}

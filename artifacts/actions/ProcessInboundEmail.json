@@ -1,0 +1,386 @@
+{
+  "name": "ProcessInboundEmail",
+  "type": "dag",
+  "description": "Provider-independent handling of one normalised inbound email (component 04), called by each mailbox adapter workflow (none connected now — the Gmail adapter was removed 10.11; one Outlook adapter per mailbox later, no logic change). IngestEmail (dedupe, mailbox, threading, customer candidates, hard sender verification, 24h deadline, InboundEmails row). A thread reply goes to AttachThreadReply and opens no new inquiry. A new email: FetchEmailAttachments (code extracts the files and builds the brief) → Maya (CollectionsInboxAgent) sorts it in one structured call with a quote per item, no tools → ApplyMailClassification checks the quotes and the customer and routes by code (PDF, drafts, cases, tasks, aging notes, handling state). A promise is only a proposal for a person to approve in the email panel; a dispute opens a בבירור – מחלוקת aging note per quoted invoice. Nothing is sent: drafts land in the outbox (Approvals).",
+  "iconName": "inbox",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "messageId",
+      "mailProvider",
+      "mailbox",
+      "fromAddress",
+      "receivedAt"
+    ],
+    "properties": {
+      "messageId": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "mailProvider": {
+        "type": "string",
+        "enum": [
+          "gmail",
+          "outlook"
+        ]
+      },
+      "mailbox": {
+        "type": "string"
+      },
+      "mailboxOwnerName": {
+        "type": "string"
+      },
+      "sourceLabel": {
+        "type": "string"
+      },
+      "fromAddress": {
+        "type": "string"
+      },
+      "fromName": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      },
+      "subject": {
+        "type": "string"
+      },
+      "bodyText": {
+        "type": "string"
+      },
+      "receivedAt": {
+        "type": "string"
+      },
+      "attachments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "output": "InboxStepIngest",
+  "actionNodes": [
+    {
+      "name": "InboxStepIngest",
+      "actionTypeId": "IngestEmail",
+      "input": {
+        "messageId": "{{input.messageId}}",
+        "threadId": "{{input.threadId}}",
+        "mailProvider": "{{input.mailProvider}}",
+        "mailbox": "{{input.mailbox}}",
+        "mailboxOwnerName": "{{input.mailboxOwnerName}}",
+        "sourceLabel": "{{input.sourceLabel}}",
+        "fromAddress": "{{input.fromAddress}}",
+        "fromName": "{{input.fromName}}",
+        "to": "{{input.to}}",
+        "subject": "{{input.subject}}",
+        "bodyText": "{{input.bodyText}}",
+        "receivedAt": "{{input.receivedAt}}",
+        "attachments": "{{input.attachments}}",
+        "dryRun": false
+      }
+    },
+    {
+      "name": "InboxStepReply",
+      "actionTypeId": "AttachThreadReply",
+      "input": {
+        "inboundEmailId": "{{InboxStepIngest.inboundEmailId}}",
+        "dryRun": false
+      }
+    },
+    {
+      "name": "InboxStepAttachments",
+      "actionTypeId": "FetchEmailAttachments",
+      "input": {
+        "inboundEmailId": "{{InboxStepIngest.inboundEmailId}}",
+        "messageId": "{{input.messageId}}",
+        "mailProvider": "{{input.mailProvider}}",
+        "attachments": "{{input.attachments}}",
+        "dryRun": false
+      }
+    },
+    {
+      "name": "InboxStepMaya",
+      "actionTypeId": "ai_tools/SendAgentMessage",
+      "input": {
+        "agentBlockId": "CollectionsInboxAgent",
+        "promptSummary": "מאיה ממיינת מייל חדש שנכנס לתיבה",
+        "prompt": "{{InboxStepAttachments.promptForAgent}}",
+        "structuredOutputJsonSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "types",
+            "customerCode",
+            "senderRole",
+            "invoices",
+            "promise",
+            "summary",
+            "dispute",
+            "signature"
+          ],
+          "properties": {
+            "types": {
+              "type": "array",
+              "description": "Every request type in the email, each with a word-for-word quote from the subject, body or an attachment",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "quote"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "כרטסת",
+                      "חובות פתוחים",
+                      "תעודות וחשבוניות חסרות",
+                      "הפרש מחיר",
+                      "פירוט תשלום",
+                      "הבטחת תשלום",
+                      "אחר",
+                      "אישור ביטוח אשראי",
+                      "לא רלוונטי"
+                    ]
+                  },
+                  "quote": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "customerCode": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Only a code from the candidate list in the brief, or null"
+            },
+            "senderRole": {
+              "type": "string",
+              "enum": [
+                "איש קשר של הלקוח",
+                "סוכן סימנט בשם הלקוח",
+                "איש לוגיסטיקה",
+                "אחר"
+              ]
+            },
+            "invoices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "invoiceNumber",
+                  "quote"
+                ],
+                "properties": {
+                  "invoiceNumber": {
+                    "type": "string"
+                  },
+                  "quote": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "promise": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "amount",
+                "date",
+                "method",
+                "quote",
+                "invoiceNumbers"
+              ],
+              "properties": {
+                "amount": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "YYYY-MM-DD"
+                },
+                "method": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "quote": {
+                  "type": "string"
+                },
+                "invoiceNumbers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Invoice numbers the promise covers, only numbers written in the email or a file; empty when none"
+                }
+              },
+              "description": "Only an unconditional, dated payment promise; else null"
+            },
+            "summary": {
+              "type": "string",
+              "description": "One or two Hebrew sentences; empty for לא רלוונטי"
+            },
+            "dispute": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "reason",
+                "invoiceNumbers",
+                "quote"
+              ],
+              "description": "A payment conditioned on a fix, or a claim that an invoice is wrong; else null",
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "מחיר",
+                    "תעודת משלוח חסרה",
+                    "כמות",
+                    "איכות או החזרה",
+                    "לא הוזמן",
+                    "אחר"
+                  ]
+                },
+                "invoiceNumbers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "quote": {
+                  "type": "string"
+                }
+              }
+            },
+            "signature": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "The sender's signature block / letterhead / logo text, as written. Filled for every email that has one; null when there is none",
+              "required": [
+                "companyName",
+                "personName",
+                "title",
+                "logoText",
+                "quote"
+              ],
+              "properties": {
+                "companyName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Company name as written in the signature or logo, else null"
+                },
+                "personName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Job title as written, e.g. מנהלת חשבונות"
+                },
+                "logoText": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Text of a logo / letterhead image or attachment, when given in the brief"
+                },
+                "quote": {
+                  "type": "string",
+                  "description": "The signature block word for word"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "InboxStepApply",
+      "actionTypeId": "ApplyMailClassification",
+      "input": {
+        "inboundEmailId": "{{InboxStepIngest.inboundEmailId}}",
+        "classification": "{{InboxStepMaya}}",
+        "classifiedBy": "מאיה",
+        "dryRun": false
+      }
+    }
+  ],
+  "conditionNodes": [
+    {
+      "name": "InboxStepIsReply",
+      "conditionExpression": "InboxStepIngest.isThreadReply === true"
+    },
+    {
+      "name": "InboxStepIsNew",
+      "conditionExpression": "InboxStepIngest.shouldProcess === true && InboxStepIngest.isThreadReply !== true"
+    }
+  ],
+  "edges": [
+    {
+      "name": "ingest-to-isreply",
+      "source": "InboxStepIngest",
+      "target": "InboxStepIsReply"
+    },
+    {
+      "name": "isreply-to-reply",
+      "source": "InboxStepIsReply",
+      "target": "InboxStepReply",
+      "label": "true"
+    },
+    {
+      "name": "ingest-to-isnew",
+      "source": "InboxStepIngest",
+      "target": "InboxStepIsNew"
+    },
+    {
+      "name": "isnew-to-attachments",
+      "source": "InboxStepIsNew",
+      "target": "InboxStepAttachments",
+      "label": "true"
+    },
+    {
+      "name": "attachments-to-maya",
+      "source": "InboxStepAttachments",
+      "target": "InboxStepMaya"
+    },
+    {
+      "name": "maya-to-apply",
+      "source": "InboxStepMaya",
+      "target": "InboxStepApply"
+    }
+  ]
+}

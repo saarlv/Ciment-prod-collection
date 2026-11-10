@@ -1,0 +1,337 @@
+{
+  "name": "GetWeekBrief",
+  "type": "code",
+  "description": "Read only. What the home screen (היום) shows. aging = the calendar week (Sunday to Saturday, Asia/Jerusalem) as seen by the aging report: open invoices that fall due this week (open amount net of payments the app already saw), commitments dated this week (CustomerNotes התחייבות לתשלום, with outcome פתוחה / קוימה / קוימה חלקית / לא קוימה), disputes (בירור notes) whose follow-up date falls this week, commitments not kept, and the biggest overdue customers with no note in the last 14 days; plus deterministic Hebrew conclusions (a headline and up to 6 short sentences) and KPIs. receipts = today's bank work day (same day rule as the receipts screen: the Israel date, Friday/Saturday count as Thursday): the files, how many credit transfers were pulled, how many are matched (approved or done in Priority), how many wait for a decision, how many are still to match, unidentified and bounced. bookkeeperName limits both parts to one bookkeeper's customers (CustomerOwners override, else Priority).",
+  "iconName": "calendar-days",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "bookkeeperName": {
+        "type": "string",
+        "description": "Only this bookkeeper's customers; omit for everyone"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": "YYYY-MM-DD"
+      },
+      "dataAsOf": {
+        "type": "string",
+        "description": "Latest Invoices.syncedAt (ISO) or null"
+      },
+      "week": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "description": "Sunday YYYY-MM-DD"
+          },
+          "end": {
+            "type": "string",
+            "description": "Saturday YYYY-MM-DD"
+          },
+          "label": {
+            "type": "string",
+            "description": "Hebrew label, e.g. 25.10–31.10"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "description": "YYYY-MM-DD"
+                },
+                "weekday": {
+                  "type": "string",
+                  "description": "א׳ … ש׳"
+                },
+                "isToday": {
+                  "type": "boolean",
+                  "description": ""
+                },
+                "isPast": {
+                  "type": "boolean",
+                  "description": ""
+                },
+                "itemCount": {
+                  "type": "number",
+                  "description": ""
+                },
+                "amount": {
+                  "type": "number",
+                  "description": "ILS of the day's items (due invoices + promises)"
+                }
+              }
+            },
+            "description": "Sunday..Saturday"
+          }
+        }
+      },
+      "aging": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string",
+            "description": "One Hebrew sentence, the bottom line for the week (built by code)"
+          },
+          "conclusions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Up to 6 short Hebrew sentences, most important first"
+          },
+          "kpis": {
+            "type": "object",
+            "properties": {
+              "dueThisWeekAmount": {
+                "type": "number",
+                "description": ""
+              },
+              "dueThisWeekCount": {
+                "type": "number",
+                "description": "Invoices"
+              },
+              "dueThisWeekCustomers": {
+                "type": "number",
+                "description": ""
+              },
+              "promisedThisWeekAmount": {
+                "type": "number",
+                "description": ""
+              },
+              "promisedThisWeekCount": {
+                "type": "number",
+                "description": ""
+              },
+              "promisesSeenAmount": {
+                "type": "number",
+                "description": "Of this week's promises, ILS already seen in the bank"
+              },
+              "brokenPromisesCount": {
+                "type": "number",
+                "description": ""
+              },
+              "claimedPaidOpenAmount": {
+                "type": "number",
+                "description": ""
+              },
+              "claimedPaidOpenCount": {
+                "type": "number",
+                "description": "Invoices"
+              },
+              "disputesFollowUpCount": {
+                "type": "number",
+                "description": ""
+              },
+              "overdueTotal": {
+                "type": "number",
+                "description": "Open ILS already past due"
+              },
+              "overdueNoNoteAmount": {
+                "type": "number",
+                "description": ""
+              },
+              "overdueNoNoteCustomers": {
+                "type": "number",
+                "description": ""
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Stable key"
+                },
+                "date": {
+                  "type": "string",
+                  "description": "YYYY-MM-DD in the week, or null for claims with no date"
+                },
+                "kind": {
+                  "type": "string",
+                  "description": "פירעון / הבטחת תשלום / שולם לטענת הלקוח / בירור / הבטחה שהופרה"
+                },
+                "customerCode": {
+                  "type": "string",
+                  "description": ""
+                },
+                "customerName": {
+                  "type": "string",
+                  "description": ""
+                },
+                "bookkeeperName": {
+                  "type": "string",
+                  "description": ""
+                },
+                "invoiceNumbers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": ""
+                },
+                "amount": {
+                  "type": "number",
+                  "description": ""
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Short Hebrew status, e.g. פתוחה, נראה תשלום, הופרה, לא נראה בבנק, יש הערה"
+                },
+                "noteText": {
+                  "type": "string",
+                  "description": "Latest note text (or the promise note), when there is one"
+                },
+                "noteType": {
+                  "type": "string",
+                  "description": ""
+                },
+                "promiseId": {
+                  "type": "string",
+                  "description": ""
+                },
+                "noteId": {
+                  "type": "string",
+                  "description": ""
+                }
+              }
+            },
+            "description": "Every week item, sorted by date then amount desc"
+          },
+          "overdueNoNote": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "customerCode": {
+                  "type": "string",
+                  "description": ""
+                },
+                "customerName": {
+                  "type": "string",
+                  "description": ""
+                },
+                "bookkeeperName": {
+                  "type": "string",
+                  "description": ""
+                },
+                "overdueAmount": {
+                  "type": "number",
+                  "description": ""
+                },
+                "oldestDueDate": {
+                  "type": "string",
+                  "description": ""
+                },
+                "lastNoteAt": {
+                  "type": "string",
+                  "description": "ISO or null"
+                }
+              }
+            },
+            "description": "Top 5 by overdue amount"
+          }
+        }
+      },
+      "receipts": {
+        "type": "object",
+        "properties": {
+          "workDay": {
+            "type": "string",
+            "description": "YYYY-MM-DD"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": ""
+                },
+                "fileName": {
+                  "type": "string",
+                  "description": ""
+                },
+                "extractionStatus": {
+                  "type": "string",
+                  "description": ""
+                },
+                "checkStatus": {
+                  "type": "string",
+                  "description": ""
+                },
+                "uploadedAt": {
+                  "type": "string",
+                  "description": ""
+                }
+              }
+            },
+            "description": ""
+          },
+          "pulled": {
+            "type": "number",
+            "description": "Credit transfers read from today's files (bounced cheques excluded)"
+          },
+          "pulledAmount": {
+            "type": "number",
+            "description": ""
+          },
+          "matched": {
+            "type": "number",
+            "description": "Approved or done in Priority"
+          },
+          "matchedAmount": {
+            "type": "number",
+            "description": ""
+          },
+          "waitingDecision": {
+            "type": "number",
+            "description": "Have a proposal waiting for a person"
+          },
+          "toMatch": {
+            "type": "number",
+            "description": "pulled - matched"
+          },
+          "toMatchAmount": {
+            "type": "number",
+            "description": ""
+          },
+          "unidentified": {
+            "type": "number",
+            "description": ""
+          },
+          "notChecked": {
+            "type": "number",
+            "description": "Not checked yet (ממתינה לבדיקה) or file not verified"
+          },
+          "bounced": {
+            "type": "number",
+            "description": ""
+          },
+          "summary": {
+            "type": "string",
+            "description": "One Hebrew sentence"
+          }
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening the home screen**: The \"היום\" screen of the collections workspace runs it once as soon as it opens (the last result for the same view shows instantly while the fresh one loads), again when the user switches the top-bar filter between \"שלי\" and \"של כולם\", and when the user clicks \"רענון\" at the top of the screen\n  Fills the whole screen: on the right the week at a glance (\"השבוע במבט אחד\") for this calendar week from the aging report (the headline, the short list of conclusions, the four totals, the week board by day with every invoice due, promise, claimed payment and query, and the customers overdue with no note), and on the left Nina's short summary of today's bank transfers (how many were pulled, how many are already matched and how many are left to match)."
+}

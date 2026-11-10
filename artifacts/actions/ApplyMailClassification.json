@@ -1,0 +1,111 @@
+{
+  "name": "ApplyMailClassification",
+  "type": "code",
+  "description": "Checks Maya's structured sorting of one inbound email and routes it by code (component 04). classification may arrive as an object or a JSON string. Checks: every quote (type, invoice, promise) must appear in the subject, body or extracted attachment text (normalised whitespace / punctuation), otherwise the item is rejected; customerCode must be one of classificationQuotes.candidates written by IngestEmail, otherwise rejected; each invoice must belong to that customer. Rejections are stored in classificationQuotes.rejected with the reason. Verification stays the code's (a CustomerContacts row of that customer flagged isApContact, or a SalesAgent authorised for the customer); Maya never sets it; identifiedBy כתובת when verified. Unknown sender (not מאומת, not an insurer / agent / logistics address): Maya's signature is stored (signatureText = its verified quote; classificationQuotes.signature with companyName, personName, title, logoText, quote, verified and the suggestion) and its company name / logo text is matched against Customers names and approved BankAliases (normalised) → suggestedCustomerCode, identifiedBy חתימה; the verify-sender task is titled 'זה הלקוח <name>?' with the signature, title and logo text; no PDF until a person confirms (ConfirmSender). Writes categories (folder order 1–5, אישור ביטוח אשראי, then הבטחת תשלום, אחר, לא רלוונטי), category = the first, senderRole, agentSummary, classificationQuotes, classifiedBy מאיה, customer + bookkeeper from the data, and an Interactions row. Routing per type: כרטסת / חובות פתוחים → verified: GenerateStatementPdf logic (כרטסת from LedgerEntries, חובות פתוחים from OpenMovements – the same builder as the preview; an empty OpenMovements table makes no PDF and no draft, only an error), reply draft with the PDF on the same thread: subject 'Re: <original subject>' (no second Re:) + ' [CIM-<id>]', Approvals.inboundEmailId = the email's messageId (In-Reply-To), Approvals.threadId = its threadId; not verified: task לאמת שולח, no PDF. Auto-reply (AgentSettings mailAutoReplyAt): empty = OFF (default) – the draft waits for one-click approval; a number – when the reply is only statement PDFs, the sender is מאומת (identification confidence 100) and 100 ≥ the threshold, the draft is approved through the same decision logic as DecideApproval (status אושר – לא נשלח, decidedBy 'שליחה אוטומטית (מערכת)', the email נענתה with answeredAt) and the email is closed טופל by מערכת; output autoReply reports the check (threshold, confidence, on, reason, approvalId, approved). There is no real send. תעודות וחשבוניות חסרות → only a manual task 'תעודות / חשבוניות חסרות – טיפול ידני' (taskKey manual:docs-manual:<emailId>); הפרש מחיר → only a manual task 'זיכוי / הפרש מחיר – טיפול ידני' (manual:price-manual:<emailId>); both carry Maya's quotes and the invoice numbers, the email stays לא טופל and lists the task in classificationQuotes.manualTasks (CheckInvoiceDocuments / AnalyzePriceGap / CreatePriceApprovalRequest are no longer called). אישור ביטוח אשראי (Maya's type, or any mail from an AgentSettings insurerSenders address) → linked to the customer's open CreditLimitRequests row (הוגשה למבטח / ממתינה להגשה; by ח.פ in the text, the customer, or the customer name): linkedTable CreditLimitRequests, linkedId, classificationQuotes.insurance, handlingState ממתין, waitingFor 'ממתין לאישור סכום בבקשת הביטוח'; nothing is approved – a person approves the amount in the insurance screen; no open request → task 'אחר' (source ביטוח, manual:insurance-unlinked:<emailId>) for the bookkeeper. פירוט תשלום → links to the customer (IdentifyCustomers' recent-mail rung reads it), ממתין, 'ממתין להתאמת התקבול'. הבטחת תשלום → no promise is recorded and no draft: when Maya's promise has a verified quote, an amount and a date, it is stored as a proposal in classificationQuotes.promise (amount, date, method, invoiceNumbers that belong to the customer, quote, verified, status 'ממתינה לאישור'); the email stays לא טופל with waitingFor 'ממתין לאישור הבטחה', and its inbox task is titled 'לאשר הבטחה מהמייל'. A person approves it in the email panel (AddCustomerNote with sourceEmailId → one CustomerNotes commitment note for its due month through the notes engine). dispute (a conditional payment or a claim the invoice is wrong) with a verified quote → one CustomerNotes row per due month of the quoted open invoices (אחר, customTypeLabel 'בירור – <reason>', noteSource מאיה ממייל, sourceEmailId), once per email and month, stored in classificationQuotes.dispute (noteIds); a conditional payment never becomes a promise. אחר → short acknowledgement draft + task. לא רלוונטי → body, attachments text and summary deleted, handlingState טופל by מערכת. Every draft goes to the outbox (Approvals) through the shared outbox helper: component פניות / תעודות / מחירים, referenceCode CIM-<id>, ' [CIM-<id>]' at the end of the subject, mailboxId, signed by the customer's bookkeeper. When classification is missing or unparseable (Maya failed): category אחר, handlingState לא טופל, classifiedBy קוד, and a task for the bookkeeper. Idempotent per email (a rerun – also ConfirmSender's re-route – keeps the sender decision, the approved promise and the manual tasks). Sends nothing, never writes to Priority.",
+  "iconName": "route",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailId"
+    ],
+    "properties": {
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id"
+      },
+      "classification": {
+        "description": "Maya's structured output (object or JSON string): { types[{type, quote}], customerCode, senderRole, invoices[{invoiceNumber, quote}], promise {amount, date, method, quote} | null, summary }"
+      },
+      "classifiedBy": {
+        "type": "string",
+        "enum": [
+          "מאיה",
+          "קוד"
+        ],
+        "default": "מאיה"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "handlingState": {
+        "type": "string"
+      },
+      "waitingFor": {
+        "type": "string"
+      },
+      "rejected": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "drafts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ approvalId, referenceCode, kind, to }"
+      },
+      "tasks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "customerNotes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "routes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ type, result } per type"
+      },
+      "summary": {
+        "type": "string",
+        "description": "Hebrew one-liner: what was prepared and what waits for the bookkeeper"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "autoReply": {
+        "type": "object",
+        "description": "mailAutoReplyAt check of the reply draft (null when no draft was written): threshold (null = OFF), confidence, on, reason, approvalId, approved",
+        "additionalProperties": true
+      }
+    }
+  },
+  "exposedToUI": false
+}

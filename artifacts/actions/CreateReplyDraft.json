@@ -1,0 +1,74 @@
+{
+  "name": "CreateReplyDraft",
+  "type": "code",
+  "description": "Creates (or replaces, while still ממתין) the one reply draft for an InboundEmails row in Approvals: kind מענה ללקוח, recipient = the original sender, fromMailbox = the mailbox it arrived in, draftedBy מאיה, status ממתין, signed in the owning bookkeeper's name (added here, from the data). Rules enforced here: a PDF attachment or a כרטסת / חובות פתוחים reply is refused unless senderVerification is מאומת. Sets the email's status to טיוטה מוכנה. There is no send: approval (DecideApproval) stops at אושר – לא נשלח.",
+  "iconName": "mail-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailId",
+      "body",
+      "reason"
+    ],
+    "properties": {
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id"
+      },
+      "subject": {
+        "type": "string",
+        "description": "Default: 'Re: ' + the original subject"
+      },
+      "body": {
+        "type": "string",
+        "description": "Hebrew reply body without signature (the signature is added from the data)"
+      },
+      "reason": {
+        "type": "string",
+        "description": "Why Maya proposes this reply, from the data"
+      },
+      "attachmentUrls": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "PDF urls from GenerateStatementPdf"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "approval": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "replaced": {
+        "type": "boolean"
+      },
+      "refused": {
+        "type": "boolean"
+      },
+      "refusalReason": {
+        "type": "string"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

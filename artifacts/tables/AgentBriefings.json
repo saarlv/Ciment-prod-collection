@@ -1,0 +1,116 @@
+{
+  "name": "AgentBriefings",
+  "description": "Agent briefings",
+  "technicalDescription": "Morning briefings written by Nina after the morning uploads, per bookkeeper or for everyone.",
+  "iconName": "newspaper",
+  "columns": [
+    {
+      "name": "briefingDate",
+      "type": "date",
+      "description": "Briefing date"
+    },
+    {
+      "name": "agentName",
+      "type": "string",
+      "description": "Agent display name"
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "description": "Bookkeeper display name, or כולם"
+    },
+    {
+      "name": "headline",
+      "type": "string",
+      "description": "One-line headline"
+    },
+    {
+      "name": "body",
+      "type": "string",
+      "description": "Briefing body (markdown)"
+    },
+    {
+      "name": "counts",
+      "type": "object",
+      "description": "Counts behind the briefing",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "bankLines": {
+            "type": "number"
+          },
+          "certainMatches": {
+            "type": "number"
+          },
+          "toReview": {
+            "type": "number"
+          },
+          "unidentified": {
+            "type": "number"
+          },
+          "bouncedChecks": {
+            "type": "number"
+          },
+          "promisesDue": {
+            "type": "number"
+          },
+          "promisesSeen": {
+            "type": "number"
+          },
+          "promisesKept": {
+            "type": "number"
+          },
+          "promisesPartial": {
+            "type": "number"
+          },
+          "promisesBroken": {
+            "type": "number"
+          },
+          "insuranceAlerts": {
+            "type": "number"
+          },
+          "inboxDueSoon": {
+            "type": "number"
+          },
+          "openTasks": {
+            "type": "number"
+          },
+          "receiptsApprovedToday": {
+            "type": "number"
+          },
+          "debtClosedZero": {
+            "type": "number"
+          },
+          "debtToClarify": {
+            "type": "number"
+          },
+          "waitingAllocation": {
+            "type": "number"
+          },
+          "escalatedDocumentCases": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "name": "triggeredByImportId",
+      "type": "string",
+      "description": "Import batch that triggered the briefing (text link to ImportBatches.id)"
+    },
+    {
+      "name": "briefingCreatedAt",
+      "type": "datetime",
+      "description": "When the briefing was written"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "headline"
+}

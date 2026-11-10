@@ -1,0 +1,225 @@
+{
+  "name": "GetCustomer360",
+  "type": "code",
+  "description": "Read only. Everything about one customer in one call: the customer card with the owning bookkeeper (CustomerOwners override, else Priority), contacts, invoices with delivery-note scan counts, receipts, bank lines and match proposals, customer notes, disputes, approvals, credit-limit requests, inbound emails and interactions, plus one merged timeline (newest first) and the customer's aging row from the same rules as BuildAgingReport. customerNotes[] = the customer's CustomerNotes, newest first, with status / outcome / amountReceived / amountRemaining; openMonths[] = per due month the openTotal and movementCount from OpenMovements and the number of active notes. kpis.openPromises / openCommitments count the open commitments. Each invoice carries the invoice layer: paymentState, paidSeenAmount, paidSeenAt, effectiveOpenAmount (open net of payments seen), paymentStatus, remainingAmount and receipts[] {receiptKey, amount, valueDate, status, priorityReceiptNumber}. receipts[] = the customer's Receipts, newest first, each with allocations[] (invoice, amount, kind, source), covered[] {invoiceNumber, dueDate, amount, isPartial, openAfter}, stillOpen[] {invoiceNumber, dueDate, dueMonth, openAmount} and stillOpenTotal – for 'שילמת על X, Y, Z ולא על א, ב, ג'. openInvoices[] = the customer's open invoices now (OpenMovements of type חשבונית minus every ReceiptAllocations row, the same rule as ProposeAllocation) with the receipts that paid part of each. insured (boolean: the customer has a cover in CreditCovers) tells the card whether to show the אובליגו וביטוח tab, whose content comes from GetCreditExposure.",
+  "iconName": "user-round-search",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "customerCode"
+    ],
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Customer code"
+      },
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem",
+        "format": "date"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "customer": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "insured": {
+        "type": "boolean",
+        "description": "The customer has a cover in CreditCovers: show the אובליגו וביטוח tab (its content comes from GetCreditExposure)"
+      },
+      "bookkeeperName": {
+        "type": "string",
+        "description": ""
+      },
+      "contacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "invoices": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Every invoice with the live layer: paymentState, paidSeenAmount, effectiveOpenAmount, remainingAmount (= effectiveOpenAmount), paymentStatus (פתוחה / שולמה חלקית / שולמה), receiptKeys, isPaid, latestNote*, notesCount, delivery-note scan counts, and receipts[] {receiptKey, amount (allocated to this invoice), valueDate, receiptStatus, matchStatus, priorityReceiptNumber, kind, source}, newest first. Since 01.11 every closed invoice (isPaid) also carries closedAt (date of the last closing receipt, else the Priority status date) and closingReceipts[] {source: שלנו | Priority, receiptKey, priorityReceiptNumber, date, method, amount (the part of the receipt applied to this invoice), status, isEstimate (true when a Priority receipt covering several invoices was spread oldest due date first)}: our ReceiptAllocations plus Priority receipts from the Payments mirror whose matchedInvoiceNumbers include the invoice, a Priority copy of one of our receipts counted once (the same rule as the promise engine). closedWithoutReceipt = true when the invoice is closed and no receipt covers its amount (credit note or write-off). Since 01.11 (fix) EVERY invoice, open or closed, carries paidAmount = the receipts applied to it (the same receipts-only rule as closingReceipts) and paidReceipts[] (same shape as closingReceipts); the card's שולם column reads paidAmount. paidSeenAmount stays the layer field for money seen and not yet in Priority"
+      },
+      "payments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "bankLines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "matchProposals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "disputes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "approvals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "creditRequests": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "inboundEmails": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "interactions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": ""
+      },
+      "aging": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "kpis": {
+        "type": "object",
+        "properties": {
+          "openBalance": {
+            "type": "number",
+            "description": ""
+          },
+          "overdue": {
+            "type": "number",
+            "description": ""
+          },
+          "openPromises": {
+            "type": "number",
+            "description": "Open commitments (same as openCommitments, kept for older screens)"
+          },
+          "insuranceUsePct": {
+            "type": "number",
+            "description": "Dynamic obligo / insured amount of the cover in תקף, % one decimal; null without one"
+          },
+          "lastPaymentDate": {
+            "type": "string",
+            "description": ""
+          },
+          "openCommitments": {
+            "type": "number",
+            "description": "Active commitments (התחייבות לתשלום) with outcome פתוחה"
+          }
+        }
+      },
+      "timeline": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "string",
+              "description": "ISO date or datetime"
+            },
+            "kind": {
+              "type": "string",
+              "description": "חשבונית, קבלה, הבטחה, הערה, פנייה, מקרה, אישור, ביטוח, שורת בנק, אינטראקציה"
+            },
+            "title": {
+              "type": "string",
+              "description": ""
+            },
+            "amount": {
+              "type": "number",
+              "description": ""
+            },
+            "status": {
+              "type": "string",
+              "description": ""
+            },
+            "relatedTable": {
+              "type": "string",
+              "description": ""
+            },
+            "relatedId": {
+              "type": "string",
+              "description": ""
+            }
+          }
+        },
+        "description": ""
+      },
+      "receipts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "The customer's Receipts, newest first: receiptKey, amount, allocatedAmount, unallocatedAmount, receiptStatus, matchStatus, allocations[] (the rows), and since stage 6 covered[] {invoiceNumber, dueDate, amount, isPartial, openAfter}, stillOpen[] {invoiceNumber, dueDate, dueMonth, openAmount}, stillOpenTotal"
+      },
+      "openInvoices": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Open invoices now: { invoiceNumber, invoiceDate, dueDate, dueMonth, invoiceAmount, openInPriority, allocated (by our receipts), openBalance, receipts[{receiptKey, amount}] }, oldest due first"
+      },
+      "customerNotes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "The customer's CustomerNotes, newest first, with status, outcome, amountReceived and amountRemaining"
+      },
+      "openMonths": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Per due month: dueMonth, openTotal and movementCount from OpenMovements, activeNotes"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening a customer card**: Clicking any customer name anywhere in the app opens the customer card, which runs it on load (the last card for that customer shows instantly while the fresh one loads)\n  Fills the header (balance, Priority credit limit, insured-limit use for insured customers, owner, sales agent, status, payment terms, payment method, collection note), the customer's aging row, the single timeline, contacts, the invoices tab (with partly paid invoices and their receipts; the \"שולם\" column shows how much receipts have paid on each invoice, and hovering it lists those receipts with their number, date and amount, marking estimates), the receipts tab (each receipt beside the invoices it closed), and decides whether the \"אובליגו וביטוח\" tab is shown (only for customers with credit insurance).\n- **After saving a promise or a note on the customer card**: Runs again right after \"הוספת הבטחה\" or \"הוספת הערה\" succeeds\n  So the new promise or note appears on the card immediately.",
+  "toolEffect": "read-only"
+}

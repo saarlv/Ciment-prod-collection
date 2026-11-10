@@ -1,0 +1,55 @@
+{
+  "name": "VerifySender",
+  "type": "code",
+  "description": "Read-only. Checks whether an email address is a registered accounts-payable contact (CustomerContacts flagged isApContact – a Priority row or one added here, source נוסף אצלנו) of a customer. מאומת = exact address of an isApContact contact of that customer (or, with no customer given, of exactly one customer); לבדיקה = the address is a contact of the customer not flagged isApContact, belongs to a different customer, or only the domain matches a contact; לא מאומת = no match. A statement or open-debts PDF may go only to a מאומת sender. Writes nothing.",
+  "iconName": "shield-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "fromAddress"
+    ],
+    "properties": {
+      "fromAddress": {
+        "type": "string",
+        "description": "Sender address, bare or 'Name <address>'"
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Customer the email is about, when known"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "מאומת",
+          "לא מאומת",
+          "לבדיקה"
+        ]
+      },
+      "address": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "contactName": {
+        "type": "string"
+      },
+      "contactRoles": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string",
+        "description": "Hebrew explanation from the data"
+      }
+    }
+  },
+  "exposedToUI": false
+}

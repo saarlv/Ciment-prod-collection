@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "src/layout.tsx",
+    "src/root.tsx",
+    "vite-plugin-generate-app-index.route-tree.tsx",
+    "src/pages/**/*.tsx",
+    "src/routes/**/*.{ts,tsx}"
+  ],
+  "project": ["src/**/*.ts", "src/**/*.tsx"],
+  "ignore": [],
+  "ignoreFiles": [
+    "src/components/ui/**",
+    "src/hooks/**",
+    "src/types/**",
+    "src/lib/**"
+  ]
+}

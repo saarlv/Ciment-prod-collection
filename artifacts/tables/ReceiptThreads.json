@@ -1,0 +1,102 @@
+{
+  "name": "ReceiptThreads",
+  "description": "Receipt record correspondence",
+  "technicalDescription": "The correspondence kept on a receipts record (an open ticket): the detail request Nina drafted and the person marked sent (nothing is really sent yet, TODO), the customer's reply once linked, and internal notes. One row per message, newest last. Not written since 08.11 (the detail request was removed; older data only); ResetReceiptsDay removes a day's rows.",
+  "iconName": "messages-square",
+  "columns": [
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "The transfer the thread belongs to"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "entryType",
+      "type": "string",
+      "description": "What the message is",
+      "enum": [
+        "בקשת פירוט",
+        "תשובת לקוח",
+        "הערה פנימית"
+      ]
+    },
+    {
+      "name": "direction",
+      "type": "string",
+      "description": "יוצא / נכנס / פנימי",
+      "enum": [
+        "יוצא",
+        "נכנס",
+        "פנימי"
+      ]
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "טיוטה; אושר – לא נשלח = the person pressed send, real sending is a TODO; התקבלה = a linked reply",
+      "enum": [
+        "טיוטה",
+        "אושר – לא נשלח",
+        "התקבלה"
+      ]
+    },
+    {
+      "name": "approvalId",
+      "type": "string",
+      "description": "Approvals row id of the outgoing draft (kind בקשת פירוט)"
+    },
+    {
+      "name": "inboundEmailId",
+      "type": "string",
+      "description": "InboundEmails row id of the reply"
+    },
+    {
+      "name": "toName",
+      "type": "string",
+      "description": "Recipient name (the customer's AP contact)"
+    },
+    {
+      "name": "toAddress",
+      "type": "string",
+      "description": "Recipient email"
+    },
+    {
+      "name": "subject",
+      "type": "string",
+      "description": "Subject"
+    },
+    {
+      "name": "body",
+      "type": "string",
+      "description": "Body"
+    },
+    {
+      "name": "byName",
+      "type": "string",
+      "description": "Who wrote or marked it (Nina for her draft)"
+    },
+    {
+      "name": "at",
+      "type": "datetime",
+      "description": "When"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "subject"
+}

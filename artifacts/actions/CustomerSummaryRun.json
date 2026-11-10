@@ -1,0 +1,127 @@
+{
+  "name": "CustomerSummaryRun",
+  "type": "dag",
+  "description": "Writes the daily customer summaries: PrepareCustomerSummaries computes each customer's facts and the prompt, Iris (CustomerCardAgent) writes a two-to-three-sentence summary and one suggested action per customer in one structured answer, and WriteCustomerSummaries checks it and upserts CustomerDailySummaries (code fallback for any customer the agent missed). Runs every morning from MorningRunPipeline for all customers with an open balance, task or promise, and on demand for one customer from the card. Nothing is sent and nothing is written to Priority.",
+  "iconName": "notebook-pen",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Only this customer (the card's refresh). Default: all customers with an open balance, task or promise"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests: YYYY-MM-DD"
+      }
+    }
+  },
+  "usageDescription": "This action is triggered by:\n\n- **Every morning, automatically**: The morning run asks Iris to write a short summary for every customer with an open balance, an open task or a promise\n  Each customer card then opens on Iris's summary of the account, with one suggested next step and the facts it is based on.\n- **Refreshing one customer's summary**: On a customer card (\"כרטיס לקוח\"), the user clicks \"רענן סיכום\" in Iris's summary at the top of the card (also offered when there is no summary yet)\n  Iris rewrites the summary for that customer only, from the latest invoices, notes, promises and emails, and the card shows the new text as soon as it is saved. Nothing is sent to the customer.",
+  "exposedToUI": true,
+  "output": "CustomerSummaryStepWrite",
+  "toolEffect": "mutation",
+  "actionNodes": [
+    {
+      "name": "CustomerSummaryStepPrepare",
+      "actionTypeId": "PrepareCustomerSummaries",
+      "input": {
+        "customerCode": "{{input.customerCode}}",
+        "asOfDate": "{{input.asOfDate}}"
+      }
+    },
+    {
+      "name": "CustomerSummaryStepIris",
+      "actionTypeId": "ai_tools/SendAgentMessage",
+      "input": {
+        "agentBlockId": "CustomerCardAgent",
+        "promptSummary": "איריס כותבת סיכום יומי קצר והצעה לפעולה לכל לקוח",
+        "threadId": "customer-summaries-{{CustomerSummaryStepPrepare.asOfDate}}-{{input.customerCode}}",
+        "threadTitle": "סיכום יומי ללקוחות {{CustomerSummaryStepPrepare.asOfDate}}",
+        "prompt": "{{CustomerSummaryStepPrepare.prompt}}",
+        "structuredOutputJsonSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "summaries"
+          ],
+          "properties": {
+            "summaries": {
+              "type": "array",
+              "description": "One entry per customer in the list",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "customerCode",
+                  "summary",
+                  "suggestedAction",
+                  "actionType"
+                ],
+                "properties": {
+                  "customerCode": {
+                    "type": "string",
+                    "description": "Exactly as in the list"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "description": "Two or three Hebrew sentences, facts from the list only"
+                  },
+                  "suggestedAction": {
+                    "type": "string",
+                    "description": "One Hebrew sentence: the single next step"
+                  },
+                  "actionType": {
+                    "type": "string",
+                    "enum": [
+                      "להתקשר",
+                      "לשלוח תזכורת",
+                      "לבדוק בירור",
+                      "לאשר הבטחה",
+                      "לטפל בתקבול",
+                      "לחכות למועד",
+                      "אין צורך בפעולה"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "CustomerSummaryStepWrite",
+      "actionTypeId": "WriteCustomerSummaries",
+      "input": {
+        "asOfDate": "{{CustomerSummaryStepPrepare.asOfDate}}",
+        "facts": "{{CustomerSummaryStepPrepare.facts}}",
+        "agentResult": "{{CustomerSummaryStepIris}}"
+      }
+    }
+  ],
+  "conditionNodes": [
+    {
+      "name": "CustomerSummaryHasCustomers",
+      "conditionExpression": "CustomerSummaryStepPrepare.hasCustomers === true"
+    }
+  ],
+  "edges": [
+    {
+      "name": "custsum-prepare-to-has",
+      "source": "CustomerSummaryStepPrepare",
+      "target": "CustomerSummaryHasCustomers"
+    },
+    {
+      "name": "custsum-has-to-iris",
+      "source": "CustomerSummaryHasCustomers",
+      "target": "CustomerSummaryStepIris",
+      "label": "true"
+    },
+    {
+      "name": "custsum-iris-to-write",
+      "source": "CustomerSummaryStepIris",
+      "target": "CustomerSummaryStepWrite"
+    }
+  ]
+}

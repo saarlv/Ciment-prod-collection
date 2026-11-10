@@ -1,0 +1,49 @@
+{
+  "name": "AgingByMonth",
+  "description": "Open balance per customer and due month",
+  "technicalDescription": "Customer × due month: total open amount and movement count from OpenMovements (plan 04.11, part A). The base of the aging report and the customer card's month table, so both show the same totals. A month whose total is 0 is the signal that closes its notes (CloseSettledNotes reads OpenMovements directly).",
+  "query": {
+    "from": {
+      "table": "OpenMovements",
+      "as": "m"
+    },
+    "select": [
+      {
+        "column": "m.customerCode",
+        "as": "customerCode"
+      },
+      {
+        "column": "m.customerName",
+        "as": "customerName"
+      },
+      {
+        "column": "m.dueMonth",
+        "as": "dueMonth"
+      },
+      {
+        "column": "m.amount",
+        "function": "sum",
+        "as": "openTotal"
+      },
+      {
+        "column": "m.id",
+        "function": "count",
+        "as": "movementCount"
+      },
+      {
+        "column": "m.syncedAt",
+        "function": "max",
+        "as": "syncedAt"
+      }
+    ],
+    "groupBy": [
+      "m.customerCode",
+      "m.customerName",
+      "m.dueMonth"
+    ]
+  },
+  "calculatedColumns": [],
+  "permission": {
+    "type": "public"
+  }
+}

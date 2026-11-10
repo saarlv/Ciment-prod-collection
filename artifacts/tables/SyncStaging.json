@@ -1,0 +1,39 @@
+{
+  "name": "SyncStaging",
+  "description": "Staging for SyncFromBrain invoice reads that ran out of time: raw Brain rows read so far, per run and form, so a resumed run can finish reading and apply everything in one go. Rows of a run are deleted once it applies or is abandoned.",
+  "iconName": "layers",
+  "columns": [
+    {
+      "name": "runId",
+      "type": "string",
+      "description": "SyncRuns.runId that started the read"
+    },
+    {
+      "name": "form",
+      "type": "string",
+      "description": "Source form",
+      "enum": [
+        "CINVOICES",
+        "AINVOICES"
+      ]
+    },
+    {
+      "name": "priorityKey",
+      "type": "string",
+      "description": "<form>:<IVNUM>"
+    },
+    {
+      "name": "payload",
+      "type": "object",
+      "description": "The raw Brain row (allow-listed source columns)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "uniqueKey": [
+    "runId",
+    "priorityKey"
+  ],
+  "defaultUpsert": true
+}

@@ -1,0 +1,80 @@
+{
+  "name": "ProposeInsuranceRequests",
+  "type": "code",
+  "description": "Credit-insurance increase proposals (בסס״ח), ground work only: no call to the insurer's API. As of asOfDate, every insured credit customer whose obligo has reached insuranceThresholdPct (AgentSettings, 80) of the insured limit (obligoUsed / insuranceApprovedAmount) and has no open request gets one CreditLimitRequests row in הוצעה ע״י הסוכנת, with the ICIC request preview in insurerFields: REGISTERED_NO (companyId), BUYER_NAME, BUYER_ADDRESS, SUM_REQUESTED = insured limit × (1 + insuranceIncreasePct/100), ORIG_COVER_NO (insurerCaseNumber), IND_DEBTS (Y when the aging report shows an overdue open invoice on asOfDate, else N), constants CURRENCY_CODE=NIS, COUNTRY_NO=916, PRODUCT_TYPE=1, and CREDIT_DAYS / PAYTERMS_CODE marked לא ידוע – לברר עם יניב. Increases only, never a new-customer request. dryRun returns the same proposals without writing. Since 27.10 the insurance fields are no longer on Customers: the insured limit is CreditCovers.insuredAmount of the customer's cover with status תקף, ORIG_COVER_NO is its coverNo, BUYER_ADDRESS stays Customers.address, and the obligo is the same dynamic obligo and threshold rule as GetCreditExposure (shared code), so a proposal and the ניצול גבוה alert always agree.",
+  "iconName": "shield-plus",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": "YYYY-MM-DD, default today in Israel"
+      },
+      "customerCodes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional: check only these customers"
+      },
+      "proposedBy": {
+        "type": "string",
+        "description": "Who asked for the check (the signed-in person's display name)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "thresholdPct": {
+        "type": "number"
+      },
+      "increasePct": {
+        "type": "number"
+      },
+      "checked": {
+        "type": "number"
+      },
+      "customers": {
+        "type": "array",
+        "description": "Every insured customer checked: code, name, insured limit, obligo, use %, outcome (הוצעה, מתחת לסף, יש בקשה פתוחה, אין מסגרת מבוטחת)",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "proposals": {
+        "type": "array",
+        "description": "The CreditLimitRequests rows (written, or that would be written on dryRun)",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "created": {
+        "type": "number"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Checking customers over the threshold**: \"בדיקת לקוחות מעל הסף\" on the credit insurance card of the \"היום\" screen\n  First runs as a preview: a small window lists every insured customer whose dynamic obligo reached the threshold of the insured amount and who has no open request, with the insured limit, the use percentage and the requested amount (or says there are none). Nothing is saved yet.\n- **Creating the proposals**: \"יצירת הצעות\" in that window\n  Saves one increase proposal per listed customer, recording the signed-in person as the one who asked, and refreshes the insurance card. Each proposal then waits for approval in the customer's \"אובליגו וביטוח\" tab. Nothing is sent to the insurer or written to Priority."
+}

@@ -1,0 +1,46 @@
+{
+  "name": "CreatePriceApprovalRequest",
+  "type": "code",
+  "description": "Internal email draft to the sales agent and the agent's manager (SalesAgents) for a מחיר case, with the per-line analysis of AnalyzePriceGap and the customer's email attached when there is one. Lands in Approvals (kind בקשת אישור מחיר, status ממתין, relatedTable Disputes); it is never sent. A pending draft for the case is replaced, not duplicated.",
+  "iconName": "mail-question",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "disputeId"
+    ],
+    "properties": {
+      "disputeId": {
+        "type": "string"
+      },
+      "requestedBy": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "approval": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true
+}

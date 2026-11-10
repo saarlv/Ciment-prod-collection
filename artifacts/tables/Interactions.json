@@ -1,0 +1,66 @@
+{
+  "name": "Interactions",
+  "description": "Per-customer contact timeline",
+  "iconName": "messages-square",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "occurredAt",
+      "type": "datetime",
+      "description": "When it happened"
+    },
+    {
+      "name": "type",
+      "type": "string",
+      "description": "Interaction type",
+      "enum": [
+        "דואל",
+        "WhatsApp",
+        "שיחה",
+        "הערה",
+        "תשלום",
+        "הבטחה",
+        "מחלוקת",
+        "הסלמה"
+      ]
+    },
+    {
+      "name": "direction",
+      "type": "string",
+      "description": "Direction",
+      "enum": [
+        "יוצא",
+        "נכנס",
+        "פנימי"
+      ]
+    },
+    {
+      "name": "actorName",
+      "type": "string",
+      "description": "סוכן הגבייה or a person's name"
+    },
+    {
+      "name": "summary",
+      "type": "string",
+      "description": "Summary (long text)"
+    },
+    {
+      "name": "relatedInvoiceNumbers",
+      "type": "string",
+      "description": "Related invoice numbers"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "summary"
+}

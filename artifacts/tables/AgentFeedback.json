@@ -1,0 +1,81 @@
+{
+  "name": "AgentFeedback",
+  "description": "Agent feedback",
+  "technicalDescription": "Structured right/wrong feedback on the receipts agents, given in the receipts panel: on the reader (BankFileReader) per extracted line or field, on Nina (CollectionsAgent) per checked line. No agent replies to it. A טעה row with valueCorrect is a ready eval golden. AgentFeedbackStats counts it per agent and week.",
+  "iconName": "thumbs-up",
+  "columns": [
+    {
+      "name": "agentName",
+      "type": "string",
+      "description": "Agent the feedback is about",
+      "enum": [
+        "BankFileReader",
+        "CollectionsAgent"
+      ]
+    },
+    {
+      "name": "importBatchId",
+      "type": "string",
+      "description": "Import batch (text link to ImportBatches.id)"
+    },
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "Bank line (text link to BankLines.bankLineId); empty for feedback on the whole file"
+    },
+    {
+      "name": "verdict",
+      "type": "string",
+      "description": "Verdict",
+      "enum": [
+        "צדק",
+        "טעה",
+        "הערה"
+      ]
+    },
+    {
+      "name": "field",
+      "type": "string",
+      "description": "Field that was wrong, e.g. amount, payerName, valueDate, customer, invoices"
+    },
+    {
+      "name": "valueGiven",
+      "type": "string",
+      "description": "What the agent gave"
+    },
+    {
+      "name": "valueCorrect",
+      "type": "string",
+      "description": "The correct value"
+    },
+    {
+      "name": "comment",
+      "type": "string",
+      "description": "Free note (also the file's comment thread)"
+    },
+    {
+      "name": "byName",
+      "type": "string",
+      "description": "Who gave the feedback"
+    },
+    {
+      "name": "byEmail",
+      "type": "string",
+      "description": "Their email"
+    },
+    {
+      "name": "at",
+      "type": "datetime",
+      "description": "When"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "verdict"
+}

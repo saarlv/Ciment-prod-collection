@@ -1,0 +1,156 @@
+{
+  "name": "CustomerNotes",
+  "description": "Customer notes by due month (ours): commitments, credit-card payments, cheques with a sales agent, call-backs and free notes",
+  "technicalDescription": "Our enrichment on the aging report (plan 04.11, part A). A payment promise is a note of type התחייבות לתשלום. One note belongs to one customer + one due month (dueMonth YYYY-MM). The four active types need actionDate and open a grouped task (CollectionQueue, key notes:<type>:<date>:<bookkeeper>) on the date from AgentSettings noteTask.*; any note may have reminderDate. A note closes automatically only when the month's open balance in OpenMovements reaches 0 (status נסגרה – החודש התאפס, closedAt) and stays as history. outcome / amountReceived / amountRemaining / checkedAt are set for commitments by CheckCommitments the day after actionDate, after the receipts run. legacyId is no longer used (the old tables were removed in wave 3). The customer link is the app's first real reference column; customerCode and customerName stay beside it because agents read them.",
+  "iconName": "sticky-note",
+  "columns": [
+    {
+      "name": "customer",
+      "type": "number",
+      "description": "Link to the customer row (real reference)",
+      "reference": {
+        "table": "Customers",
+        "column": "id",
+        "relationshipHint": "manyToOne"
+      }
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "noteCreatedAt",
+      "type": "datetime",
+      "description": "When the note was written"
+    },
+    {
+      "name": "dueMonth",
+      "type": "string",
+      "description": "The due month the note is about, YYYY-MM"
+    },
+    {
+      "name": "noteType",
+      "type": "string",
+      "description": "Note type: four active types open a task, אחר is free",
+      "enum": [
+        "התחייבות לתשלום",
+        "תשלום באשראי",
+        "צ׳ק אצל סוכן",
+        "חזור אליי",
+        "אחר"
+      ]
+    },
+    {
+      "name": "customTypeLabel",
+      "type": "string",
+      "description": "Free type label when noteType is אחר"
+    },
+    {
+      "name": "noteText",
+      "type": "string",
+      "description": "Note content"
+    },
+    {
+      "name": "actionDate",
+      "type": "date",
+      "description": "Commitment / payment / cheque / call-back date; required for the four active types"
+    },
+    {
+      "name": "reminderDate",
+      "type": "date",
+      "description": "Optional reminder date (any type)"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Optional amount in ILS (the promised amount for a commitment)"
+    },
+    {
+      "name": "balanceAtNote",
+      "type": "number",
+      "description": "The month's open balance when the note was written"
+    },
+    {
+      "name": "authorName",
+      "type": "string",
+      "description": "Who wrote it"
+    },
+    {
+      "name": "noteSource",
+      "type": "string",
+      "description": "Where the note came from",
+      "enum": [
+        "צוות",
+        "מאיה ממייל",
+        "תמר בכרטיס",
+        "מיגרציה"
+      ]
+    },
+    {
+      "name": "sourceEmailId",
+      "type": "string",
+      "description": "InboundEmails id when Maya created it from a mail"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Active until the month's balance is 0",
+      "enum": [
+        "פעילה",
+        "נסגרה – החודש התאפס",
+        "נסגרה ידנית"
+      ]
+    },
+    {
+      "name": "closedAt",
+      "type": "datetime",
+      "description": "When it closed"
+    },
+    {
+      "name": "outcome",
+      "type": "string",
+      "description": "Commitments only: result checked the day after actionDate",
+      "enum": [
+        "פתוחה",
+        "קוימה",
+        "קוימה חלקית",
+        "לא קוימה"
+      ]
+    },
+    {
+      "name": "amountReceived",
+      "type": "number",
+      "description": "Commitments: received since the note was written"
+    },
+    {
+      "name": "amountRemaining",
+      "type": "number",
+      "description": "Commitments: promised minus received"
+    },
+    {
+      "name": "checkedAt",
+      "type": "datetime",
+      "description": "When the commitment was last checked"
+    },
+    {
+      "name": "legacyId",
+      "type": "string",
+      "description": "Not used since wave 3 (08.11): the old tables it pointed to were removed"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "Test data"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "noteText"
+}

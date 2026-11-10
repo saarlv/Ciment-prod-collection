@@ -1,0 +1,68 @@
+{
+  "name": "PrioritySyncCursors",
+  "description": "One row per SyncPrioritySubforms scope (contacts, payments): where an unfinished read stopped, so the next run continues there.",
+  "iconName": "bookmark",
+  "columns": [
+    {
+      "name": "scope",
+      "type": "string",
+      "description": "Scope",
+      "enum": [
+        "contacts",
+        "payments"
+      ]
+    },
+    {
+      "name": "runId",
+      "type": "string",
+      "description": "SyncRuns.runId that started the current pass"
+    },
+    {
+      "name": "mode",
+      "type": "string",
+      "description": "Pass type",
+      "enum": [
+        "טעינה ראשונה",
+        "דלתא"
+      ]
+    },
+    {
+      "name": "phase",
+      "type": "string",
+      "description": "Where the pass is",
+      "enum": [
+        "רשימה",
+        "קריאת שורות",
+        "הושלם"
+      ]
+    },
+    {
+      "name": "cursor",
+      "type": "object",
+      "description": "Resume state: {lastCustomerKey} for contacts; {listSkip, pendingReceipts:[IVNUM], doneCount} for payments"
+    },
+    {
+      "name": "pendingCount",
+      "type": "number",
+      "description": "Items still to read in this pass"
+    },
+    {
+      "name": "lastFullReadAt",
+      "type": "datetime",
+      "description": "When the last complete read of this scope finished (needed before deletedInSource)"
+    },
+    {
+      "name": "updatedAt",
+      "type": "datetime",
+      "description": "Last cursor write"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "scope",
+  "uniqueKey": [
+    "scope"
+  ],
+  "defaultUpsert": true
+}

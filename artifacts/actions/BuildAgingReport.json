@@ -1,0 +1,407 @@
+{
+  "name": "BuildAgingReport",
+  "type": "code",
+  "description": "Aging engine (read only). For every customer with open documents or customer notes: debt by due date split into חוב קודם (due before the window), one column per window month (agingMonthsBack months back + the current month, + monthsForward), and חוב מאוחר (due after the window). Only invoices and credit notes create debt (documentType חשבונית / חשבונית זיכוי, openAmount ≠ 0); delivery notes never count. Notes for months after the window show in the חוב מאוחר column with their month label, notes before it in חוב קודם. Returns per customer total = prior + months + later and the check against Customers.ledgerBalance. Every cell (priorDebt, each month, laterDebt and laterDebt.byMonth) also lists its open invoices (invoices[], sorted by due date, numbered 1..n) and cell.notes / cellNotes = the CustomerNotes of that customer + due month; an active commitment not yet kept marks the cell (promises) and the customer (openPromises); invoices[].notes / latestNote / promise stay empty (notes are per due month, not per invoice). Each customer carries the customer's contact person (contact). dataAsOf = latest Invoices.syncedAt (when the mirror was last pulled from Priority). Open amounts are net of payments the app already saw (invoice layer: an approved receipt match not yet in Priority, or marked done in Priority after the last sync), so a matched invoice leaves the report at once; each invoice carries paymentState and paidSeenAmount, and the balance check against ledgerBalance accounts for those payments. Since 26.10 each customer also carries priorityStatus (סטטוס), collectionNote (הערה לגבייה), paymentMethod (אמצעי תשלום) and paymentTermsLabel (תנאי תשלום) from Customers; the window can go back (monthsBack) and forward (monthsForward); negative amounts stay as they are in their month cell (credit notes, and the unallocated part of our receipts at their value date as entries of kind קבלה לא מותאמת), never netted away; a fully paid invoice (paymentStatus שולמה) leaves the report and a partly paid one stays with its remainingAmount.",
+  "iconName": "calendar-range",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem",
+        "format": "date"
+      },
+      "monthsBack": {
+        "type": "number",
+        "description": "Months before the current month; default AgentSettings agingMonthsBack (3)"
+      },
+      "monthsForward": {
+        "type": "number",
+        "description": "Extra future months shown as columns; default 0"
+      },
+      "customerCodes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only these customers"
+      },
+      "bookkeeperName": {
+        "type": "string",
+        "description": "Only customers owned by this bookkeeper (CustomerOwners override, else Priority)"
+      },
+      "includeZero": {
+        "type": "boolean",
+        "description": "Include customers whose total is 0",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "description": ""
+      },
+      "dataAsOf": {
+        "type": "string",
+        "description": "Latest Invoices.syncedAt (ISO datetime): when the data was last pulled from Priority; null when unknown"
+      },
+      "window": {
+        "type": "object",
+        "properties": {
+          "monthsBack": {
+            "type": "number",
+            "description": ""
+          },
+          "monthsForward": {
+            "type": "number",
+            "description": ""
+          },
+          "monthKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": ""
+          },
+          "firstMonth": {
+            "type": "string",
+            "description": ""
+          },
+          "lastMonth": {
+            "type": "string",
+            "description": ""
+          }
+        }
+      },
+      "customers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "customerCode": {
+              "type": "string",
+              "description": ""
+            },
+            "customerName": {
+              "type": "string",
+              "description": ""
+            },
+            "contact": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "The customer's contact person for collections: {name, phone, email, role} from CustomerContacts (הנהלת חשבונות first) else Customers.apContact*; null when none"
+            },
+            "bookkeeperName": {
+              "type": "string",
+              "description": ""
+            },
+            "salesAgentName": {
+              "type": "string",
+              "description": ""
+            },
+            "priorDebt": {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "number",
+                  "description": ""
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": ""
+                },
+                "promises": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": ""
+                },
+                "invoices": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": "Open invoices in this cell (same shape as months[].invoices)"
+                },
+                "cellNotes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": "Whole-cell notes (same as months[].cellNotes)"
+                }
+              }
+            },
+            "months": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "monthKey": {
+                    "type": "string",
+                    "description": "YYYY-MM"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "Hebrew month label, e.g. נובמבר 2026"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Open ILS due in this month"
+                  },
+                  "notes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "CustomerNotes of this customer + due month, newest first"
+                  },
+                  "promises": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Promises whose promisedDate falls in this month"
+                  },
+                  "invoices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Open invoices due in this cell, sorted by due date: {index (1..n), id (invoice number, or the receiptKey), kind (חשבונית / חשבונית זיכוי / קבלה לא מותאמת), invoiceNumber (the receiptKey for a receipt entry), documentType, invoiceDate, dueDate, amount, openAmount (= remainingAmount: what is still open after our receipt allocations), remainingAmount, priorityOpenAmount (Priority's own open amount), paymentState, paidSeenAmount, paymentStatus (פתוחה / שולמה חלקית), receiptKeys, receipt (only for kind קבלה לא מותאמת: {receiptKey, bankLineId, amount, allocatedAmount, unallocatedAmount, status, valueDate, payerName, reference, priorityReceiptNumber}), status, sourceDocUrl, notes[] newest first (empty for a receipt entry), latestNote, promise (the open/last promise naming it: id, status, promisedDate, promisedAmount) }. A קבלה לא מותאמת entry has a negative amount/openAmount (−unallocatedAmount) and no notes or promise. The same shape is on priorDebt.invoices, laterDebt.invoices and laterDebt.byMonth[].invoices"
+                  },
+                  "cellNotes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Notes on the whole cell (no invoiceNumber) and notes on invoices that are no longer open, newest first. Same field on priorDebt and laterDebt"
+                  }
+                }
+              },
+              "description": ""
+            },
+            "laterDebt": {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "number",
+                  "description": ""
+                },
+                "notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": ""
+                },
+                "promises": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": ""
+                },
+                "invoices": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": "Open invoices due after the window (same shape as months[].invoices)"
+                },
+                "cellNotes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "description": "Whole-cell notes (same as months[].cellNotes)"
+                },
+                "byMonth": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "monthKey": {
+                        "type": "string",
+                        "description": ""
+                      },
+                      "label": {
+                        "type": "string",
+                        "description": ""
+                      },
+                      "amount": {
+                        "type": "number",
+                        "description": ""
+                      },
+                      "notes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        },
+                        "description": ""
+                      },
+                      "promises": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        },
+                        "description": ""
+                      },
+                      "invoices": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        },
+                        "description": ""
+                      },
+                      "cellNotes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        },
+                        "description": ""
+                      }
+                    }
+                  },
+                  "description": ""
+                }
+              }
+            },
+            "total": {
+              "type": "number",
+              "description": "prior + months + later. Includes negative entries as they are: credit notes and the unallocated part of our receipts (קבלה לא מותאמת, −unallocatedAmount at the receipt's value-date month). Fully paid invoices (remaining 0) are out; partly paid ones count with their remainingAmount"
+            },
+            "ledgerBalance": {
+              "type": "number",
+              "description": ""
+            },
+            "balanceDiff": {
+              "type": "number",
+              "description": "total − (ledgerBalance − paidSeenPending − unallocatedPending): Priority's ledger still carries the payments our receipts allocated but Priority has not caught up with, and does not yet carry the unallocated part of a receipt not issued / synced; 0 when coherent, before and after Priority catches up"
+            },
+            "balanceMatches": {
+              "type": "boolean",
+              "description": ""
+            },
+            "creditBalance": {
+              "type": "boolean",
+              "description": ""
+            },
+            "openPromises": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "description": ""
+            },
+            "isTestFixture": {
+              "type": "boolean",
+              "description": ""
+            },
+            "priorityStatus": {
+              "type": "string",
+              "description": "Customers.priorityStatus (סטטוס): פעיל / זמני / חסום; null when unknown"
+            },
+            "collectionNote": {
+              "type": "string",
+              "description": "Customers.collectionNote (הערה לגבייה), e.g. \"משלמים ב-30 לחודש\"; null when empty"
+            },
+            "paymentMethod": {
+              "type": "string",
+              "description": "Customers.paymentMethod (אמצעי תשלום); null when unknown"
+            },
+            "paymentTermsLabel": {
+              "type": "string",
+              "description": "Customers.paymentTermsLabel (תנאי תשלום), e.g. שוטף+60"
+            },
+            "paidSeenPending": {
+              "type": "number",
+              "description": "Our receipt allocations (and legacy approved matches) Priority does not show yet; netted out of the open amounts"
+            },
+            "unallocatedReceipts": {
+              "type": "number",
+              "description": "Sum of the unallocated parts of our receipts shown as negative קבלה לא מותאמת entries (positive number)"
+            },
+            "unallocatedPending": {
+              "type": "number",
+              "description": "Of unallocatedReceipts, the part Priority's ledger does not show yet (receipt מוכנה, or issued after the customer's last Invoices sync)"
+            }
+          }
+        },
+        "description": ""
+      },
+      "totals": {
+        "type": "object",
+        "properties": {
+          "priorDebt": {
+            "type": "number",
+            "description": ""
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "monthKey": {
+                  "type": "string",
+                  "description": ""
+                },
+                "amount": {
+                  "type": "number",
+                  "description": ""
+                }
+              }
+            },
+            "description": ""
+          },
+          "laterDebt": {
+            "type": "number",
+            "description": ""
+          },
+          "total": {
+            "type": "number",
+            "description": ""
+          },
+          "customers": {
+            "type": "number",
+            "description": ""
+          },
+          "unallocatedReceipts": {
+            "type": "number",
+            "description": "Sum of the customers' unallocated receipt parts (shown as negative entries)"
+          },
+          "paidSeenPending": {
+            "type": "number",
+            "description": "Sum of the customers' paidSeenPending"
+          }
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **No screen of the app runs it any more**: Since 05.11 the aging report (\"דוח גיול\") is built on the screen from the open balances pulled from Priority each morning, so opening it, changing the months or writing a note no longer runs this action\n  It stays available for the agents that read the old invoice-based report until they move to the new data."
+}

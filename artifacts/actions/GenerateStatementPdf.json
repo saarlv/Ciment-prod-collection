@@ -1,0 +1,79 @@
+{
+  "name": "GenerateStatementPdf",
+  "type": "code",
+  "description": "Builds the statement PDF for one customer, kind כרטסת (GetLedger data: LedgerEntries) or חובות פתוחים (GetOpenDebts data: the customer's OpenMovements rows, Priority's open movements per due month – never the old Invoices layer; while the OpenMovements table is empty no PDF is made and errors says the open movements were not pulled yet), from the one shared Hebrew RTL HTML template (code-actions/shared/collections-statement.ts) and converts it with the platform HtmlToPdf action. Every page carries the stamp 'תצוגה – נכון ל<date>'; numbers and dates are kept left-to-right inside the RTL page. Returns the protected PDF url; the same url is attached to the draft (Approvals.attachmentUrls) and shown in the preview, so the preview and the attachment are one file. Writes no table rows and sends nothing. The same builder feeds every caller (the preview, ApplyMailClassification's reply, the monthly batch).",
+  "iconName": "file-text",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "customerCode",
+      "kind"
+    ],
+    "properties": {
+      "customerCode": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "כרטסת",
+          "חובות פתוחים"
+        ]
+      },
+      "fromDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Ledger range start (כרטסת only)"
+      },
+      "toDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Ledger range end (כרטסת only)"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Default today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "Protected PDF url"
+      },
+      "fileName": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "asOfLabel": {
+        "type": "string",
+        "description": "The 'תצוגה – נכון ל…' stamp text"
+      },
+      "totals": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "rows": {
+        "type": "number"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true
+}

@@ -1,0 +1,183 @@
+{
+  "name": "Approvals",
+  "description": "Outbox: every outbound draft from every component, awaiting human approval",
+  "technicalDescription": "The outbox of component 04 (פניות): every draft any component writes (reply to customer, detail request, logistics request, price approval request, monthly open-debts batch, insurance). Each row carries referenceCode CIM-<id> (appended to the subject), the writing component and reply tracking. Approving moves it to אושר – לא נשלח; nothing is ever sent yet.",
+  "iconName": "badge-check",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "kind",
+      "type": "string",
+      "description": "Draft kind",
+      "enum": [
+        "דואל",
+        "WhatsApp",
+        "שיחה",
+        "בקשת זיכוי",
+        "הסלמה",
+        "בקשת הגדלת מסגרת",
+        "מענה ללקוח",
+        "בקשת פירוט",
+        "מנת חובות פתוחים",
+        "פנייה ללוגיסטיקה",
+        "בקשת אישור מחיר",
+        "הצעת קבלה"
+      ]
+    },
+    {
+      "name": "recipientName",
+      "type": "string",
+      "description": "Recipient name"
+    },
+    {
+      "name": "recipientContact",
+      "type": "string",
+      "description": "Recipient email/phone"
+    },
+    {
+      "name": "subject",
+      "type": "string",
+      "description": "Subject"
+    },
+    {
+      "name": "body",
+      "type": "string",
+      "description": "Body (long text)"
+    },
+    {
+      "name": "reason",
+      "type": "string",
+      "description": "Why the agent proposes this (long text)"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Approval status",
+      "enum": [
+        "ממתין",
+        "אושר",
+        "אושר – לא נשלח",
+        "אושר – לביצוע ב-Priority",
+        "בוצע",
+        "נדחה",
+        "נשלח"
+      ]
+    },
+    {
+      "name": "draftedBy",
+      "type": "string",
+      "description": "Drafted by"
+    },
+    {
+      "name": "draftedAt",
+      "type": "datetime",
+      "description": "Drafted at"
+    },
+    {
+      "name": "decidedBy",
+      "type": "string",
+      "description": "Decided by"
+    },
+    {
+      "name": "decidedAt",
+      "type": "datetime",
+      "description": "Decided at"
+    },
+    {
+      "name": "decisionNote",
+      "type": "string",
+      "description": "Decision note"
+    },
+    {
+      "name": "relatedTable",
+      "type": "string",
+      "description": "Table of the record this draft belongs to (e.g. Disputes, MatchProposals, InboundEmails)"
+    },
+    {
+      "name": "relatedId",
+      "type": "string",
+      "description": "Id of the related record, as text"
+    },
+    {
+      "name": "fromMailbox",
+      "type": "string",
+      "description": "Bookkeeper mailbox the reply would come from"
+    },
+    {
+      "name": "attachmentUrls",
+      "type": "string",
+      "description": "Attachment links (e.g. statement PDF), one per line"
+    },
+    {
+      "name": "batchId",
+      "type": "string",
+      "description": "Batch id when the draft is part of a batch (open-debts batch, certain-match batch)"
+    },
+    {
+      "name": "inboundEmailId",
+      "type": "string",
+      "description": "Inbound email this draft answers (text link to InboundEmails.messageId)"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "referenceCode",
+      "type": "string",
+      "description": "Reference CIM-<id> appended to the subject of every outbound message; an inbound reply carrying it is linked back to this row"
+    },
+    {
+      "name": "threadId",
+      "type": "string",
+      "description": "Provider thread id of the sent message (empty until real sending exists) or of the inbound mail it answers"
+    },
+    {
+      "name": "component",
+      "type": "string",
+      "description": "Which component wrote this draft",
+      "enum": [
+        "פניות",
+        "תקבולים",
+        "תעודות",
+        "מחירים",
+        "מנה חודשית",
+        "ביטוח"
+      ]
+    },
+    {
+      "name": "mailboxId",
+      "type": "string",
+      "description": "Mailboxes.id the message would be sent from (text link)"
+    },
+    {
+      "name": "lastReplyEmailId",
+      "type": "string",
+      "description": "InboundEmails.id of the latest reply linked to this message"
+    },
+    {
+      "name": "lastReplyAt",
+      "type": "datetime",
+      "description": "When the latest reply arrived"
+    },
+    {
+      "name": "replyCount",
+      "type": "number",
+      "description": "How many replies were linked to this message"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "subject"
+}

@@ -1,0 +1,67 @@
+{
+  "name": "ConfirmExtractedLines",
+  "type": "code",
+  "description": "\"אישור השורות והתחלת בדיקות\" on the receipts screen. A person confirms the extracted lines of a bank file: refuses when the file is not נקרא – לאימות (already אומת returns ok, idempotent) or when totalsCheck is לא תואם without totalsAcknowledged (\"בדקתי מול הבנק\"). Sets the batch extractionStatus אומת, status נכתב, checkStatus בבדיקה, verifiedBy/At, checkStartedBy/At, totalsAcknowledged, and every line without a checkStage to ממתינה לבדיקה. Returns the first line to check (lowest lineNo still ממתינה לבדיקה). Since plan 04.11 stage 4 (b/identify-receipt, bankLinesSource = קובץ): after confirming, it runs IdentifyCustomers on the file's העברה / זיכוי בנק lines (customer + confidence, draft receipts, stop) and returns its result in identify.",
+  "iconName": "check-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "importBatchId",
+      "verifiedBy"
+    ],
+    "properties": {
+      "importBatchId": {
+        "type": "string",
+        "description": "ImportBatches row id"
+      },
+      "verifiedBy": {
+        "type": "string",
+        "description": "Display name of the person"
+      },
+      "runIdentify": {
+        "type": "boolean",
+        "default": true,
+        "description": "Run IdentifyCustomers on the file's lines after confirming (default true; false only for the old-ladder tests)"
+      },
+      "totalsAcknowledged": {
+        "type": "boolean",
+        "description": "The person checked the file against the bank although the totals did not match"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report what would be written; nothing changes",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "identify": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "IdentifyCustomers result for the file's lines: counts, lines, errors"
+      },
+      "importBatchId": {
+        "type": "string"
+      },
+      "lineCount": {
+        "type": "number"
+      },
+      "firstBankLineId": {
+        "type": "string"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Confirming the lines of today's bank file**: Clicking \"אישור השורות וזיהוי לקוחות\" under the extracted lines on the \"תקבולים\" screen, when the bank lines source in the settings is \"קובץ\"\n  Marks the lines read from the uploaded bank file as checked and then identifies the customer of each transfer, so the lines appear in the identification list. When the file's totals do not match its summary, the person first ticks \"בדקתי מול הבנק\"."
+}

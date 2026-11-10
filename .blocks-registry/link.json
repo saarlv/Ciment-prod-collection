@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "link",
+  "type": "registry:ui",
+  "title": "Link (react-router shim)",
+  "description": "Deprecated backward-compatibility shim over react-router's Link that accepts href. Exists so legacy apps keep compiling — new code should import Link from 'react-router' directly.",
+  "meta": {
+    "version": "1.0.0",
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "level": "optional",
+        "description": "Brings the app's copy up to date and adds its version line.",
+        "files": {
+          "src/components/ui/link.tsx": "7cba2ecdd37fb3b6"
+        }
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "items/link/link.tsx",
+      "type": "registry:ui",
+      "target": "src/components/ui/link.tsx",
+      "content": "import React from 'react';\nimport { Link as ReactRouterLink, LinkProps } from 'react-router';\n\n/**\n * @deprecated Use `Link` from `react-router` directly instead.\n *\n * This component is kept for backward compatibility with existing apps.\n * New code should import Link directly from react-router:\n *\n * @example\n * ```tsx\n * // Preferred approach - use react-router directly\n * import { Link } from 'react-router';\n *\n * function Navigation() {\n *   const dashboardUrl = getPageUrl('Dashboard');\n *   return (\n *     <nav>\n *       <Link to={dashboardUrl}>Dashboard</Link>\n *     </nav>\n *   );\n * }\n * ```\n */\nexport const Link = ({\n  href,\n  to,\n  ...props\n}: Omit<LinkProps, 'to'> & { to?: LinkProps['to']; href?: string }) => {\n  return <ReactRouterLink {...props} to={to || href || ''} />;\n};\n\n// @blocks-registry link@1.0.0 — registry version, never edit this line\n"
+    }
+  ]
+}

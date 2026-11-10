@@ -1,0 +1,39 @@
+{
+  "name": "MorningRunPipeline",
+  "type": "dag",
+  "description": "The daily morning run (workflow MorningRun, Sun–Thu 07:30 Israel): writes the morning briefing (WriteBriefing → AgentBriefings), then the daily customer summaries (CustomerSummaryRun: Iris writes a short summary and one suggested action per customer with an open balance, task or promise → CustomerDailySummaries). Promise checks moved to the 06:00 task scan (TaskScanPipeline) on 01.11. Nothing is sent or written to Priority.",
+  "iconName": "sunrise",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "triggerTime": {
+        "type": "string",
+        "description": "Scheduler trigger time"
+      }
+    }
+  },
+  "exposedToUI": false,
+  "output": "MorningRunStepBriefing",
+  "toolEffect": "mutation",
+  "actionNodes": [
+    {
+      "name": "MorningRunStepBriefing",
+      "actionTypeId": "WriteBriefing",
+      "input": {
+        "dryRun": false
+      }
+    },
+    {
+      "name": "MorningRunStepCustomerSummaries",
+      "actionTypeId": "CustomerSummaryRun",
+      "input": {}
+    }
+  ],
+  "edges": [
+    {
+      "name": "morning-briefing-to-summaries",
+      "source": "MorningRunStepBriefing",
+      "target": "MorningRunStepCustomerSummaries"
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "name": "MailAutomations",
+  "description": "Mail automations",
+  "technicalDescription": "Scheduled outbound mail runs (component 04, tab אוטומציות). Today one row: the monthly open-debts mail (replaces AgentSettings.openDebtsDay and the daily OpenDebtsBatch). The hourly MailAutomationsRunner workflow runs an active automation once its dayOfMonth and hour have arrived and it has not run this month. Every run writes drafts to Approvals (component מנה חודשית) and a MailAutomationRuns row. Nothing is sent. Templates use {{customerName}}, {{customerCode}}, {{contactName}}, {{asOfDate}}, {{month}}, {{openTotal}}, {{bookkeeperName}}, {{bookkeeperPhone}}.",
+  "iconName": "calendar-clock",
+  "columns": [
+    {
+      "name": "name",
+      "type": "string",
+      "description": "Automation name"
+    },
+    {
+      "name": "kind",
+      "type": "string",
+      "description": "Automation kind",
+      "enum": [
+        "חובות פתוחים חודשי"
+      ]
+    },
+    {
+      "name": "audience",
+      "type": "string",
+      "description": "Who receives it",
+      "enum": [
+        "כל הלקוחות ביתרת חובה",
+        "לקוחות נבחרים"
+      ]
+    },
+    {
+      "name": "customerCodes",
+      "type": "string",
+      "description": "When לקוחות נבחרים: customer codes, comma-separated"
+    },
+    {
+      "name": "dayOfMonth",
+      "type": "number",
+      "description": "Day of month (1–28)"
+    },
+    {
+      "name": "hour",
+      "type": "number",
+      "description": "Hour, Israel time (0–23)"
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "description": "Runs on schedule"
+    },
+    {
+      "name": "subjectTemplate",
+      "type": "string",
+      "description": "Subject template with variables"
+    },
+    {
+      "name": "bodyTemplate",
+      "type": "string",
+      "description": "Body template with variables (long text)"
+    },
+    {
+      "name": "mailboxId",
+      "type": "string",
+      "description": "Mailboxes.id the drafts would be sent from; empty = the owning bookkeeper mailbox"
+    },
+    {
+      "name": "updatedByName",
+      "type": "string",
+      "description": "Who last changed the settings (display name)"
+    },
+    {
+      "name": "settingsUpdatedAt",
+      "type": "datetime",
+      "description": "When the settings were last changed"
+    },
+    {
+      "name": "lastRunAt",
+      "type": "datetime",
+      "description": "Last run"
+    },
+    {
+      "name": "lastRunSummary",
+      "type": "string",
+      "description": "Hebrew summary of the last run"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "name",
+  "uniqueKey": [
+    "name"
+  ],
+  "defaultUpsert": true
+}

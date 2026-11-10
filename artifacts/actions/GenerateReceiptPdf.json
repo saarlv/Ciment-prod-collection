@@ -1,0 +1,47 @@
+{
+  "name": "GenerateReceiptPdf",
+  "type": "code",
+  "description": "Builds the receipt PDF of one receipt (Receipts.receiptKey) from the one shared Hebrew RTL HTML template (code-actions/shared, next to the statement template, same look) and converts it with the platform HtmlToPdf action: Ciment header, receipt number = receiptKey, customer name, code and ח.פ, value date, amount, payment method (העברה בנקאית / זיכוי בנק), bank reference and payer name, \"על חשבון\" until the allocation, the signing bookkeeper, and – until Priority is connected – the stamp \"הופק באפליקציה – טרם הונפק ב-Priority\" (plus \"טיוטה – ממתינה לאישור\" while the receipt is not approved). IssueReceipt attaches exactly this PDF to the mail draft; the screen previews and downloads the same url. Writes no rows and sends nothing.",
+  "iconName": "file-text",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "receiptKey"
+    ],
+    "properties": {
+      "receiptKey": {
+        "type": "string",
+        "description": "Receipts.receiptKey (RCPT-<bankLineId>)"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "Protected PDF url"
+      },
+      "fileName": {
+        "type": "string"
+      },
+      "receiptKey": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Viewing a receipt**: Clicking \"PDF\" on an approved line in the customer identification list on the \"תקבולים\" screen\n  Makes the receipt's PDF and shows it in a window with a download link. It is the same file that is attached to the mail draft for the customer."
+}

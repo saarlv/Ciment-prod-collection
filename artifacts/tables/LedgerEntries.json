@@ -1,0 +1,87 @@
+{
+  "name": "LedgerEntries",
+  "description": "Customer ledger (כרטסת)",
+  "technicalDescription": "Read-only mirror of every movement on the customer account in Priority. Source for the ledger statement PDF.",
+  "iconName": "book-open",
+  "columns": [
+    {
+      "name": "entryKey",
+      "type": "string",
+      "description": "Unique ledger entry key"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "entryDate",
+      "type": "date",
+      "description": "Entry date"
+    },
+    {
+      "name": "valueDate",
+      "type": "date",
+      "description": "Value / due date"
+    },
+    {
+      "name": "docType",
+      "type": "string",
+      "description": "Document type (invoice, receipt, credit note…)"
+    },
+    {
+      "name": "docNumber",
+      "type": "string",
+      "description": "Document number"
+    },
+    {
+      "name": "details",
+      "type": "string",
+      "description": "Details"
+    },
+    {
+      "name": "debit",
+      "type": "number",
+      "description": "Debit ILS"
+    },
+    {
+      "name": "credit",
+      "type": "number",
+      "description": "Credit ILS"
+    },
+    {
+      "name": "runningBalance",
+      "type": "number",
+      "description": "Running balance ILS"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)",
+      "enum": [
+        "priority-mock",
+        "priority-file",
+        "priority-api",
+        "test-fixture"
+      ]
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last loaded from Priority / the bank file"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "docNumber",
+  "uniqueKey": [
+    "entryKey"
+  ],
+  "defaultUpsert": true
+}

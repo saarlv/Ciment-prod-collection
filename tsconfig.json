@@ -1,0 +1,63 @@
+{
+  // This is the ONLY app tsconfig — `pnpm type-check`, bare `tsc --noEmit`, and
+  // `tsc -p tsconfig.json` all resolve here and all mean the same thing: the
+  // real type gate for src/. (tsconfig.node.json is separate on purpose — it
+  // type-checks vite.config.ts, which runs in Node, not the browser.)
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@blocks/client-sdk": ["@blocksdiy/blocks-client-sdk/clientSdk"],
+      "@blocks/react-sdk": ["@blocksdiy/blocks-client-sdk/reactSdk"]
+    },
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUncheckedSideEffectImports": false,
+
+    /* Additional strict settings — deliberately NOT enabling
+       exactOptionalPropertyTypes or noUncheckedIndexedAccess: those two flags
+       are the entire reason this file and the old "typecheck" config used to
+       diverge. Vendored/generated code under src/ isn't held to them. */
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "noImplicitReturns": false,
+    "forceConsistentCasingInFileNames": true,
+
+    /* A type-check meant to be read, not just exit-coded */
+    "noErrorTruncation": true,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/types/**/*.d.ts",
+    "vite-plugin-generate-app-index.route-tree.tsx"
+  ],
+  "exclude": [
+    "src/components/ui/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "node_modules",
+    "dist"
+  ]
+}

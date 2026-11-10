@@ -1,0 +1,64 @@
+{
+  "name": "WriteBriefing",
+  "type": "code",
+  "description": "Nina's morning briefing, built deterministically from the data: what came in from the bank (lines, total) and how it went through the receipt-first flow: identified ודאי, identify to review, unidentified, receipts approved today, debt check closed to 0 / to clarify, receipts waiting for allocation; commitments (CustomerNotes התחייבות לתשלום) due, checked or closed today – kept / partly kept / not kept – bounced cheques and open tasks. Writes one AgentBriefings row per bookkeeper (audience = bookkeeper name) plus one for everyone (audience = כולם) for briefingDate; a re-run replaces that day's rows. Names come only from the rows; a missing name is shown as the customer code. With dryRun returns the briefings and the item lists without writing.",
+  "iconName": "newspaper",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "The bank import that triggered it (stored as triggeredByImportId)"
+      },
+      "audience": {
+        "type": "string",
+        "description": "Only this bookkeeper (or כולם); default all audiences"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report; nothing is written",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "briefingDate": {
+        "type": "string"
+      },
+      "briefings": {
+        "type": "array",
+        "description": "Per audience: { id, audience, headline, body (Hebrew markdown), counts }",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The rows behind the numbers: certain, toReview, unidentified, waitingAllocation, bouncedChecks, promises, tasks (each with customer code and name, amount, receiptKey, receiptStatus, identifyStatus, identifyConfidence, debtCheckResult, matchStatus)"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is not triggered from any screen.\n\n- **The morning run**: Runs automatically every Sunday–Thursday morning as part of the morning run\n  Writes today's briefing for every bookkeeper and for the whole team from the current data: what came in from the bank, what was identified, what waits for approval, promises seen, bounced cheques and open tasks. The history of the briefings is shown on the \"תדריכי הבוקר\" page, opened with \"כל תדריכי הבוקר\" on the \"היום\" screen."
+}

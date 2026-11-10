@@ -1,0 +1,164 @@
+{
+  "name": "IdentifyCustomers",
+  "type": "code",
+  "description": "Plan 04.11 part B, stage 4 (b/identify-receipt): identifies the customer of every bank line that enters the receipts run (lineType העברה / זיכוי בנק; פירעון צ׳ק / אחר are skipped) and STOPS there – no invoice match, no debt check. Deterministic code only, no AI: the existing identification cascade (bounced cheque → urgent task, not a receipt; ח״פ in the reference; approved alias in BankAliases; normalised payer name = customer name; payer = a registered contact; recent mail already linked to one customer with the exact amount and a payer token; partial name match; several candidates = ambiguous) gives each line a confidence 0–100 and the evidence. Certain = confidence ≥ AgentSettings identifyCertainAt (default 90). A real run writes per identified line its ONE draft receipt (Receipts RCPT-<bankLineId>: receiptStatus טיוטה – ממתינה לאישור, identifyConfidence, identifyStatus ודאי / לא ודאי, receiptSource דף בנק, customer), one identification step in ReceiptCheckSteps and the customer proposal in MatchProposals; BankLines.checkStage ממתינה לאישור. Unknown payer → no receipt, identifyStatus לא זוהה reported, checkStage לא מזוהה, task לא זוהה. An uncertain line opens a task זיהוי לקוח – לאישור (key identify:<bankLineId>, source תקבולים); a certain line opens no task (it waits in \"אשר את כל הוודאיים\"). A line whose receipt is already approved / issued is never touched. When customerAutoApproveAt is a number (empty = off), a line at or above it is issued at once through IssueReceipt (identifyStatus אושר אוטומטית, by אישור אוטומטי (מערכת)). Called by SyncPriorityBankLines (source שורות פריוריטי) and ConfirmExtractedLines (source קובץ) for their new lines, and by the receipts screen (\"זהה מחדש\"). dryRun (default true) writes nothing. Nothing is sent and nothing is written to Priority.",
+  "iconName": "user-search",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "bankLineIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The lines to identify. Empty = every line of importBatchId, else every line of today's pulls / confirmed files still without an approved receipt"
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "ImportBatches row id: identify the lines of this pull / file"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report what would be written"
+      },
+      "checkedBy": {
+        "type": "string",
+        "description": "Display name of the person (or the run) that started it"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "certainAt": {
+        "type": "number",
+        "description": "identifyCertainAt used"
+      },
+      "autoApproveAt": {
+        "type": "number",
+        "description": "customerAutoApproveAt used; absent = off"
+      },
+      "counts": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "number"
+          },
+          "certain": {
+            "type": "number"
+          },
+          "uncertain": {
+            "type": "number"
+          },
+          "unidentified": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number",
+            "description": "Not money-in, bounced cheque, or receipt already approved"
+          },
+          "autoApproved": {
+            "type": "number"
+          }
+        }
+      },
+      "lines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "bankLineId": {
+              "type": "string"
+            },
+            "payerName": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            },
+            "valueDate": {
+              "type": "string"
+            },
+            "customerCode": {
+              "type": "string"
+            },
+            "customerName": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "number"
+            },
+            "identifyStatus": {
+              "type": "string",
+              "description": "ודאי / לא ודאי / לא זוהה / אושר אוטומטית, or empty when skipped"
+            },
+            "method": {
+              "type": "string",
+              "description": "The rung that identified it (ח״פ / כינוי / שם זהה / איש קשר / מייל / שם חלקי / דו-משמעי)"
+            },
+            "evidence": {
+              "type": "string",
+              "description": "One Hebrew line: why"
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "customerCode": {
+                    "type": "string"
+                  },
+                  "customerName": {
+                    "type": "string"
+                  },
+                  "confidence": {
+                    "type": "number"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "receiptKey": {
+              "type": "string"
+            },
+            "skippedReason": {
+              "type": "string"
+            },
+            "taskKey": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "taskSync": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Identifying a waiting line**: Clicking \"זהה\" on a line marked \"ממתינה לזיהוי\" in the customer identification list on the \"תקבולים\" screen, or in step 1 \"זיהוי\" of the receipt record that opens from that line\n  Finds the customer of that one bank line and gives it a confidence score, so the line can be approved and its receipt issued. Nothing is sent.\n- **Re-identifying today's lines**: Clicking \"זהה מחדש\" at the top of the customer identification list on the \"תקבולים\" screen\n  Runs the customer identification again on every line of today that is not approved yet, gives each line a customer with a confidence score, and shows one line with how many came out certain, uncertain or unknown. Approved receipts are never touched, and nothing is sent."
+}

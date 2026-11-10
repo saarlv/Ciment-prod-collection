@@ -1,0 +1,51 @@
+{
+  "name": "InboxFolders",
+  "description": "Inbound email counts per folder (primary type), handling state and mailbox",
+  "technicalDescription": "Counts of InboundEmails per primary category (the folder), handlingState and mailboxId, for the folder badges on the inbox page. A mail with several types is counted here under its primary type only; the page adds secondary-folder membership from InboundEmails.categories.",
+  "query": {
+    "from": {
+      "table": "InboundEmails",
+      "as": "e"
+    },
+    "select": [
+      {
+        "column": "e.category",
+        "as": "category"
+      },
+      {
+        "column": "e.handlingState",
+        "as": "handlingState"
+      },
+      {
+        "column": "e.mailboxId",
+        "as": "mailboxId"
+      },
+      {
+        "column": "e.id",
+        "function": "count",
+        "as": "mailCount"
+      },
+      {
+        "column": "overdueRaw",
+        "expression": "SUM(CASE WHEN COALESCE(e.handlingState, 'לא טופל') <> 'טופל' AND COALESCE(e.category, '') <> 'לא רלוונטי' AND e.dueAt < NOW() THEN 1 ELSE 0 END)",
+        "as": "overdueRaw"
+      }
+    ],
+    "groupBy": [
+      "e.category",
+      "e.handlingState",
+      "e.mailboxId"
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "overdueCount",
+      "type": "number",
+      "description": "Open and past the 24h deadline",
+      "expression": "Number(item.overdueRaw || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

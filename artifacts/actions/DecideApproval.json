@@ -1,0 +1,85 @@
+{
+  "name": "DecideApproval",
+  "type": "code",
+  "description": "A person's decision on outbound drafts in Approvals: approve (→ אושר – לא נשלח, the end of the path; there is no send), reject (→ נדחה), or edit the body/subject of a pending draft. Works on approvalIds or on a whole batchId (open-debts batch). Records decidedBy / decidedAt / decisionNote. Approving a reply to an InboundEmails row sets its answeredAt. Only ממתין drafts change; others are reported as skipped.",
+  "iconName": "badge-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "decision",
+      "decidedBy"
+    ],
+    "properties": {
+      "decision": {
+        "type": "string",
+        "enum": [
+          "approve",
+          "reject",
+          "edit"
+        ]
+      },
+      "approvalIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "batchId": {
+        "type": "string",
+        "description": "Decide every pending draft of this batch"
+      },
+      "decidedBy": {
+        "type": "string",
+        "description": "Display name of the person deciding"
+      },
+      "note": {
+        "type": "string"
+      },
+      "subject": {
+        "type": "string",
+        "description": "edit only"
+      },
+      "body": {
+        "type": "string",
+        "description": "edit only"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "updated": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "skipped": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Approving a draft from a mail**: \"אישור\" on a draft in the mail panel on the Inbox page (פניות → דואר נכנס, click a mail)\n  Marks the draft \"אושר – לא נשלח\". If the bookkeeper changed the subject or body first, the change is saved just before. Nothing is sent.\n- **Editing a draft**: \"שמירת העריכה\" on a draft in the mail panel or in the outbox draft panel, after changing its subject or body\n  Saves the bookkeeper's wording on the pending draft.\n- **Rejecting a draft**: \"דחייה\" on a draft (with an optional reason), in the mail panel or the outbox draft panel\n  Marks the draft as rejected.\n- **Approving or rejecting drafts in bulk**: tick drafts in the outbox list (פניות → דואר יוצא), then \"אישור\" or \"דחייה\" in the bar above the list\n  Decides all the ticked pending drafts at once. Nothing is sent.\n- **Approving a whole monthly batch**: \"אישור כל המנה\" in the outbox when it is filtered to one batch (from \"כל המנה\" on a row, or from the automation's run), after confirming\n  Marks every pending draft of that batch \"אושר – לא נשלח\". Nothing is sent.\n- **Approving one draft from the outbox**: click a row in the outbox, then \"אישור\" in the draft panel\n  Same as approving from the mail panel.\n- **Approving the open-debts batch**: \"אישור המנה\" on the Open-debts batch (מנת חובות פתוחים) screen, after confirming\n  Moves every pending draft of the current month's batch to \"אושר – לא נשלח\" (under \"שלי\", only the drafts in view).\n- **Rejecting one batch draft**: \"דחה\" on a row of the batch table\n  Takes that customer's draft out of the batch.\n- **Approving a case draft**: \"אשר\" on a draft in the \"הטיוטות של מאיה\" section of a documents or price case page (מסמכים ומחירים → a case) — the logistics request or reminder, the customer package, or the price approval request\n  Marks the draft \"אושר – לא נשלח\". Nothing is sent; approving the customer package marks the email as answered.\n- **Rejecting a case draft**: \"דחה\" on the same draft (with an optional reason)\n  Marks the draft as rejected; the case stays open.\n- **Approving a detail request from the receipts screen**: \"אישור הטיוטה\" in the \"טיפול ברשומה\" panel on the receipts screen (תקבולים), opened with \"פתיחת טיוטת מייל ללקוח\" in Nina's recommendation or \"טיפול ברשומה\" in the file summary\n  Marks Nina's request for payment details to the customer's bookkeeping as \"אושר – לא נשלח\". If the wording was changed, the change is saved first. Nothing is sent — the send button is shown but not active yet.\n- **Editing a detail request**: \"שמירת שינויים\" in the same panel, after changing the subject or body\n  Saves the bookkeeper's wording on the pending draft; it is the same draft the approvals screen (אישורים) shows."
+}

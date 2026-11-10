@@ -1,0 +1,80 @@
+{
+  "name": "WriteExtractedLines",
+  "type": "code",
+  "description": "Step 3 of ReadBankFile. Takes the reader agent's structured output (object or JSON string) and runs the deterministic checks: required fields (valueDate, non-zero amount, payerName or reference → flag שדה חסר), low legibility (flag), duplicates against existing BankLines (same valueDate, amount, payerName, reference → flagged and not written), and the file's own summary (extractedLineCount/extractedTotal vs linesInFile/totalInFile → totalsCheck). Writes BankLines (status חדשה, checkStage ממתינה לבדיקה, lineNo, sourceRef, rawText, legibility, flags; bankLineId BL-<batch>-<n>, source priority-file), reads them back (writeVerified), updates the batch to נקרא – לאימות (or נכשל with the reason) and logs a ReceiptCheckSteps step (stage קריאה, actor סוכן הקריאה). No partial writes: lines are written only after all checks ran.",
+  "iconName": "table-properties",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "importBatchId"
+    ],
+    "properties": {
+      "importBatchId": {
+        "type": "string",
+        "description": "ImportBatches row id"
+      },
+      "extraction": {
+        "description": "BankFileReader structured output (object, or its JSON string)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report what would be written; nothing changes",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "importBatchId": {
+        "type": "string"
+      },
+      "extractionStatus": {
+        "type": "string"
+      },
+      "extractedLineCount": {
+        "type": "number"
+      },
+      "extractedTotal": {
+        "type": "number"
+      },
+      "linesInFile": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "totalInFile": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "totalsCheck": {
+        "type": "string"
+      },
+      "duplicates": {
+        "type": "number"
+      },
+      "flagged": {
+        "type": "number"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "warnings": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "file-previewer",
+  "type": "registry:ui",
+  "title": "File Previewer",
+  "description": "Inline preview for uploaded files — images, video, audio, office documents, and archives — with a typed-icon fallback for non-previewable types. Wraps @cyntler/react-doc-viewer. For PDFs prefer the pdf-viewer component.",
+  "docs": "Import { FilePreviewer } from '@/components/ui/file-previewer'. Pass file URLs (Blocks fileDataBlock redirect URLs are handled). The container must have a defined height.",
+  "dependencies": [
+    "@cyntler/react-doc-viewer@1.17.1"
+  ],
+  "meta": {
+    "version": "1.0.0",
+    "changelog": [
+      {
+        "version": "1.0.0",
+        "level": "optional",
+        "description": "Brings the app's copy up to date and adds its version line.",
+        "files": {
+          "src/components/ui/file-previewer.tsx": "17db13644731aba8"
+        }
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "items/file-previewer/file-previewer.tsx",
+      "type": "registry:ui",
+      "target": "src/components/ui/file-previewer.tsx",
+      "content": "import DocViewer, {\n  DocViewerRenderers,\n  IDocument,\n} from '@cyntler/react-doc-viewer';\n\nimport '@cyntler/react-doc-viewer/dist/index.css';\n\nimport {\n  FileArchiveIcon,\n  FileAudioIcon,\n  FileIcon,\n  FileImageIcon,\n  FileTextIcon,\n  FileVideoIcon,\n  LucideIcon,\n} from 'lucide-react';\nimport { useMemo } from 'react';\nimport { cn } from '@/lib/utils';\n\nconst FILE_DATA_BLOCK_PATTERN = /api\\/blocks\\/fileDataBlock\\/[^/]+\\/redirect/;\nfunction isFileDataBlockRedirectUrl(url: string): boolean {\n  return FILE_DATA_BLOCK_PATTERN.test(url);\n}\n\nconst getFileTypeIcon = (fileType?: string): LucideIcon => {\n  const type = fileType?.toLowerCase();\n\n  if (type?.startsWith('image/')) {\n    return FileImageIcon;\n  } else if (type?.startsWith('video/')) {\n    return FileVideoIcon;\n  } else if (type?.startsWith('audio/')) {\n    return FileAudioIcon;\n  } else if (\n    type?.includes('zip') ||\n    type?.includes('rar') ||\n    type?.includes('tar') ||\n    type?.includes('7z')\n  ) {\n    return FileArchiveIcon;\n  } else if (\n    type?.includes('pdf') ||\n    type?.includes('text/') ||\n    type?.includes('document')\n  ) {\n    return FileTextIcon;\n  } else {\n    return FileIcon;\n  }\n};\n\nconst NoRenderer = ({\n  document,\n  fileName,\n}: {\n  document: IDocument | undefined;\n  fileName: string;\n}) => {\n  const IconComponent = useMemo(\n    () => getFileTypeIcon(document?.fileType),\n    [document?.fileType],\n  );\n\n  return (\n    <div className=\"flex flex-col items-center gap-2 p-4 h-full justify-center\">\n      <IconComponent className=\"size-12 text-muted-foreground\" />\n      <p className=\"text-xs text-muted-foreground\">{document?.fileType}</p>\n    </div>\n  );\n};\n\nexport const FilePreviewer = ({ uri }: { uri: string }) => {\n  if (isFileDataBlockRedirectUrl(uri)) {\n    let tokenFromLocalStorage = localStorage.getItem('token');\n    if ((window as any).appId) {\n      const token = window.localStorage.getItem(\n        `token-${(window as any).appId}`,\n      );\n      if (token) {\n        tokenFromLocalStorage = token;\n      }\n    }\n\n    if (tokenFromLocalStorage) {\n      uri = `${uri}?token=${tokenFromLocalStorage}`;\n    }\n  }\n\n  return (\n    <div\n      className={cn(\n        'h-full w-full overflow-auto',\n        '[&_#proxy-renderer]:!h-full',\n        '[&_#pdf-renderer]:!bg-muted [&_#pdf-renderer]:!h-full [&_#image-renderer]:!bg-muted [&_#image-renderer]:!h-full',\n        '[&_#pdf-controls]:!z-[9999] [&_#pdf-controls]:border-b [&_#pdf-controls]:!shadow-md [&_#pdf-controls]:!p-4 [&_#pdf-controls]:!gap-x-2 [&_#pdf-controls]:!bg-background/90',\n        '[&_#pdf-pagination]:mr-auto [&_#pdf-pagination]:gap-x-2',\n        '[&_svg_path]:fill-current [&_svg_polygon]:fill-current',\n        '[&_#pdf-pagination-info]:!text-[var(--foreground)]',\n        '[&_button]:!rounded-md [&_a]:!rounded-md [&_button]:!shadow-sm [&_a]:!shadow-sm [&_button]:!m-0 [&_a]:!m-0',\n      )}\n    >\n      <DocViewer\n        documents={[{ uri }]}\n        prefetchMethod=\"GET\"\n        pluginRenderers={DocViewerRenderers}\n        config={{\n          header: {\n            disableHeader: true,\n          },\n          noRenderer: {\n            overrideComponent: NoRenderer,\n          },\n          pdfVerticalScrollByDefault: false,\n        }}\n        theme={{\n          primary: 'var(--primary)',\n          secondary: 'var(--secondary)',\n          tertiary: 'var(--background)',\n          textPrimary: 'var(--primary-foreground)',\n          textSecondary: 'var(--secondary-foreground)',\n          textTertiary: 'var(--foreground)',\n          disableThemeScrollbar: false,\n        }}\n      />\n    </div>\n  );\n};\n\n// @blocks-registry file-previewer@1.0.0 — registry version, never edit this line\n"
+    }
+  ]
+}

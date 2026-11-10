@@ -1,0 +1,110 @@
+{
+  "name": "PrepareOpenDebtsBatch",
+  "type": "code",
+  "description": "The open-debts batch logic, used by the monthly mail automation (RunMailAutomation / RunDueAutomations) and by the batch screen. As of asOfDate. Eligible: end-of-card debit balance (last LedgerEntries running balance, else Customers.ledgerBalance) and no open receipts waiting for a match; when customerCodes is given, only those customers. Excluded, each with a Hebrew reason: יתרת זכות, יתרה אפסית, תקבולים פתוחים להתאמה, אין איש קשר רשום להנהלת חשבונות, לא ליצור קשר. For each eligible customer: an open-debts PDF in Yaniv's layout (shared statement template; its documents from OpenMovements, the same builder as GenerateStatementPdf – while the OpenMovements table is empty no PDF and no draft is made, existing drafts are left as they are, and errors says why) and one outbox draft (Approvals, kind מנת חובות פתוחים, component מנה חודשית, batchId open-debts-YYYY-MM, CIM reference), to the registered accounts contact, signed by the owning bookkeeper with her phone, status ממתין. subjectTemplate / bodyTemplate (from the automation) are rendered per customer with {{customerName}}, {{customerCode}}, {{contactName}}, {{asOfDate}}, {{month}}, {{openTotal}}, {{bookkeeperName}}, {{bookkeeperPhone}}; without them the default Yaniv wording is used. Re-running replaces the batch's pending drafts, never duplicates. The schedule lives in MailAutomations now (the openDebtsDay setting is no longer used; scheduled is accepted and ignored). Test customers produce rows marked isTestFixture. Sends nothing.",
+  "iconName": "files",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Default today in Asia/Jerusalem"
+      },
+      "scheduled": {
+        "type": "boolean",
+        "default": false,
+        "description": "Deprecated and ignored (the schedule is in MailAutomations)"
+      },
+      "requestedBy": {
+        "type": "string",
+        "description": "Who pressed הכנת מנה עכשיו"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "When true, only list eligible and excluded customers; no PDFs, nothing written"
+      },
+      "customerCodes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only these customers; empty = all with a debit balance"
+      },
+      "subjectTemplate": {
+        "type": "string",
+        "description": "Subject template with {{variables}}"
+      },
+      "bodyTemplate": {
+        "type": "string",
+        "description": "Body template with {{variables}}"
+      },
+      "automationId": {
+        "type": "string",
+        "description": "MailAutomations row id, stored on the drafts and the run"
+      },
+      "mailboxId": {
+        "type": "string",
+        "description": "Mailboxes row id for the drafts"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "skipped": {
+        "type": "boolean"
+      },
+      "skipReason": {
+        "type": "string"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "batchId": {
+        "type": "string"
+      },
+      "eligible": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "excluded": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ customerCode, customerName, reason, balance }"
+      },
+      "draftsCreated": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "draftsReplaced": {
+        "type": "number"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "memoryMb": 1024,
+  "usageDescription": "This action is triggered by:\n\n- **Previewing a batch**: \"הכנת מנה עכשיו\" on the Open-debts batch (מנת חובות פתוחים) screen, as soon as the dialog opens\n  Lists which customers would get an open-debts email (balance and recipient) and which are left out, each with the reason. Nothing is written.\n- **Creating the batch**: \"יצירת המנה\" in the same dialog, after the preview\n  Builds each customer's open-debts PDF and a pending draft for approval, recorded as requested by the signed-in person. Nothing is sent."
+}

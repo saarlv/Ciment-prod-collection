@@ -1,0 +1,71 @@
+{
+  "name": "CreateImportBatch",
+  "type": "code",
+  "description": "Step 1 of ReadBankFile. Creates the ImportBatches row of an uploaded bank file (kind קובץ בנק, extractionStatus בקריאה, readerAgent BankFileReader, workDay = Israel upload date with Fri/Sat counted to Thursday, checkStatus טרם התחילו). The same file (same name and size on the same work day) returns the existing batch with shouldRead=false unless it failed. With importBatchId it re-opens a failed/stuck batch for another read. Writes only ImportBatches.",
+  "iconName": "file-up",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "fileUrl",
+      "fileName"
+    ],
+    "properties": {
+      "fileUrl": {
+        "type": "string",
+        "description": "Uploaded file url"
+      },
+      "fileName": {
+        "type": "string",
+        "description": "Original file name"
+      },
+      "fileSize": {
+        "type": "number",
+        "description": "File size in bytes"
+      },
+      "fileType": {
+        "type": "string",
+        "description": "MIME type"
+      },
+      "uploadedBy": {
+        "type": "string",
+        "description": "Display name of the person uploading"
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "Retry: re-read this existing batch (only if it is נכשל or stuck in בקריאה)"
+      },
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem",
+        "format": "date"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "importBatchId": {
+        "type": "string"
+      },
+      "workDay": {
+        "type": "string"
+      },
+      "isDuplicate": {
+        "type": "boolean"
+      },
+      "shouldRead": {
+        "type": "boolean"
+      },
+      "extractionStatus": {
+        "type": "string"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

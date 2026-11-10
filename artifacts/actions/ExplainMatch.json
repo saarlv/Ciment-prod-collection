@@ -1,0 +1,75 @@
+{
+  "name": "ExplainMatch",
+  "type": "code",
+  "description": "Nina's read-only explain tool, since plan 04.11 part B stage 5 (שינוי לוגיקה – 11.2026) for the new receipts flow: for ONE bank line it explains the customer identification (the IdentifyCustomers cascade: customer, method, evidence, confidence 0–100 against identifyCertainAt → ודאי / לא ודאי / לא זוהה / אושר אוטומטית, or why the line is skipped) and the debt check against the customer's due months – the result stored on the approved receipt (debtCheckResult, months, the alert / task key), or a preview of what CheckDebt will decide once the receipt is approved (per-month balances and a Hebrew explanation; an empty OpenMovements mirror is reported). It no longer explains an invoice match – the stage-1 ladder is retired and the allocation to invoices is its own step. ALWAYS read-only, enforced in code: there is no dryRun input, identification runs as a dry run and the debt check is only read or previewed, so nothing is written to any table. Replaces the writing actions in Nina's tools because a code action cannot tell whether an agent or a person called it.",
+  "iconName": "scan-search",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "bankLineId"
+    ],
+    "properties": {
+      "bankLineId": {
+        "type": "string",
+        "description": "BankLines.bankLineId"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "Always true"
+      },
+      "explainOnly": {
+        "type": "boolean",
+        "description": "Always true"
+      },
+      "bankLineId": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "identification": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The line as IdentifyCustomers sees it: payerName, amount, valueDate, customerCode, customerName, confidence, identifyStatus, method, evidence, candidates[], receiptKey, taskKey, skippedReason"
+      },
+      "receipt": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The line's Receipts row when it exists: receiptKey, receiptStatus, identifyStatus, identifyConfidence, matchStatus, debtCheckResult, debtCheckMonths, amount (null otherwise)"
+      },
+      "debtCheck": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "source (נשמר בקבלה / תחזית – יירשם אחרי אישור הקבלה), result, months[], matchStatus, taskKey, and for a preview balances[] {month, balance, cumulative, movements} + explanation, or error (null when the customer is unknown)"
+      },
+      "reasoning": {
+        "type": "string",
+        "description": "Hebrew explanation: identification, then the debt check"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "toolEffect": "read-only"
+}

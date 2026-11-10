@@ -1,0 +1,41 @@
+{
+  "name": "TeamMembers",
+  "description": "Collections team",
+  "iconName": "user-round",
+  "columns": [
+    {
+      "name": "name",
+      "type": "string",
+      "description": "Full name"
+    },
+    {
+      "name": "role",
+      "type": "string",
+      "description": "Role",
+      "enum": [
+        "מנהלת חשבונות",
+        "מנהל גבייה",
+        "סמנכ״ל כספים"
+      ]
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "description": "Email"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "description": "Mobile phone shown in the closing line of statements and the monthly open-debts mail ({{bookkeeperPhone}})"
+    },
+    {
+      "name": "active",
+      "type": "boolean",
+      "description": "Active"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "name"
+}

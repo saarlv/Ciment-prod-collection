@@ -1,0 +1,44 @@
+{
+  "skill_name": "charts",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Show monthly revenue for the past 6 months as a bar chart. Use months on the x-axis and revenue in dollars on the y-axis. Use a tooltip that shows the exact value.",
+      "expected_output": "A BarChart inside ChartContainer with correct axis setup, tooltip, and themed colors via chartConfig.",
+      "files": [],
+      "expectations": [
+        "Uses ChartContainer with a chartConfig object",
+        "Uses BarChart and Bar from recharts",
+        "Does NOT import ResponsiveContainer (it's built into ChartContainer)",
+        "Uses var(--chart-1) or chart-* tokens for colors — no raw hex or bg-* classes",
+        "Includes ChartTooltip or ChartTooltipContent"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Build an analytics dashboard with three charts: a line chart for daily active users over 30 days, a pie chart showing traffic source breakdown, and an area chart for weekly signups.",
+      "expected_output": "Three separate ChartContainer instances with appropriate chart types, correct recharts primitives, and theme-safe colors throughout.",
+      "files": [],
+      "expectations": [
+        "Uses ChartContainer wrapping each chart — never ResponsiveContainer",
+        "Uses LineChart, PieChart, and AreaChart from recharts appropriately",
+        "Each chart has its own chartConfig with descriptive labels and chart-* token colors",
+        "No raw hex colors or Tailwind palette classes (bg-blue-500 etc.) on chart elements",
+        "Does not import or use ResponsiveContainer"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show a comparison bar chart with two data series — actual vs target revenue — for each quarter. Include a legend and labeled axes.",
+      "expected_output": "A grouped BarChart with two Bar components, a Legend, proper XAxis/YAxis, all inside ChartContainer with a chartConfig covering both series.",
+      "files": [],
+      "expectations": [
+        "Uses ChartContainer with chartConfig covering both data series",
+        "Two Bar components with distinct chart-* token colors",
+        "Includes Legend (ChartLegend or recharts Legend)",
+        "XAxis and YAxis are configured",
+        "Does not use ResponsiveContainer"
+      ]
+    }
+  ]
+}

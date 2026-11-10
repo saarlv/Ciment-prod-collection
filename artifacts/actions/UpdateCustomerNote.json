@@ -1,0 +1,87 @@
+{
+  "name": "UpdateCustomerNote",
+  "type": "code",
+  "description": "Edits or closes one CustomerNotes row (plan 04.11 part A, stage 2). Editable: noteText, customTypeLabel (אחר only), actionDate, reminderDate, amount, dueMonth. noteType, customer, author and source never change (write a new note instead). close=true sets status נסגרה ידנית with closedAt (a note already closed is left as is and reported); reopen=true sets a manually closed note back to פעילה (a note closed because its month reached 0 is not reopened). The same validation as AddCustomerNote (active type keeps an actionDate, אחר keeps text, month YYYY-MM, amount not negative). Changing a commitment's actionDate or amount resets outcome to פתוחה and clears amountReceived / amountRemaining / checkedAt so it is checked again on its new check day. Afterwards the note's grouped tasks are synced (a closed note leaves its task rows; a task with no rows left closes automatically). dryRun (default false) only reports. Never writes to Priority or contacts anyone.",
+  "iconName": "notebook-tabs",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "noteId"
+    ],
+    "properties": {
+      "noteId": {
+        "type": "string",
+        "description": "CustomerNotes id"
+      },
+      "noteText": {
+        "type": "string"
+      },
+      "customTypeLabel": {
+        "type": "string"
+      },
+      "actionDate": {
+        "type": "string",
+        "format": "date"
+      },
+      "reminderDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Empty string clears it"
+      },
+      "amount": {
+        "type": "number"
+      },
+      "dueMonth": {
+        "type": "string",
+        "description": "YYYY-MM"
+      },
+      "close": {
+        "type": "boolean",
+        "description": "Close the note manually (נסגרה ידנית)"
+      },
+      "reopen": {
+        "type": "boolean",
+        "description": "Reopen a manually closed note"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "note": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "changed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Column names that changed"
+      },
+      "taskSync": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Editing a note**: In the small notes window (opened from the aging report, a customer card's \"חודשים פתוחים\" table or a grouped task's row), the user clicks the pencil on an active note, changes its date, text, reminder or amount, and clicks \"שמירת שינויים\"\n  Updates the note; a commitment whose date or amount changed is checked again on its new day.\n- **Closing a note by hand**: In the same window, the user clicks \"סגירה\" on an active note and confirms with the check mark\n  Closes the note (it moves to the month's history) and takes it out of any follow-up task.",
+  "toolEffect": "mutation"
+}

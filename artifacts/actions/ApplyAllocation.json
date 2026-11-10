@@ -1,0 +1,119 @@
+{
+  "name": "ApplyAllocation",
+  "type": "code",
+  "description": "Approves an allocation of one approved receipt to invoices (plan 04.11 part B, stage 6) — one human click from the allocation editor on the receipts screen, or the automatic threshold. Input: the receipt and the chosen invoices with amounts (an empty list clears the allocation). Validates everything before any write (any error → ok false, nothing written): the receipt is approved, each invoice is an open invoice of the receipt's customer (OpenMovements; another customer's invoice is named as such), no invoice twice, amount > 0, not above the invoice's open balance (OpenMovements amount minus every other receipt's allocations), total not above the receipt amount. Replaces the receipt's previous ReceiptAllocations rows (many-to-many: one receipt on many invoices, one invoice paid by several receipts) with kind מלאה / חלקית, openBefore, openAfter, isPartial, dueDate, source ('סכום' when the lines equal the automatic proposal, 'ידני' when the person changed them), sourceRef = approvedBy ('אושר אוטומטית' for the threshold), status מוכנה, at. Updates Receipts.allocatedAmount, unallocatedAmount and matchStatus: fully allocated → 'מפוזרת'; surplus with no open invoices left → 'מפוזרת – עודף על חשבון'; otherwise → 'על חשבון – צריך פיזור', with an open task 'קבלה – צריך פיזור' (taskKey allocate:<receiptKey>) while open invoices remain. The allocate task closes automatically otherwise, and once the receipt is fully allocated the debt check's debt-check:<receiptKey> task closes too. Read back; any write failure rolls back every row written. Never writes to Priority; sends nothing.",
+  "iconName": "check-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "receiptKey",
+      "allocations"
+    ],
+    "properties": {
+      "receiptKey": {
+        "type": "string"
+      },
+      "allocations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "invoiceNumber",
+            "amount"
+          ],
+          "properties": {
+            "invoiceNumber": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "approvedBy": {
+        "type": "string",
+        "description": "Display name of the person, or אושר אוטומטית"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "receiptKey": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "number"
+      },
+      "allocated": {
+        "type": "number"
+      },
+      "unallocated": {
+        "type": "number"
+      },
+      "matchStatus": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "description": "סכום (unchanged proposal) / ידני"
+      },
+      "approvedBy": {
+        "type": "string"
+      },
+      "rows": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "The written ReceiptAllocations rows: invoiceNumber, dueDate, amount, openBefore, openAfter, kind, isPartial, source, sourceRef, status"
+      },
+      "openInvoicesLeft": {
+        "type": "number"
+      },
+      "openTotalLeft": {
+        "type": "number"
+      },
+      "taskKey": {
+        "type": "string",
+        "description": "allocate:<receiptKey> when the task is open, else ''"
+      },
+      "taskChange": {
+        "type": "string"
+      },
+      "closedTasks": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Approving an allocation**: Clicking \"אשר פיזור\" in the allocation editor on the Receipts screen\n  Saves which invoices the receipt pays and how much goes to each, in one click. Anything left over stays as credit on the customer's account. If something is wrong (an invoice that is not open, an amount above the balance, a total above the receipt), the reasons are shown and nothing is saved."
+}

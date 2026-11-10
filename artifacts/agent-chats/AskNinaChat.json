@@ -1,0 +1,16 @@
+{
+  "name": "AskNinaChat",
+  "description": "AskNinaChat",
+  "agentId": "CollectionsAgent",
+  "initialMessages": [
+    {
+      "content": "היי, אני נינה, סוכנת התקבולים. אפשר לשאול אותי למה רשומה זוהתה או הותאמה כך, ומי העביר תשלום."
+    }
+  ],
+  "isPersistent": true,
+  "hideToolsUi": true,
+  "disableGeneratingDynamicChatComponent": false,
+  "disableAttachments": true,
+  "isAdmin": false,
+  "allowRunningActions": false
+}

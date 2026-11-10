@@ -1,0 +1,71 @@
+{
+  "name": "CreditCovers",
+  "description": "Credit insurance covers (מכסות) per customer",
+  "technicalDescription": "Mirror, read-only in the app (in Saar's spec: credit_covers). One row per credit-insurance cover of a customer at the insurer (בסס״ח / ICIC). Replaces the old insurance fields on Customers (creditInsurer, insurerCaseNumber, insuranceApprovedAmount). A customer is insured when it has a cover with status תקף; the customer card's אובליגו וביטוח tab exists only for customers with a cover. Today filled by test fixtures only; the Priority / ICIC sync is a gap. Never written by the app's logic.",
+  "iconName": "shield-check",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "insurer",
+      "type": "string",
+      "description": "Insurer name, e.g. בסס״ח"
+    },
+    {
+      "name": "coverNo",
+      "type": "string",
+      "description": "Cover number at the insurer (sent as ORIG_COVER_NO on an increase request)"
+    },
+    {
+      "name": "insuredAmount",
+      "type": "number",
+      "description": "Insured credit limit ILS (המסגרת המבוטחת)"
+    },
+    {
+      "name": "validUntil",
+      "type": "date",
+      "description": "Cover valid until (empty = no expiry known)"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Cover status",
+      "enum": [
+        "תקף",
+        "בטיפול",
+        "מבוטל"
+      ]
+    },
+    {
+      "name": "coverSource",
+      "type": "string",
+      "description": "Where the cover data comes from",
+      "enum": [
+        "Priority",
+        "ICIC"
+      ]
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-api, icic (CreditCovers only) or test-fixture (marked test data, removed by DeleteTestFixtures). Writers must set it"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "coverNo"
+}

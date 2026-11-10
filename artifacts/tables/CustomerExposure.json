@@ -1,0 +1,46 @@
+{
+  "name": "CustomerExposure",
+  "description": "Static obligo per customer, as in Priority",
+  "technicalDescription": "Mirror, read-only (customer_exposure). One row per customer: the obligo (אובליגו) total exactly as Priority computes it, with asOf. Never computed by the app. The dynamic obligo is computed at display time by GetCreditExposure and never stored. Replaces Customers.obligoUsed / obligoPct.",
+  "iconName": "gauge",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code, unique"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "obligoTotal",
+      "type": "number",
+      "description": "Static obligo ILS from Priority"
+    },
+    {
+      "name": "asOf",
+      "type": "datetime",
+      "description": "When Priority computed it"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-api, icic (CreditCovers only) or test-fixture (marked test data, removed by DeleteTestFixtures). Writers must set it"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerCode",
+  "uniqueKey": [
+    "customerCode"
+  ],
+  "defaultUpsert": true
+}

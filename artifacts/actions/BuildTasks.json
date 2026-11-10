@@ -1,0 +1,128 @@
+{
+  "name": "BuildTasks",
+  "type": "code",
+  "description": "The task builder (code, no agent), run by the 06:00 phase of RunDaySchedule after CloseSettledNotes and RefreshInvoiceLayer. Since plan 04.11 stage 2 it also builds the GROUPED note tasks from CustomerNotes (shared collections-note-tasks): one task per note type + date + bookkeeper, key notes:<type>:<date>:<bookkeeper> (type promise / creditCard / agentCheque / callBack / reminder; bookkeeper = the customer's owner in CustomerOwners, ללא when none), the rows in itemsJson (customerId, customerCode, customerName, dueMonth, noteIds, promised, received, remaining, outcome, handledBy/handledAt kept from the screen), task type / offset / phase from AgentSettings noteTask.<type>.*, source דוח גיול. A note joins the task of the day its trigger date (actionDate or reminderDate + offset) is reached, once (catch-up after a weekend; never twice), only while its month is above 0 ₪; the commitment task takes only קוימה חלקית / לא קוימה rows and is built in the bank-check phase (input phase). A row leaves when its note closes (month at 0, manual close) or a commitment becomes קוימה; a task with no rows left closes automatically (נסגר אוטומטית); a task a person closed stays closed. The non-grouped scan never touches notes: keys. Reads every source, computes the set of open problems as of asOfDate, and upserts them into CollectionQueue by taskKey (one task per problem). Keys: aging-overdue:<invoiceNumber> (open invoice overdue more than taskOverdueMinDays with no open dispute and no active CustomerNotes commitment (התחייבות לתשלום, outcome פתוחה) or בירור note for its customer + due month → לגבות מהלקוח); dispute-followup:<disputeId> (open Disputes row whose nextReminderAt has passed → מעקב בירור – מחיר / תעודה חסרה / אחר by disputeType); note-followup:<noteId> and promise-broken:<promiseId> are retired with the old aging notes and payment promises: never opened, a leftover open one is closed automatically (not-kept commitments open the grouped notes:promise:… task); docs-missing:<invoiceNumber> (open invoice with missing delivery notes → תעודות משלוח חסרות); inbox:<emailId> (InboundEmails handlingState לא טופל, category not לא רלוונטי → מייל לטיפול); verify-sender:<emailId> (sender awaiting verification; while open no inbox task is opened for that email → לאמת שולח); draft:<approvalId> (Approvals ממתין → טיוטה לאישור); receipt-customer:<bankLineId> (לא זוהה: unknown payer, no receipt), receipt-bounced:cheque:<bankAccount>:<chequeNumber> (צ׳ק חוזר, severity קריטית; since 03.11 keyed by the cheque, not the bank line, so one returned cheque = one task however many lines or uploads show it; falls back to receipt-bounced:<bankLineId> when no cheque number can be read; an open task under the old line key for the same cheque is re-keyed, not replaced, and closed old-key duplicates are never reopened). Since plan r3 stage 2 new lines get their receipt tasks right away from the bank-lines pull and its checks (SyncPriorityBankLines / ConfirmExtractedLines → IdentifyCustomers); BuildTasks keeps computing the receipt keys too (same keys, so it refreshes rather than duplicates, and still opens them for older file lines and seeded test lines). bank-missing:<date> (דפי בנק לא נטענו) is written by SyncPriorityBankLines only; BuildTasks never touches it. Severity: aging and receipts by the collections-severity score (AgentSettings weights and thresholds); inbox and drafts גבוהה past the inbox SLA or a draft older than 24h, else בינונית. Upsert rules: refreshing an open task keeps openedAt and status and updates title, severity, amount, invoiceNumbers, lastCheckedAt; a task a person closed (טופל / נדחה) stays closed while the same problem lasts; a task closed automatically whose problem returns is reopened (status ממתין, new openedAt); an open task whose problem is gone becomes נסגר אוטומטית with resolvedAt and a Hebrew resolvedReason (e.g. החשבונית שולמה, נרשמה התחייבות). A source that fails to read closes nothing of its keys; a scoped run (customerCode, bankLineIds, emailIds, approvalIds, sources) only opens and closes keys inside its scope; rows without a taskKey (manual) are never touched. Fills the legacy columns (queueDate, priorityScore = severityScore, reasons, recommendedAction, relatedTable/relatedId), customerName and assignedBookkeeperName from the data, and isTestFixture for TEST- customers. dryRun (default true) only reports. Never writes to Priority or contacts anyone.",
+  "iconName": "list-checks",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for the demo: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "sources": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "דוח גיול",
+            "הבטחות",
+            "פניות",
+            "תקבולים"
+          ]
+        },
+        "description": "Only these sources. Default all"
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Only this customer's tasks"
+      },
+      "bankLineIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only the receipt tasks of these bank lines"
+      },
+      "emailIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only the inbox and verify-sender tasks of these emails"
+      },
+      "approvalIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only the draft tasks of these approvals"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true (default), only report what would change",
+        "default": true
+      },
+      "phase": {
+        "type": "string",
+        "enum": [
+          "06:00",
+          "09:00"
+        ],
+        "default": "06:00",
+        "description": "Which grouped note tasks to build: 06:00 = the types whose runAt is morningPullAt (plus the full scan); 09:00 = only the commitment task (runAt bankCheckAt), without the rest of the scan"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "asOfDate": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "found": {
+        "type": "number",
+        "description": "Open problems found in scope"
+      },
+      "created": {
+        "type": "number"
+      },
+      "refreshed": {
+        "type": "number"
+      },
+      "reopened": {
+        "type": "number"
+      },
+      "autoClosed": {
+        "type": "number"
+      },
+      "keptClosedByPerson": {
+        "type": "number"
+      },
+      "bySource": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per source: {found, created, refreshed, reopened, autoClosed, readFailed}"
+      },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{taskKey, change (created / refreshed / reopened / autoClosed / keptClosed), taskType, severity, customerCode, title, resolvedReason}"
+      },
+      "writeVerified": {
+        "type": "boolean",
+        "description": "True only when every written row was read back and matches"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "noteTasks": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Grouped note tasks: {created, refreshed, autoClosed, rows, byType}"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "toolEffect": "mutation"
+}

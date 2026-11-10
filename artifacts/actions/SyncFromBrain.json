@@ -1,0 +1,93 @@
+{
+  "name": "SyncFromBrain",
+  "type": "code",
+  "description": "Copies Priority customers and invoices from company data (Brain: RAW.PRIORITY_1_CUSTOMERS, RAW.PRIORITY_1_CINVOICES, RAW.PRIORITY_1_AINVOICES) into the Customers and Invoices mirror tables. All rows are mirrored one-to-one (cancelled, draft, USD and internal 1000xx accounts included). Source reads use keyset paging on the unique key (CUSTNAME / IVNUM; query_table caps each result) over key ranges read in parallel, after a SELECT COUNT(*) per source (expectedRows). A table counts as fully read only when rows read == COUNT(*) (invoices: both forms); otherwise it is not applied (gate 'incomplete read', blocked) and nothing is marked deletedInSource. Then batched upserts by the unique key (Customers: customerCode; Invoices: priorityForm + invoiceNumber), writing ONLY the allow-list of mirror columns plus sync metadata; app-owned and derived columns are never written. dueDate and openAmount are left empty. A row whose lastAppWriteAt is later than brainDataAsOf is skipped (skippedNewerInApp). A row missing from a fully read source gets deletedInSource=true, never deleted. Further gate per table: source has 0 rows, or dropped more than 20% vs the last successful SyncRuns row, means the table is not applied (blocked). After writing, re-reads a sample of 50 written rows per table (writeVerified), then runs RefreshInvoiceLayer. Writes one SyncRuns row per run. Never writes to Priority or Brain. dryRun reports counts only.",
+  "iconName": "database-zap",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, read and compare only; write nothing except the SyncRuns row",
+        "default": true
+      },
+      "tables": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "customers",
+            "invoices"
+          ]
+        },
+        "description": "Which tables to sync (default both)"
+      },
+      "trigger": {
+        "type": "string",
+        "enum": [
+          "מתוזמן",
+          "ידני",
+          "אחרי כתיבה"
+        ],
+        "description": "What started the run (default ידני)"
+      },
+      "resumeFrom": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Continue an invoice read that hit the time budget: {runId, CINVOICES:lastKey, AINVOICES:lastKey} from the previous output"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "runId": {
+        "type": "string",
+        "description": ""
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": ""
+      },
+      "status": {
+        "type": "string",
+        "description": "רץ | הצליח | הצליח חלקית | נעצר בשער | נכשל"
+      },
+      "brainDataAsOf": {
+        "type": "string",
+        "description": "ISO time the Brain data is considered current as of"
+      },
+      "brainDataAsOfSource": {
+        "type": "string",
+        "description": "brain-last-run | last-scheduled-run"
+      },
+      "perTable": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{table, sourceTable (per-form read/count, e.g. 'CINVOICES 42177/42177 + AINVOICES 36/36'), sourceRows, expectedRows (SELECT COUNT(*); invoices = sum of both forms), lastRunSourceRows, inserted, updated, unchanged, skippedNewerInApp, markedDeletedInSource, writeVerified, gate, blocked, error ('incomplete read: …' when rows read != expectedRows)} per table"
+      },
+      "refreshInvoiceLayer": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Summary of the RefreshInvoiceLayer run"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": ""
+      },
+      "resumeFrom": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Set when invoices stopped at the 12-minute budget: pass it back as input to continue; null when complete"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Admin on the Settings import page**: clicks \"סנכרן עכשיו\" in the \"סנכרון מפריוריטי (Brain)\" section\n  Copies the latest customers and invoices from Priority into the app. With \"בדיקה בלבד, בלי כתיבה\" switched on (the default) it only reports what would change; the result of the last run is shown right below the button.\n- **Automatically**: twice a day, at 06:30 and 18:30\n  Keeps customers and invoices in step with Priority.\n  When reading invoices runs out of time, the page automatically continues from where it stopped (showing \"ממשיך קריאה… חלק N\"), up to 5 more times."
+}

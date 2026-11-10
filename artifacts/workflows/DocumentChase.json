@@ -1,0 +1,14 @@
+{
+  "name": "DocumentChase",
+  "description": "Every hour on the hour, 08:00–17:00 Israel time, Sunday to Thursday, runs DocumentChasePipeline (CheckDocumentScans): finished scans become a customer package draft, a missing scan past logisticsReminderHours gets a logistics reminder draft, and one past it again is escalated to the collections manager. Output lands in Disputes, Approvals (drafts only, nothing is sent) and Interactions.",
+  "iconName": "timer",
+  "triggerTypeId": "686255085f46e24c41a1b536",
+  "triggerData": {
+    "cronExpression": "0 8-17 * * 0-4",
+    "timezone": "Asia/Jerusalem"
+  },
+  "actionTypeId": "DocumentChasePipeline",
+  "actionInstanceInputs": {
+    "triggerTime": "{{input.triggerTime}}"
+  }
+}

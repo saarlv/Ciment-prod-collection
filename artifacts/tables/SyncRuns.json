@@ -1,0 +1,129 @@
+{
+  "name": "SyncRuns",
+  "description": "One row per Brain → app sync run (SyncFromBrain): when, why, how fresh the Brain data was, per-table counts and outcome.",
+  "iconName": "refresh-cw",
+  "columns": [
+    {
+      "name": "runId",
+      "type": "string",
+      "description": "Run id, unique (also written to syncRunId on every row the run writes)"
+    },
+    {
+      "name": "startedAt",
+      "type": "datetime",
+      "description": "Run start"
+    },
+    {
+      "name": "finishedAt",
+      "type": "datetime",
+      "description": "Run end; null while running"
+    },
+    {
+      "name": "trigger",
+      "type": "string",
+      "description": "What started the run",
+      "enum": [
+        "מתוזמן",
+        "ידני",
+        "אחרי כתיבה"
+      ]
+    },
+    {
+      "name": "dryRun",
+      "type": "boolean",
+      "description": "True when the run only reported and wrote nothing"
+    },
+    {
+      "name": "brainDataAsOf",
+      "type": "datetime",
+      "description": "Freshness of the Brain data read (last Brain sync time of the oldest source table)"
+    },
+    {
+      "name": "perTable",
+      "type": "object",
+      "description": "Per-table counts and gate result",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "string"
+            },
+            "sourceTable": {
+              "type": "string"
+            },
+            "sourceRows": {
+              "type": "number"
+            },
+            "expectedRows": {
+              "type": "number"
+            },
+            "lastRunSourceRows": {
+              "type": "number"
+            },
+            "inserted": {
+              "type": "number"
+            },
+            "updated": {
+              "type": "number"
+            },
+            "unchanged": {
+              "type": "number"
+            },
+            "skippedNewerInApp": {
+              "type": "number"
+            },
+            "markedDeletedInSource": {
+              "type": "number"
+            },
+            "writeVerified": {
+              "type": "boolean"
+            },
+            "gate": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Outcome",
+      "enum": [
+        "רץ",
+        "הצליח",
+        "הצליח חלקית",
+        "נעצר בשער",
+        "נכשל"
+      ]
+    },
+    {
+      "name": "error",
+      "type": "string",
+      "description": "Error text when the run failed or a gate stopped a table"
+    },
+    {
+      "name": "resumeFrom",
+      "type": "object",
+      "description": "When invoice reading stopped at the time budget: {CINVOICES:lastKey, AINVOICES:lastKey}; null when complete"
+    },
+    {
+      "name": "syncKind",
+      "type": "string",
+      "description": "brain (SyncFromBrain, also when empty) or priority-direct (SyncPrioritySubforms)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "runId",
+  "uniqueKey": [
+    "runId"
+  ],
+  "defaultUpsert": true
+}

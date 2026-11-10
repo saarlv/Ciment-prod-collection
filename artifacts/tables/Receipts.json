@@ -1,0 +1,193 @@
+{
+  "name": "Receipts",
+  "description": "Receipts",
+  "technicalDescription": "One receipt per bank transfer. Receipt first (plan r3 stage 1, 03.11): created as a draft as soon as the customer is identified (IdentifyCustomers), before any invoice match. amount is always the transfer amount. receiptStatus is the single status: טיוטה – ממתינה לאישור → אושרה – לא נשלחה (approved in the task, together with its match proposal, or by itself when autoCloseReceipts is on) → הונפקה ב-Priority (a person marked it issued, with Priority's receipt number). matchStatus: התאמה מוצעת – לאישור / מותאמת / על חשבון – צריך התאמה. The old status column was removed in step 3. The app never writes to Priority. Its allocations are ReceiptAllocations.",
+  "iconName": "receipt",
+  "columns": [
+    {
+      "name": "receiptKey",
+      "type": "string",
+      "description": "Key: RCPT-<bankLineId> for a bank line; RCPT-AGT-<paymentRef> for a field agent's cheque (receiptSource צ׳ק סוכן)"
+    },
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "The transfer (BankLines.bankLineId)"
+    },
+    {
+      "name": "importBatchId",
+      "type": "string",
+      "description": "The bank file (ImportBatches.id)"
+    },
+    {
+      "name": "matchProposalId",
+      "type": "string",
+      "description": "The approved MatchProposals row id"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "payerName",
+      "type": "string",
+      "description": "Payer name as on the bank line"
+    },
+    {
+      "name": "reference",
+      "type": "string",
+      "description": "Bank reference"
+    },
+    {
+      "name": "valueDate",
+      "type": "date",
+      "description": "Value date of the transfer"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Receipt amount = the transfer amount, ILS"
+    },
+    {
+      "name": "allocatedAmount",
+      "type": "number",
+      "description": "Sum of the allocations"
+    },
+    {
+      "name": "unallocatedAmount",
+      "type": "number",
+      "description": "amount − allocatedAmount: left on account (על חשבון)"
+    },
+    {
+      "name": "matchStatus",
+      "type": "string",
+      "description": "Allocation state of the receipt (plan 04.11 part B): empty until the debt check; פיזור מוצע – לאישור (CheckDebt closed a month to 0 and proposed the invoices) / על חשבון – צריך פיזור / מפוזרת / מפוזרת – עודף על חשבון (ApplyAllocation)",
+      "enum": [
+        "פיזור מוצע – לאישור",
+        "על חשבון – צריך פיזור",
+        "מפוזרת",
+        "מפוזרת – עודף על חשבון"
+      ]
+    },
+    {
+      "name": "receiptStatus",
+      "type": "string",
+      "description": "The receipt's single status (plan r3 stage 1): created as a draft when the customer is identified, approved in one task together with its match proposal (or by itself when autoCloseReceipts is on), marked issued when a person issues it in Priority. Priority is not connected, so approved = not sent",
+      "enum": [
+        "טיוטה – ממתינה לאישור",
+        "אושרה – לא נשלחה",
+        "הונפקה ב-Priority"
+      ]
+    },
+    {
+      "name": "priorityReceiptNumber",
+      "type": "string",
+      "description": "Priority's receipt number, typed by the person who issued it"
+    },
+    {
+      "name": "preparedBy",
+      "type": "string",
+      "description": "Who approved the split"
+    },
+    {
+      "name": "preparedAt",
+      "type": "datetime",
+      "description": "When"
+    },
+    {
+      "name": "issuedBy",
+      "type": "string",
+      "description": "Who marked it issued in Priority"
+    },
+    {
+      "name": "issuedAt",
+      "type": "datetime",
+      "description": "When"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "identifyConfidence",
+      "type": "number",
+      "description": "Plan 04.11 part B: customer identification confidence 0–100"
+    },
+    {
+      "name": "identifyStatus",
+      "type": "string",
+      "description": "Customer identification state (certain = at or above identifyCertainAt)",
+      "enum": [
+        "ודאי",
+        "לא ודאי",
+        "אושר",
+        "אושר אוטומטית",
+        "לא זוהה"
+      ]
+    },
+    {
+      "name": "debtCheckResult",
+      "type": "string",
+      "description": "Debt check against OpenMovements right after the receipt",
+      "enum": [
+        "נסגר לאפס – מצטבר",
+        "נסגר לאפס – חודש אחד",
+        "לברר מול הלקוח"
+      ]
+    },
+    {
+      "name": "debtCheckMonths",
+      "type": "string",
+      "description": "Due months the receipt closed, comma-separated YYYY-MM"
+    },
+    {
+      "name": "allocationConfidence",
+      "type": "number",
+      "description": "Allocation proposal confidence 0–100"
+    },
+    {
+      "name": "sentToEmail",
+      "type": "string",
+      "description": "The customer's accounts-payable contact the receipt was addressed to"
+    },
+    {
+      "name": "sentAt",
+      "type": "datetime",
+      "description": "When it was sent (never in testing)"
+    },
+    {
+      "name": "sendStatus",
+      "type": "string",
+      "description": "Receipt mail state",
+      "enum": [
+        "טיוטה – בדיקה",
+        "נשלחה",
+        "חסר איש קשר"
+      ]
+    },
+    {
+      "name": "receiptSource",
+      "type": "string",
+      "description": "Where the money came from",
+      "enum": [
+        "דף בנק",
+        "צ׳ק סוכן"
+      ]
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "receiptKey",
+  "uniqueKey": [
+    "receiptKey"
+  ],
+  "defaultUpsert": true
+}

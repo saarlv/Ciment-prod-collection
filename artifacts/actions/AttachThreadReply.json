@@ -1,0 +1,55 @@
+{
+  "name": "AttachThreadReply",
+  "type": "code",
+  "description": "Attaches an inbound email that IngestEmail recognised as a reply (isThreadReply=true, threadOf / linkedTable / linkedId already set) to what it answers, instead of opening a new inquiry. Reply to an outbox row (Approvals): updates lastReplyEmailId, lastReplyAt, replyCount on that row; when it belongs to a case (Disputes), adds an Interactions row on the case and sets the case back to active. Reply to an earlier inbound email: the original email goes back to handlingState לא טופל (reopened) and the reply copies its categories, customer and bookkeeper. The reply row itself gets status / handlingState לא טופל, classifiedBy קוד, and the inherited customer. Idempotent per email. Sends nothing.",
+  "iconName": "reply",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailId"
+    ],
+    "properties": {
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id of the reply"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "attachedTo": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{ table, id, referenceCode, label }"
+      },
+      "reopenedEmailId": {
+        "type": "string"
+      },
+      "disputeId": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string",
+        "description": "Hebrew one-liner of what was attached"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

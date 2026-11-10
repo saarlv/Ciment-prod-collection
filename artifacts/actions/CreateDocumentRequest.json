@@ -1,0 +1,55 @@
+{
+  "name": "CreateDocumentRequest",
+  "type": "code",
+  "description": "Internal email draft to the logistics owner of the case's product line (ProductLineContacts) asking to scan the missing delivery notes of a תעודת משלוח חסרה case. kind בקשה (first request) or תזכורת (reminder, counts reminderCount). Lands in Approvals (kind פנייה ללוגיסטיקה, status ממתין, relatedTable Disputes); it is never sent. A pending draft of the same kind for the case is replaced, not duplicated. When the product line has no active logistics contact the draft is still written with an empty recipient and the reason says so.",
+  "iconName": "truck",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "disputeId"
+    ],
+    "properties": {
+      "disputeId": {
+        "type": "string",
+        "description": "Disputes row id"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "בקשה",
+          "תזכורת"
+        ],
+        "default": "בקשה"
+      },
+      "requestedBy": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "approval": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true
+}

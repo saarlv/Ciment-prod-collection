@@ -1,0 +1,105 @@
+{
+  "name": "RunMailAutomation",
+  "type": "code",
+  "description": "Runs one mail automation (MailAutomations row) now, from the inbox automations tab or from RunDueAutomations. Today the only kind is the monthly open-debts mail: it calls the open-debts batch logic (PrepareOpenDebtsBatch) with the automation's audience (all customers with a debit balance, or customerCodes), subjectTemplate and bodyTemplate (variables {{customerName}}, {{customerCode}}, {{contactName}}, {{asOfDate}}, {{month}}, {{openTotal}}, {{bookkeeperName}}, {{bookkeeperPhone}}), and mailboxId. dryRun=true returns the eligible and excluded customers (with Hebrew reasons) and, when previewCustomerCode is given, the rendered subject, body and a preview PDF url for that customer, writing nothing. The PDFs list the open debts from OpenMovements; while that table is empty no draft is written and a scheduled run is recorded נכשלה (the hourly runner tries again). dryRun=false writes the drafts to the outbox (Approvals, component מנה חודשית, status ממתין; a re-run in the same month replaces that month's pending drafts), one MailAutomationRuns row (trigger, requestedBy, batchId, draftsCreated, excludedCount, excludedSummary, status, errors) and updates lastRunAt / lastRunSummary on the automation. subject/body overrides apply to this run only (used by the preview while editing). Sends nothing.",
+  "iconName": "play",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "automationId"
+    ],
+    "properties": {
+      "automationId": {
+        "type": "string",
+        "description": "MailAutomations row id"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "true = preview only, nothing written"
+      },
+      "trigger": {
+        "type": "string",
+        "enum": [
+          "מתוזמן",
+          "ידני"
+        ],
+        "default": "ידני"
+      },
+      "requestedBy": {
+        "type": "string",
+        "description": "Display name of who pressed הרץ עכשיו"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Default today in Asia/Jerusalem"
+      },
+      "previewCustomerCode": {
+        "type": "string",
+        "description": "Customer to render the preview for (dryRun)"
+      },
+      "subjectOverride": {
+        "type": "string",
+        "description": "Template to use instead of the saved subject, this run only"
+      },
+      "bodyOverride": {
+        "type": "string",
+        "description": "Template to use instead of the saved body, this run only"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "automationName": {
+        "type": "string"
+      },
+      "batchId": {
+        "type": "string"
+      },
+      "eligible": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ customerCode, customerName, contactName, contactEmail, openTotal, bookkeeperName }"
+      },
+      "excluded": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{ customerCode, customerName, reason }"
+      },
+      "preview": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{ customerCode, to, subject, body, pdfUrl }"
+      },
+      "draftsCreated": {
+        "type": "number"
+      },
+      "runId": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string",
+        "description": "Hebrew one-liner"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Previewing the monthly mail**: \"הצגת התצוגה\" in the automation card on the Inbox page (פניות → אוטומציות), after picking a sample customer\n  Shows that customer's mail as it would be written — recipient, subject, body and the open-debts PDF — using the wording currently in the editor, even before it is saved, plus who would get the mail and who is left out and why. Nothing is written.\n- **Checking a run before it happens**: \"הרץ עכשיו\" on the automation card\n  Opens a window that first lists who would get the mail and who is left out, with the reason. Nothing is written yet.\n- **Running it now**: \"יצירת N טיוטות\" in that window\n  Creates the drafts in the outbox (one per customer), records the run in the history and shows a link to those drafts. Nothing is sent."
+}

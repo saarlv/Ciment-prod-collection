@@ -1,0 +1,14 @@
+{
+  "name": "DayRunner",
+  "description": "יום העבודה: every round hour 06:00–12:00, Sun–Thu (Israel time), runs DayRunnerPipeline → RunDaySchedule, which reads the hours from AgentSettings (morningPullAt, bankCheckAt, bankRecheckAt) and today's runs from ImportBatches and runs only what is due and has not run today. Replaces TaskScan (04.11). No hour lives in the workflow: changing a setting needs no workflow change.",
+  "iconName": "sunrise",
+  "triggerTypeId": "686255085f46e24c41a1b536",
+  "triggerData": {
+    "cronExpression": "0 6-12 * * 0-4",
+    "timezone": "Asia/Jerusalem"
+  },
+  "actionTypeId": "DayRunnerPipeline",
+  "actionInstanceInputs": {
+    "triggerTime": "{{input.triggerTime}}"
+  }
+}

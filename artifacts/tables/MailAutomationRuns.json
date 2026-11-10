@@ -1,0 +1,80 @@
+{
+  "name": "MailAutomationRuns",
+  "description": "Mail automation runs",
+  "technicalDescription": "History of MailAutomations runs: one row per run (scheduled or manual) with what it created and who was left out, each with the reason.",
+  "iconName": "history",
+  "columns": [
+    {
+      "name": "automationId",
+      "type": "string",
+      "description": "MailAutomations.id (text link)"
+    },
+    {
+      "name": "automationName",
+      "type": "string",
+      "description": "Automation name (denormalised)"
+    },
+    {
+      "name": "ranAt",
+      "type": "datetime",
+      "description": "When it ran"
+    },
+    {
+      "name": "trigger",
+      "type": "string",
+      "description": "How it was started",
+      "enum": [
+        "מתוזמן",
+        "ידני"
+      ]
+    },
+    {
+      "name": "requestedBy",
+      "type": "string",
+      "description": "Who pressed run (manual) or מערכת"
+    },
+    {
+      "name": "batchId",
+      "type": "string",
+      "description": "Approvals.batchId of the drafts it created"
+    },
+    {
+      "name": "draftsCreated",
+      "type": "number",
+      "description": "Drafts created"
+    },
+    {
+      "name": "excludedCount",
+      "type": "number",
+      "description": "Customers left out"
+    },
+    {
+      "name": "excludedSummary",
+      "type": "string",
+      "description": "Left-out customers with reasons, one per line"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Run status",
+      "enum": [
+        "הושלמה",
+        "נכשלה"
+      ]
+    },
+    {
+      "name": "errors",
+      "type": "string",
+      "description": "Errors, one per line"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "ranAt"
+}

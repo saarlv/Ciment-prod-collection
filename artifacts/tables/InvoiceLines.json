@@ -1,0 +1,153 @@
+{
+  "name": "InvoiceLines",
+  "description": "Invoice lines from Priority",
+  "technicalDescription": "Read-only mirror of invoice lines. Used by AnalyzePriceGap to compare the charged price with the price list and the line's price source.",
+  "iconName": "list",
+  "columns": [
+    {
+      "name": "lineKey",
+      "type": "string",
+      "description": "Unique line key (invoiceNumber + line number)"
+    },
+    {
+      "name": "invoiceNumber",
+      "type": "string",
+      "description": "Invoice number (text link to Invoices)"
+    },
+    {
+      "name": "orderNumber",
+      "type": "string",
+      "description": "Sales order number"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "salesAgentName",
+      "type": "string",
+      "description": "Sales agent display name"
+    },
+    {
+      "name": "sku",
+      "type": "string",
+      "description": "Item code"
+    },
+    {
+      "name": "itemName",
+      "type": "string",
+      "description": "Item name"
+    },
+    {
+      "name": "quantity",
+      "type": "number",
+      "description": "Quantity"
+    },
+    {
+      "name": "unitPrice",
+      "type": "number",
+      "description": "Unit price ILS"
+    },
+    {
+      "name": "lineTotal",
+      "type": "number",
+      "description": "Line total ILS"
+    },
+    {
+      "name": "priceSource",
+      "type": "string",
+      "description": "Where the price came from",
+      "enum": [
+        "הזמנה",
+        "מחירון",
+        "ידני"
+      ]
+    },
+    {
+      "name": "managerApprovalStatus",
+      "type": "string",
+      "description": "Manager approval status of the price in Priority"
+    },
+    {
+      "name": "freeText",
+      "type": "string",
+      "description": "Free text on the line"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)",
+      "enum": [
+        "priority-mock",
+        "priority-file",
+        "priority-api",
+        "test-fixture",
+        "priority-direct"
+      ]
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last loaded from Priority / the bank file"
+    },
+    {
+      "name": "priorityKey",
+      "type": "string",
+      "description": "<form>:<IVNUM>:<KLINE>"
+    },
+    {
+      "name": "priorityForm",
+      "type": "string",
+      "description": "CINVOICES or AINVOICES"
+    },
+    {
+      "name": "lineNumber",
+      "type": "number",
+      "description": "KLINE"
+    },
+    {
+      "name": "unit",
+      "type": "string",
+      "description": "TUNITNAME"
+    },
+    {
+      "name": "discountPercent",
+      "type": "number",
+      "description": "PERCENT"
+    },
+    {
+      "name": "grossTotal",
+      "type": "number",
+      "description": "TOTPRICE (with VAT)"
+    },
+    {
+      "name": "vatAmount",
+      "type": "number",
+      "description": "IVTAX"
+    },
+    {
+      "name": "deliveryNoteNumber",
+      "type": "string",
+      "description": "DOCNO"
+    },
+    {
+      "name": "lineUpdatedAt",
+      "type": "datetime",
+      "description": "UDATE in Priority"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "itemName",
+  "uniqueKey": [
+    "lineKey"
+  ],
+  "defaultUpsert": true
+}

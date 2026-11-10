@@ -1,0 +1,240 @@
+{
+  "name": "ImportBatches",
+  "description": "Imports from Priority",
+  "technicalDescription": "Since plan r3 stage 2 every pull of Priority's bank statement lines (SyncPriorityBankLines) is one row of kind שורות דפי בנק – Priority: uploadedAt = when it was pulled, dataDate = the load day, rowsRead = lines the source returned, rowsWritten = new lines, status נכתב / נכשל. The receipts screen's ״נמשך מפריוריטי ב-HH:MM״ reads it. Before that: every uploaded file (bank file, open invoices, aging Excel…). Since Iteration 9 a bank file is uploaded on /collections/receipts and read by the nameless reader agent BankFileReader (ReadBankFile): extractionStatus tracks the reading and verification, checkStatus tracks Nina's record-by-record checks, workDay places it on the week strip. status (נקרא/נכתב/נכשל) is kept for older rows and other file kinds; nothing triggers on it any more.",
+  "iconName": "file-up",
+  "columns": [
+    {
+      "name": "fileName",
+      "type": "string",
+      "description": "Uploaded file name"
+    },
+    {
+      "name": "fileUrl",
+      "type": "string",
+      "description": "Uploaded file link"
+    },
+    {
+      "name": "kind",
+      "type": "string",
+      "description": "File kind",
+      "enum": [
+        "דוח גיול",
+        "קובץ בנק",
+        "חשבוניות פתוחות",
+        "כרטיסי לקוח",
+        "אנשי קשר",
+        "שורות דפי בנק – Priority",
+        "משיכת בוקר – Priority",
+        "בדיקת דף בנק"
+      ]
+    },
+    {
+      "name": "dataDate",
+      "type": "date",
+      "description": "Date the data in the file is for"
+    },
+    {
+      "name": "uploadedBy",
+      "type": "string",
+      "description": "Who uploaded"
+    },
+    {
+      "name": "uploadedAt",
+      "type": "datetime",
+      "description": "When uploaded"
+    },
+    {
+      "name": "rowsRead",
+      "type": "number",
+      "description": "Rows read from the file"
+    },
+    {
+      "name": "rowsWritten",
+      "type": "number",
+      "description": "Rows written to tables"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Import status",
+      "enum": [
+        "נקרא",
+        "נכתב",
+        "נכשל"
+      ]
+    },
+    {
+      "name": "errors",
+      "type": "string",
+      "description": "Errors, one per line"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "workDay",
+      "type": "date",
+      "description": "Work day on the receipts week strip: the Israel-time upload date; Friday/Saturday uploads count for that week's Thursday"
+    },
+    {
+      "name": "fileSize",
+      "type": "number",
+      "description": "Uploaded file size in bytes (same name + size on the same work day = the same file)"
+    },
+    {
+      "name": "fileType",
+      "type": "string",
+      "description": "MIME type of the uploaded file"
+    },
+    {
+      "name": "extractionStatus",
+      "type": "string",
+      "description": "Reading status of a bank file",
+      "enum": [
+        "ממתין לקריאה",
+        "בקריאה",
+        "נקרא – לאימות",
+        "אומת",
+        "נכשל"
+      ]
+    },
+    {
+      "name": "readerAgent",
+      "type": "string",
+      "description": "Agent that read the file (BankFileReader)"
+    },
+    {
+      "name": "linesInFile",
+      "type": "number",
+      "description": "Transaction count stated in the file's own summary row, if the file has one"
+    },
+    {
+      "name": "totalInFile",
+      "type": "number",
+      "description": "Total ILS stated in the file's own summary row, if the file has one"
+    },
+    {
+      "name": "extractedLineCount",
+      "type": "number",
+      "description": "Lines the reader extracted"
+    },
+    {
+      "name": "extractedTotal",
+      "type": "number",
+      "description": "Sum ILS of the extracted lines"
+    },
+    {
+      "name": "totalsCheck",
+      "type": "string",
+      "description": "Extracted count/total against the file summary",
+      "enum": [
+        "תואם",
+        "לא תואם",
+        "אין סיכום בקובץ"
+      ]
+    },
+    {
+      "name": "readerWarnings",
+      "type": "string",
+      "description": "Reader and check warnings, one per line"
+    },
+    {
+      "name": "totalsAcknowledged",
+      "type": "boolean",
+      "description": "A person confirmed \"בדקתי מול הבנק\" when the totals did not match"
+    },
+    {
+      "name": "verifiedBy",
+      "type": "string",
+      "description": "Who verified the extracted lines"
+    },
+    {
+      "name": "verifiedAt",
+      "type": "datetime",
+      "description": "When the lines were verified"
+    },
+    {
+      "name": "checkStatus",
+      "type": "string",
+      "description": "Nina's record-by-record checks on this file",
+      "enum": [
+        "טרם התחילו",
+        "בבדיקה",
+        "הושהתה",
+        "הושלמה"
+      ]
+    },
+    {
+      "name": "checkStartedBy",
+      "type": "string",
+      "description": "Who started the checks"
+    },
+    {
+      "name": "checkStartedAt",
+      "type": "datetime",
+      "description": "When the checks started"
+    },
+    {
+      "name": "runMode",
+      "type": "string",
+      "description": "Plan 04.11 day runs: scheduled by DayRunner or the manual button",
+      "enum": [
+        "בוקר",
+        "ידני"
+      ]
+    },
+    {
+      "name": "runPhase",
+      "type": "string",
+      "description": "Which day phase this row records; RunDaySchedule reads today's rows to know what already ran (a failed phase does not count)",
+      "enum": [
+        "06:00",
+        "09:00",
+        "10:00"
+      ]
+    },
+    {
+      "name": "bankLoaded",
+      "type": "boolean",
+      "description": "Kind בדיקת דף בנק: whether yesterday's bank statement was in Priority at the check"
+    },
+    {
+      "name": "runSummary",
+      "type": "object",
+      "description": "Per step of the phase: name, ok, counts and error",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "step": {
+              "type": "string"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "rowsRead": {
+              "type": "number"
+            },
+            "rowsWritten": {
+              "type": "number"
+            },
+            "note": {
+              "type": "string"
+            },
+            "error": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "fileName"
+}

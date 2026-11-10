@@ -1,0 +1,68 @@
+{
+  "name": "ExposureItems",
+  "description": "The documents that make up the obligo",
+  "technicalDescription": "Mirror, read-only (exposure_items). The breakdown behind CustomerExposure.obligoTotal as Priority gives it: open invoices, delivery notes not yet invoiced, cheques received and not yet deposited, open orders. One row per document. Shown grouped by itemType on the customer card tab; undeposited cheques are also shown apart as expected to drop on deposit.",
+  "iconName": "list-tree",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name (denormalised)"
+    },
+    {
+      "name": "itemType",
+      "type": "string",
+      "description": "Kind of document",
+      "enum": [
+        "חשבונית פתוחה",
+        "תעודת משלוח שלא חויבה",
+        "צ׳ק שלא הופקד",
+        "הזמנה פתוחה"
+      ]
+    },
+    {
+      "name": "reference",
+      "type": "string",
+      "description": "Document number (invoice, delivery note, cheque or order number)"
+    },
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Amount ILS counted in the obligo"
+    },
+    {
+      "name": "docDate",
+      "type": "date",
+      "description": "Document date (cheque: received date)"
+    },
+    {
+      "name": "dueDate",
+      "type": "date",
+      "description": "Due date (cheque: its maturity date)"
+    },
+    {
+      "name": "asOf",
+      "type": "datetime",
+      "description": "When Priority computed it"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-api, icic (CreditCovers only) or test-fixture (marked test data, removed by DeleteTestFixtures). Writers must set it"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "reference"
+}

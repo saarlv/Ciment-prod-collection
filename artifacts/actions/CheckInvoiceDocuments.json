@@ -1,0 +1,78 @@
+{
+  "name": "CheckInvoiceDocuments",
+  "type": "code",
+  "description": "2c engine for a 'missing delivery notes / invoices' request: per invoice, how many delivery notes are scanned out of the total (DeliveryNotes by invoiceNumber, total = max(Invoices.deliveryNotesExpected, notes found)). Invoices that do not belong to the email's customer are refused (never packaged for another customer). All scanned → a Disputes case (disputeType תעודת משלוח חסרה, status מוכנה לשליחה ללקוח) and a customer package draft in Approvals (kind מענה ללקוח, status ממתין, attachments = invoice document + every scan; only to a verified sender). Something missing → the case with status ממתינה לסריקה, missingNoteNumbers, productLine, the logistics owner from ProductLineContacts, nextReminderAt = now + AgentSettings.logisticsReminderHours, and an internal logistics request draft (CreateDocumentRequest, kind פנייה ללוגיסטיקה, never sent). Idempotent per invoice: an open case for the same invoice is updated, not duplicated. Writes nothing to Priority.",
+  "iconName": "file-search",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "invoiceNumbers"
+    ],
+    "properties": {
+      "invoiceNumbers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Invoice numbers the customer asked about"
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Customer the request belongs to; defaults to the email's customer"
+      },
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id of the request (links the case and the package to the email)"
+      },
+      "requestedBy": {
+        "type": "string",
+        "description": "Who ran it (מאיה or a person's name)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report the counts and what would be written; nothing changes",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "invoices": {
+        "type": "array",
+        "description": "Per invoice: invoiceNumber, customerCode, customerName, expected, scanned, missingNoteNumbers, productLine, outcome, disputeId, approvalId",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "refused": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "cancelledDraftIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Pending פנייה ללוגיסטיקה drafts cancelled (נדחה, בוטלה – כל התעודות נסרקו) because the case is fully scanned"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true
+}

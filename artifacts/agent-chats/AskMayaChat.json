@@ -1,0 +1,16 @@
+{
+  "name": "AskMayaChat",
+  "description": "AskMayaChat",
+  "agentId": "CollectionsInboxAgent",
+  "initialMessages": [
+    {
+      "content": "היי, אני מאיה. אפשר לשאול אותי על הפנייה הזו: איך מיינתי אותה ועל אילו ציטוטים, למה השולח מאומת או לא, ומה הוכן לך."
+    }
+  ],
+  "isPersistent": true,
+  "hideToolsUi": true,
+  "disableGeneratingDynamicChatComponent": false,
+  "disableAttachments": true,
+  "isAdmin": false,
+  "allowRunningActions": false
+}

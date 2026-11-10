@@ -1,0 +1,90 @@
+{
+  "name": "SearchRecentEmails",
+  "type": "code",
+  "description": "Read-only search of InboundEmails received in the last N days (default AgentSettings mailLookbackDays = 7) by a name (payer, customer, contact) and/or an amount (matches 17,424 / 17424 / 17,424.00 in subject or body). Candidate rules: contacts and Ciment sales agents first; mail classified לא רלוונטי is searched by subject and sender only (its body was wiped). Nina's chat tool for \"who sent this transfer?\". Writes nothing.",
+  "iconName": "mail-search",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Name to look for"
+      },
+      "amount": {
+        "type": "number",
+        "description": "Amount to look for"
+      },
+      "days": {
+        "type": "number",
+        "description": "Days back (default mailLookbackDays)"
+      },
+      "limit": {
+        "type": "number",
+        "description": "Max results (default 8)"
+      },
+      "asOfDate": {
+        "type": "string",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem",
+        "format": "date"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "fromDate": {
+        "type": "string"
+      },
+      "emails": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "inboundEmailId": {
+              "type": "string"
+            },
+            "fromName": {
+              "type": "string"
+            },
+            "fromAddress": {
+              "type": "string"
+            },
+            "receivedAt": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "customerCode": {
+              "type": "string"
+            },
+            "customerName": {
+              "type": "string"
+            },
+            "senderKind": {
+              "type": "string",
+              "description": "איש קשר רשום / סוכן סימנט / אחר"
+            },
+            "matchedOn": {
+              "type": "string",
+              "description": "שם / סכום"
+            },
+            "bodyExcerpt": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false
+}

@@ -1,0 +1,64 @@
+{
+  "name": "WriteCustomerSummaries",
+  "type": "code",
+  "description": "Last step of the daily customer summaries (code). Takes Iris's structured answer and the facts from PrepareCustomerSummaries and upserts one CustomerDailySummaries row per customer and summaryDate (a rerun the same day replaces the row). Keeps only entries whose customerCode is in the facts list and whose actionType is a known value. For every customer in the facts list without a valid entry (agent failed, skipped it, or returned an unknown code) it writes a plain code summary from the facts (writtenBy קוד (גיבוי)) and picks the action by the same rules the agent follows, so every card has a summary. Stores the facts in basis, sets customerName, writtenAt and isTestFixture (TEST- customers). Never contacts anyone or writes to Priority.",
+  "iconName": "notebook-pen",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "facts"
+    ],
+    "properties": {
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "summaryDate, YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "facts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "PrepareCustomerSummaries.facts"
+      },
+      "agentResult": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Iris's structured answer {summaries: [{customerCode, summary, suggestedAction, actionType}]}; empty when the agent step did not run or failed"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "summaryDate": {
+        "type": "string"
+      },
+      "written": {
+        "type": "number"
+      },
+      "byAgent": {
+        "type": "number"
+      },
+      "byFallback": {
+        "type": "number"
+      },
+      "rejected": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Agent entries dropped and why"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "toolEffect": "mutation"
+}

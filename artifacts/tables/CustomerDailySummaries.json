@@ -1,0 +1,109 @@
+{
+  "name": "CustomerDailySummaries",
+  "description": "The card agent's short daily summary per customer, with one suggested action, shown at the top of the customer card",
+  "iconName": "notebook-pen",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "summaryDate",
+      "type": "date",
+      "description": "The day the summary is for (Asia/Jerusalem). One row per customer and day; a rerun the same day replaces it"
+    },
+    {
+      "name": "summary",
+      "type": "string",
+      "description": "Two or three Hebrew sentences: where the account stands, what changed, what matters today"
+    },
+    {
+      "name": "suggestedAction",
+      "type": "string",
+      "description": "One Hebrew sentence: the single next step the agent recommends"
+    },
+    {
+      "name": "actionType",
+      "type": "string",
+      "description": "The kind of suggested step",
+      "enum": [
+        "להתקשר",
+        "לשלוח תזכורת",
+        "לבדוק בירור",
+        "לאשר הבטחה",
+        "לטפל בתקבול",
+        "לחכות למועד",
+        "אין צורך בפעולה"
+      ]
+    },
+    {
+      "name": "basis",
+      "type": "object",
+      "description": "The facts the summary was written from, so the card can show the evidence",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "openBalance": {
+            "type": "number"
+          },
+          "overdueAmount": {
+            "type": "number"
+          },
+          "oldestOverdueDays": {
+            "type": "number"
+          },
+          "openPromise": {
+            "type": "string"
+          },
+          "brokenPromises": {
+            "type": "number"
+          },
+          "openDisputes": {
+            "type": "number"
+          },
+          "openTasks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latestNote": {
+            "type": "string"
+          },
+          "lastContact": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "writtenBy",
+      "type": "string",
+      "description": "Who wrote the text",
+      "enum": [
+        "סוכן",
+        "קוד (גיבוי)"
+      ]
+    },
+    {
+      "name": "writtenAt",
+      "type": "datetime",
+      "description": "When the summary was written"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for TEST- customers; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerName"
+}

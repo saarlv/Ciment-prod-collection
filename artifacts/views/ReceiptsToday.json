@@ -1,0 +1,80 @@
+{
+  "name": "ReceiptsToday",
+  "description": "Bank lines and match proposals by day, status and confidence",
+  "technicalDescription": "BankLines left-joined to MatchProposals on bankLineId, grouped by value date, bank line status and type, proposal status and confidence. The receipts screen header reads the rows of the chosen day: certain/to-review/unidentified counts and sums. Superseded proposals (הוחלפה) appear as their own group; filter them out in the UI.",
+  "query": {
+    "from": {
+      "table": "BankLines",
+      "as": "b"
+    },
+    "join": [
+      {
+        "table": "MatchProposals",
+        "as": "m",
+        "type": "left",
+        "on": [
+          {
+            "left": "b.bankLineId",
+            "right": "m.bankLineId"
+          }
+        ]
+      }
+    ],
+    "select": [
+      {
+        "column": "b.valueDate",
+        "as": "valueDate"
+      },
+      {
+        "column": "b.status",
+        "as": "lineStatus"
+      },
+      {
+        "column": "b.lineType",
+        "as": "lineType"
+      },
+      {
+        "column": "m.status",
+        "as": "proposalStatus"
+      },
+      {
+        "column": "m.confidence",
+        "as": "confidence"
+      },
+      {
+        "column": "b.id",
+        "function": "count",
+        "as": "lineCount"
+      },
+      {
+        "column": "b.amount",
+        "function": "sum",
+        "as": "amountTotal"
+      }
+    ],
+    "groupBy": [
+      "b.valueDate",
+      "b.status",
+      "b.lineType",
+      "m.status",
+      "m.confidence"
+    ],
+    "orderBy": [
+      {
+        "column": "valueDate",
+        "direction": "desc"
+      }
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "amount",
+      "type": "number",
+      "description": "Sum ILS",
+      "expression": "Number(item.amountTotal || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

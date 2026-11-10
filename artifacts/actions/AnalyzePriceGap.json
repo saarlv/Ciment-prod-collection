@@ -1,0 +1,93 @@
+{
+  "name": "AnalyzePriceGap",
+  "type": "code",
+  "description": "2d engine: compares every line of an invoice (InvoiceLines) with the price list valid on the invoice date — the customer's list first (PriceListItems by customerCode / Customers.priceListCode), then the site's (siteName of the invoice's delivery notes) — and shows the price source (הזמנה, מחירון, ידני), the manager approval status and the order's free text. Tags a reason per gap line: מחירון לא עודכן (charged an expired list price while a newer one exists), מחיר ידני (manual price differing from the list, not approved), ללא חיוב (zero price). With dryRun the analysis is only returned (the case page uses this). Otherwise it opens or updates one Disputes case (disputeType מחיר, status ממתינה לאישור סוכן, disputedAmount, salesAgentName and salesManagerName from SalesAgents) and the internal approval-request draft (CreatePriceApprovalRequest). Invoices of another customer than the email's are refused. Writes nothing to Priority.",
+  "iconName": "scale",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "invoiceNumber"
+    ],
+    "properties": {
+      "invoiceNumber": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Customer the complaint belongs to; defaults to the email's customer"
+      },
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id of the complaint"
+      },
+      "requestedBy": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only return the analysis; nothing changes",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "invoiceNumber": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "siteName": {
+        "type": "string"
+      },
+      "lines": {
+        "type": "array",
+        "description": "Per line: lineKey, sku, itemName, quantity, unitPrice, listPrice, listSource (לקוח / אתר), priceListCode, validFrom, validTo, currentListPrice, priceSource, managerApprovalStatus, freeText, gapPerUnit, gapTotal, reason",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "totalGap": {
+        "type": "number"
+      },
+      "reasons": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "salesAgentName": {
+        "type": "string"
+      },
+      "salesManagerName": {
+        "type": "string"
+      },
+      "disputeId": {
+        "type": "string"
+      },
+      "approvalId": {
+        "type": "string"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening a price case**: automatically when a bookkeeper opens a price-difference case page (מסמכים ומחירים → a price case), and again after an approval is marked\n  Shows the per-line gap table — charged price against the valid price list, price source, manager approval, the order's free text and the reason per line — without changing anything.\n- **Opening a price-difference mail**: automatically when a bookkeeper opens a mail of type \"הפרש מחיר\" on the Inbox page (פניות → דואר נכנס) and a price case was opened from it\n  Shows the same per-line gap table in the left side of the mail panel, without changing anything."
+}

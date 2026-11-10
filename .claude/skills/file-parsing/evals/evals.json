@@ -1,0 +1,41 @@
+{
+  "skill_name": "file-parsing",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a CSV upload area where users can upload a sales report CSV file and see the data rendered in a table. Show the column headers and all rows.",
+      "expected_output": "A file input that parses the uploaded CSV and renders the result in a table. Uses the project's CSV parsing utility.",
+      "files": [],
+      "expectations": [
+        "Uses the project's CSV parsing approach (Papa Parse or equivalent from available packages)",
+        "Renders parsed data as a table with headers from the first row",
+        "Handles the async file reading correctly",
+        "Shows a loading or empty state before a file is uploaded"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Let users upload an Excel workbook of inventory data and import the rows from the first sheet into the app, showing a preview table before confirming.",
+      "expected_output": "A file input that reads the XLSX file with SheetJS, converts the first sheet to row objects, and renders a preview table before import.",
+      "files": [],
+      "expectations": [
+        "Uses the xlsx package (SheetJS) to read the workbook from an ArrayBuffer",
+        "Converts the sheet to JSON rows with sheet_to_json",
+        "Renders the parsed rows in a preview table",
+        "Does not implement manual Excel parsing"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Show an inline preview of a contract PDF (stored as a URL on the contract entity) on the contract details page.",
+      "expected_output": "Renders the PDF with the PdfViewer component inside a container with a defined height.",
+      "files": [],
+      "expectations": [
+        "Imports PdfViewer from @/components/ui/pdf-viewer",
+        "Passes the PDF URL via the file prop",
+        "Gives the container a defined height",
+        "Does not use an iframe, object tag, react-pdf, or pdfjs directly"
+      ]
+    }
+  ]
+}

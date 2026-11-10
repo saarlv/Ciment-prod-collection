@@ -1,0 +1,83 @@
+{
+  "skill_name": "blocks-client",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Show a list of all products from the ProductEntity with their name and price. Add a delete button on each row that removes the product immediately when clicked.",
+      "expected_output": "A list rendering useEntityGetAll, deleting via useEntityDelete, rendering rows directly from data and relying on the SDK's optimistic removal — no manual list state, no refetch, no per-row spinners.",
+      "files": [],
+      "expectations": [
+        "Uses useEntityGetAll(ProductEntity) to fetch data",
+        "Uses useEntityDelete for deletion",
+        "Renders rows directly from data — does not copy the list into useState or manually filter out deleted rows",
+        "Does not call refetch() manually after delete",
+        "Does not add per-row deleting spinners or loading state (the SDK removes the row optimistically)",
+        "Imports entity from @/product-types"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Build a form to create a new Task with a title and a status dropdown (todo, in-progress, done). On submit, save it to the TaskEntity and show a success toast. The form should reset after submission.",
+      "expected_output": "A form using useEntityCreate with correct data shape, a success toast (shadcn toast component on base apps; sonner on radix), and form reset after submission.",
+      "files": [],
+      "expectations": [
+        "Uses useEntityCreate(TaskEntity)",
+        "Calls createFunction({ data: { ... } })",
+        "Shows a success toast — toast.add({ title, type: 'success' }) from @/components/ui/toast on base apps (toast.success() from sonner on radix)",
+        "Does not call refetch() after creation",
+        "Imports TaskEntity from @/product-types"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Build a user profile card that shows the current user's name, email, profile picture (with initials as fallback), and a logout button.",
+      "expected_output": "Uses useUser() for user data, AvatarImage with profileImageUrl, AvatarFallback with initials, logOut() from @blocksdiy/blocks-client-sdk/reactSdk.",
+      "files": [],
+      "expectations": [
+        "Uses useUser() from reactSdk",
+        "Uses profileImageUrl for AvatarImage when available",
+        "Uses AvatarFallback with initials derived from firstName/lastName",
+        "Calls logOut() from @blocksdiy/blocks-client-sdk/reactSdk for the logout button",
+        "Does not try to edit user fields (UserEntity is immutable)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Execute the GenerateReportAction with a date range input and show the streaming result as it comes in. Show a loading state while running and a clear button to reset.",
+      "expected_output": "Uses useExecuteAction with streamResult for real-time output, isLoading for state, and clear() to reset.",
+      "files": [],
+      "expectations": [
+        "Uses useExecuteAction(GenerateReportAction)",
+        "Renders streamResult for real-time streaming output",
+        "Uses isLoading for loading state",
+        "Calls clear() to reset the result",
+        "Does not call the action inside onChange or other high-frequency handlers"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add a file upload input that lets users upload an image. Show an upload progress bar while uploading and display the uploaded image preview when done.",
+      "expected_output": "Uses useFileUpload with uploadPercentage for progress and the returned URL for the preview image.",
+      "files": [],
+      "expectations": [
+        "Uses useFileUpload() from reactSdk",
+        "Shows uploadPercentage for progress feedback",
+        "Stores and displays the returned URL string as an image src",
+        "Handles isLoading state to disable the input while uploading"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "On the report detail page, add a 'Post to Slack' button that runs PostReportToSlackAction with the report id. Slack is an optional integration for this app, so many users won't have it connected.",
+      "expected_output": "The button is rendered only when useIntegrationStatus('slack').isConnected (or useIntegrationsStatus().isConnected('slack')) is true; the action runs through useExecuteAction; no connect-integration UI is built inside the app.",
+      "files": [],
+      "expectations": [
+        "Imports useIntegrationStatus or useIntegrationsStatus from @blocksdiy/blocks-client-sdk/reactSdk",
+        "Hides or disables the Post to Slack button unless Slack is connected",
+        "Runs PostReportToSlackAction via useExecuteAction, imported from @/product-types",
+        "Does not rely only on catching the action's error to handle a missing Slack connection",
+        "Does not add a button or flow to connect Slack from inside the app"
+      ]
+    }
+  ]
+}

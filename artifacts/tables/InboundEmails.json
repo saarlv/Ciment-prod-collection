@@ -1,0 +1,438 @@
+{
+  "name": "InboundEmails",
+  "description": "Inbound emails",
+  "technicalDescription": "Every email received through a mailbox adapter (Gmail test label now, Outlook later), normalised by IngestEmail. Component 04 (פניות): Maya classifies (categories + quotes, senderRole), code verifies and routes and keeps handlingState (לא טופל / ממתין with waitingFor / טופל with handledBy). A reply linked through CIM-ref or threadId is stored with isThreadReply=true and opens no new ticket. Irrelevant mail keeps metadata only (bodyStored=false). Attachments and their extracted text live in EmailAttachments.",
+  "iconName": "mail",
+  "columns": [
+    {
+      "name": "messageId",
+      "type": "string",
+      "description": "Provider message id, unique (dedupe key)"
+    },
+    {
+      "name": "threadId",
+      "type": "string",
+      "description": "Provider thread id"
+    },
+    {
+      "name": "mailProvider",
+      "type": "string",
+      "description": "Mail provider",
+      "enum": [
+        "gmail",
+        "outlook"
+      ]
+    },
+    {
+      "name": "mailbox",
+      "type": "string",
+      "description": "Mailbox address the email arrived in"
+    },
+    {
+      "name": "mailboxOwnerName",
+      "type": "string",
+      "description": "Mailbox owner display name"
+    },
+    {
+      "name": "sourceLabel",
+      "type": "string",
+      "description": "Label / folder the email was read from (e.g. Ciment-Test)"
+    },
+    {
+      "name": "fromAddress",
+      "type": "string",
+      "description": "Sender email"
+    },
+    {
+      "name": "fromName",
+      "type": "string",
+      "description": "Sender name"
+    },
+    {
+      "name": "subject",
+      "type": "string",
+      "description": "Subject"
+    },
+    {
+      "name": "bodyText",
+      "type": "string",
+      "description": "Body text. Empty when the category is לא רלוונטי"
+    },
+    {
+      "name": "bodyStored",
+      "type": "boolean",
+      "description": "Whether the body and attachments are stored (false for irrelevant mail)"
+    },
+    {
+      "name": "receivedAt",
+      "type": "datetime",
+      "description": "When the email was received"
+    },
+    {
+      "name": "dueAt",
+      "type": "datetime",
+      "description": "Reply deadline (receivedAt + reply SLA)"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Linked customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "senderVerification",
+      "type": "string",
+      "description": "Is the sender a registered contact",
+      "enum": [
+        "מאומת",
+        "לא מאומת",
+        "לבדיקה"
+      ]
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "description": "Classification",
+      "enum": [
+        "כרטסת",
+        "חובות פתוחים",
+        "תעודות וחשבוניות חסרות",
+        "הפרש מחיר",
+        "פירוט תשלום",
+        "הבטחת תשלום",
+        "אחר",
+        "לא רלוונטי",
+        "אישור ביטוח אשראי"
+      ]
+    },
+    {
+      "name": "identifiedBy",
+      "type": "string",
+      "description": "Plan 04.11 part C: how the customer was identified",
+      "enum": [
+        "כתובת",
+        "חתימה"
+      ]
+    },
+    {
+      "name": "suggestedCustomerCode",
+      "type": "string",
+      "description": "Unknown sender: the customer Maya suggests from the signature / logo (task זה הלקוח X?)"
+    },
+    {
+      "name": "signatureText",
+      "type": "string",
+      "description": "The sender's signature block as read from the mail"
+    },
+    {
+      "name": "mentionedInvoiceNumbers",
+      "type": "string",
+      "description": "Invoice numbers mentioned in the email, comma-separated"
+    },
+    {
+      "name": "attachmentNames",
+      "type": "string",
+      "description": "Attachment file names, comma-separated"
+    },
+    {
+      "name": "attachmentUrls",
+      "type": "string",
+      "description": "Attachment links, one per line"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Handling status",
+      "enum": [
+        "חדשה",
+        "בטיפול מאיה",
+        "טיוטה מוכנה",
+        "ממתינה לגורם פנימי",
+        "נענתה",
+        "לא רלוונטית"
+      ]
+    },
+    {
+      "name": "assignedBookkeeperName",
+      "type": "string",
+      "description": "Bookkeeper who owns the email (display name)"
+    },
+    {
+      "name": "agentSummary",
+      "type": "string",
+      "description": "Maya's short summary and analysis"
+    },
+    {
+      "name": "answeredAt",
+      "type": "datetime",
+      "description": "When the reply was approved"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    },
+    {
+      "name": "bankLineId",
+      "type": "string",
+      "description": "BankLines.bankLineId when this mail is the customer's reply to a detail request for that transfer (older data only: the detail request was removed on 08.11)"
+    },
+    {
+      "name": "categories",
+      "type": "string",
+      "description": "All mail types Maya found, comma-separated, in folder order (1 כרטסת, 2 חובות פתוחים, 3 תעודות וחשבוניות חסרות, 4 הפרש מחיר, 5 פירוט תשלום, then הבטחת תשלום, אחר, לא רלוונטי). category holds the primary (first) one, which decides the folder"
+    },
+    {
+      "name": "senderRole",
+      "type": "string",
+      "description": "Who wrote the mail",
+      "enum": [
+        "איש קשר של הלקוח",
+        "סוכן סימנט בשם הלקוח",
+        "איש לוגיסטיקה",
+        "אחר"
+      ]
+    },
+    {
+      "name": "verificationBasis",
+      "type": "string",
+      "description": "Hebrew: what the verification rests on (registered contact X of customer Y / sales agent X authorized for customer Y / not registered)"
+    },
+    {
+      "name": "customerMatchMethod",
+      "type": "string",
+      "description": "How the customer was identified",
+      "enum": [
+        "כתובת השולח",
+        "סוכן מורשה",
+        "חתימה",
+        "דומיין",
+        "שם בתוכן",
+        "מספר חשבונית",
+        "שרשור",
+        "לא זוהה"
+      ]
+    },
+    {
+      "name": "mailboxId",
+      "type": "string",
+      "description": "Mailboxes.id the mail arrived in (text link)"
+    },
+    {
+      "name": "handlingState",
+      "type": "string",
+      "description": "Handling state shown on the inbox page. Default filter shows לא טופל + ממתין",
+      "enum": [
+        "לא טופל",
+        "ממתין",
+        "טופל"
+      ]
+    },
+    {
+      "name": "waitingFor",
+      "type": "string",
+      "description": "When ממתין: for whom (e.g. ממתין ללוגיסטיקה: דני כהן / ממתין לאישור סוכן: X / ממתין להתאמת התקבול / ממתין ללקוח)"
+    },
+    {
+      "name": "waitingSince",
+      "type": "datetime",
+      "description": "When the mail entered ממתין"
+    },
+    {
+      "name": "handledBy",
+      "type": "string",
+      "description": "When טופל: who closed it (person display name, or מערכת for an automatic close)"
+    },
+    {
+      "name": "handledAt",
+      "type": "datetime",
+      "description": "When it became טופל"
+    },
+    {
+      "name": "threadOf",
+      "type": "string",
+      "description": "For a reply linked through the thread: Approvals.id of the outbound message it answers (text link)"
+    },
+    {
+      "name": "linkedTable",
+      "type": "string",
+      "description": "Record this mail belongs to: BankLines, Disputes, InboundEmails, MailAutomationRuns"
+    },
+    {
+      "name": "linkedId",
+      "type": "string",
+      "description": "Id of that record, as text (bankLineId, dispute id, inbound email id, run id)"
+    },
+    {
+      "name": "isThreadReply",
+      "type": "boolean",
+      "description": "True when the mail was linked as a reply in an existing thread (CIM-ref or threadId) and opened no new ticket"
+    },
+    {
+      "name": "classifiedBy",
+      "type": "string",
+      "description": "Who classified the mail",
+      "enum": [
+        "מאיה",
+        "קוד"
+      ]
+    },
+    {
+      "name": "classificationQuotes",
+      "type": "object",
+      "description": "Maya's evidence: one quote per type and per invoice, verified by code; plus the customer candidates code gave her; promise = Maya's promise proposal awaiting approval (status ממתינה לאישור / אושרה, approvedPromiseId when approved in the email panel); dispute = a conditional payment or a claim the invoice is wrong, with the aging notes it opened",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                },
+                "verified": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "invoiceNumber": {
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                },
+                "verified": {
+                  "type": "boolean"
+                },
+                "belongsToCustomer": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "customerCode": {
+                  "type": "string"
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "promise": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number"
+              },
+              "date": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string"
+              },
+              "quote": {
+                "type": "string"
+              },
+              "verified": {
+                "type": "boolean"
+              },
+              "invoiceNumbers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string"
+              },
+              "approvedPromiseId": {
+                "type": "string"
+              },
+              "approvedBy": {
+                "type": "string"
+              },
+              "approvedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "dispute": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "quote": {
+                "type": "string"
+              },
+              "verified": {
+                "type": "boolean"
+              },
+              "invoiceNumbers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "noteIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "subject",
+  "uniqueKey": [
+    "messageId"
+  ],
+  "defaultUpsert": true
+}

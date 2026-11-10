@@ -1,0 +1,75 @@
+{
+  "name": "ConfirmSender",
+  "type": "code",
+  "description": "A person answers the 'זה הלקוח X?' card of an inbound email from an unknown sender (part C stage 8). mode confirm: the sender belongs to customerCode (the suggested customer or another one the person chose). Writes a CustomerContacts row (source נוסף אצלנו, isApContact true, contactName and signatureTitle from the email's signature, addedFromEmailId, contactKey ours:<customerCode>:<address>; an existing row for the same customer + address is updated, never duplicated; Priority rows are never changed), sets the email's customer, senderVerification מאומת, identifiedBy חתימה, closes the open לאמת שולח task of the email, opens one task 'להוסיף איש קשר בפריוריטי' (key manual:priority-contact:<contactKey>) for the customer's bookkeeper, then re-routes the email so its statement / open-debts draft is prepared now (ApplyMailClassification's logic, including the mailAutoReplyAt threshold – empty = OFF). mode reject: the sender is not a customer contact; the email stays not verified, the task is closed with the note, nothing else is written. Idempotent: a second confirm of the same email returns the existing contact. Never writes to Priority, sends nothing.",
+  "iconName": "user-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "inboundEmailId",
+      "mode"
+    ],
+    "properties": {
+      "inboundEmailId": {
+        "type": "string",
+        "description": "InboundEmails row id"
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "confirm",
+          "reject"
+        ]
+      },
+      "customerCode": {
+        "type": "string",
+        "description": "Required for confirm: the customer the sender belongs to"
+      },
+      "contactName": {
+        "type": "string",
+        "description": "Optional override of the name taken from the signature"
+      },
+      "note": {
+        "type": "string",
+        "description": "Optional short note (required wording for reject is free text)"
+      },
+      "decidedBy": {
+        "type": "string",
+        "description": "Name of the person who decided"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string"
+      },
+      "contactId": {
+        "type": "string"
+      },
+      "contactKey": {
+        "type": "string"
+      },
+      "customerCode": {
+        "type": "string"
+      },
+      "customerName": {
+        "type": "string"
+      },
+      "priorityTaskId": {
+        "type": "string"
+      },
+      "rerouted": {
+        "type": "boolean"
+      },
+      "message": {
+        "type": "string",
+        "description": "Hebrew summary for the screen"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Confirming an unknown sender**: Clicking \"אשר ושמור איש קשר\" on the \"זה הלקוח X?\" card in the email panel of the inbox (פניות)\n  Saves the sender as a contact of the suggested customer, marks the email as verified, opens a task to add the contact in Priority and prepares the reply draft.\n- **Choosing another customer**: Clicking \"בחר לקוח אחר\", picking the customer and confirming on the same card\n  Saves the sender as a contact of the chosen customer instead.\n- **Rejecting the sender**: Clicking \"השולח לא שייך ללקוח\", writing a short note and saving\n  Records that the sender is not a customer contact and closes the verification task; nothing else changes.",
+  "toolEffect": "mutation"
+}

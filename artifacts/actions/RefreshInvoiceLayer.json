@@ -1,0 +1,67 @@
+{
+  "name": "RefreshInvoiceLayer",
+  "type": "code",
+  "description": "Recomputes the app layer on Invoices from its sources, the same shared code DecideMatchProposal, ResetReceiptsDay, SeedTestFixtures and the 06:00 phase run. Payment fields (paymentState, paidSeenAmount, paidSeenAt, paidSeenBankLineIds, paidPriorityDoneAt, paymentStatus, remainingAmount, receiptKeys) come from ReceiptAllocations (receipts מוכנה = נראה תשלום, הונפקה ב-Priority = נקלט ב-Priority); approved MatchProposals without a receipt (before 26.10) still count. Status fields: openDisputeId = the newest open Disputes row (status not נסגרה) listing the invoice; subStatus = סגורה when remainingAmount is 0, else בבירור (openDisputeId) > שולמה חלקית (paidSeenAmount > 0 or Priority status שולמה חלקית) > פתוחה. Notes are per customer + due month (CustomerNotes), not on the invoice, so הובטחה is no longer set. The amount paid stays in paidSeenAmount and is always shown separately. Only rows whose values change are written. Never touches the Priority columns. dryRun (default true) only reports the changes. A repair tool.",
+  "iconName": "refresh-ccw",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "invoiceNumbers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only these invoices"
+      },
+      "customerCodes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only these customers' invoices"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true (default), only report what would change",
+        "default": true
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean",
+        "description": ""
+      },
+      "invoicesChecked": {
+        "type": "number",
+        "description": ""
+      },
+      "invoicesChanged": {
+        "type": "number",
+        "description": ""
+      },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "{invoiceNumber, fields} for every invoice that changes"
+      },
+      "writeVerified": {
+        "type": "boolean",
+        "description": "True only when every written row was read back with the new values"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": ""
+      }
+    }
+  },
+  "exposedToUI": true
+}

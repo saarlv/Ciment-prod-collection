@@ -1,0 +1,258 @@
+{
+  "name": "Customers",
+  "description": "Priority customer mirror (read-only for the agent)",
+  "technicalDescription": "Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link.",
+  "iconName": "users",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code, unique"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer name"
+    },
+    {
+      "name": "customerType",
+      "type": "string",
+      "description": "Credit or cash customer",
+      "enum": [
+        "אשראי",
+        "מזומן"
+      ]
+    },
+    {
+      "name": "priorityStatus",
+      "type": "string",
+      "description": "Status in Priority (CUSTOMERS.STATDES, verbatim); לא פעיל בפריוריטי = no longer returned by Priority",
+      "enum": [
+        "פעיל",
+        "זמני",
+        "חסום",
+        "חסום BDI",
+        "לא פעיל",
+        "פעיל-ח.ניירת",
+        "חס-חסר ניירת",
+        "בטיפול",
+        "לא פעיל בפריוריטי"
+      ]
+    },
+    {
+      "name": "paymentTermsDays",
+      "type": "number",
+      "description": "Payment terms in days: 30/45/60/90/120"
+    },
+    {
+      "name": "paymentTermsLabel",
+      "type": "string",
+      "description": "Terms label, e.g. שוטף+60"
+    },
+    {
+      "name": "creditLimit",
+      "type": "number",
+      "description": "Credit limit ILS"
+    },
+    {
+      "name": "salesAgentName",
+      "type": "string",
+      "description": "Sales agent name"
+    },
+    {
+      "name": "salesAgentPhone",
+      "type": "string",
+      "description": "Sales agent phone"
+    },
+    {
+      "name": "apContactName",
+      "type": "string",
+      "description": "Customer accounts-payable contact name"
+    },
+    {
+      "name": "apContactEmail",
+      "type": "string",
+      "description": "AP contact email"
+    },
+    {
+      "name": "apContactPhone",
+      "type": "string",
+      "description": "AP contact phone"
+    },
+    {
+      "name": "procurementContactName",
+      "type": "string",
+      "description": "Procurement contact name"
+    },
+    {
+      "name": "procurementContactEmail",
+      "type": "string",
+      "description": "Procurement contact email"
+    },
+    {
+      "name": "procurementContactPhone",
+      "type": "string",
+      "description": "Procurement contact phone"
+    },
+    {
+      "name": "assignedBookkeeperName",
+      "type": "string",
+      "description": "Assigned bookkeeper name"
+    },
+    {
+      "name": "preferredChannel",
+      "type": "string",
+      "description": "Preferred contact channel",
+      "enum": [
+        "דואל",
+        "WhatsApp",
+        "טלפון"
+      ]
+    },
+    {
+      "name": "doNotContact",
+      "type": "boolean",
+      "description": "Do not contact this customer"
+    },
+    {
+      "name": "collectionStage",
+      "type": "string",
+      "description": "Current collection stage",
+      "enum": [
+        "תקין",
+        "תזכורת",
+        "פנייה שנייה",
+        "שיחה",
+        "הוסלם למנהל"
+      ]
+    },
+    {
+      "name": "lastPaymentDate",
+      "type": "date",
+      "description": "Date of last payment"
+    },
+    {
+      "name": "internalNotes",
+      "type": "string",
+      "description": "Internal notes (long text)"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)"
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last synced from Priority"
+    },
+    {
+      "name": "companyId",
+      "type": "string",
+      "description": "Company registration number (ח״פ) from Priority. Every insurer (בסס״ח) request is sent by it; missing → no request, a task להשלים ח.פ instead"
+    },
+    {
+      "name": "checkRemittanceMail",
+      "type": "boolean",
+      "description": "Flag בודקים פירוט במייל: only for flagged customers the receipts matching searches mail for a remittance, and only from remittanceSenders. Flag on with no sender = configuration error, customer skipped"
+    },
+    {
+      "name": "remittanceSenders",
+      "type": "string",
+      "description": "Remittance sender addresses for this customer, comma-separated (one or more). Searched only when checkRemittanceMail is on"
+    },
+    {
+      "name": "primaryEmail",
+      "type": "string",
+      "description": "General email on the Priority customer card"
+    },
+    {
+      "name": "priceListCode",
+      "type": "string",
+      "description": "Customer price list code in Priority"
+    },
+    {
+      "name": "ledgerBalance",
+      "type": "number",
+      "description": "Customer ledger balance ILS from Priority"
+    },
+    {
+      "name": "address",
+      "type": "string",
+      "description": "Customer billing address from the Priority customer card (street, city), sent as BUYER_ADDRESS on an insurer request"
+    },
+    {
+      "name": "paymentMethod",
+      "type": "string",
+      "description": "From Priority: how the customer usually pays (העברה, צ׳ק, צ׳קים דחויים, אשראי…). Shown in the aging report"
+    },
+    {
+      "name": "collectionNote",
+      "type": "string",
+      "description": "From Priority: the customer's standing collection note, e.g. \"משלמים ב-30 לחודש\". Shown in the aging report"
+    },
+    {
+      "name": "priorityKey",
+      "type": "string",
+      "description": "Sync: Priority natural key (CUSTNAME = customerCode). Written only by SyncFromBrain."
+    },
+    {
+      "name": "sourceUpdatedAt",
+      "type": "datetime",
+      "description": "Sync: last change time in Priority when the source reports one, else null."
+    },
+    {
+      "name": "syncRunId",
+      "type": "string",
+      "description": "Sync: SyncRuns.runId of the run that last wrote this row."
+    },
+    {
+      "name": "lastAppWriteAt",
+      "type": "datetime",
+      "description": "Sync: when the app last wrote this row to Priority (write-through). A sync whose Brain data is older skips the row."
+    },
+    {
+      "name": "pendingBrainConfirm",
+      "type": "boolean",
+      "description": "Sync: true after an app write-through until a Brain sync newer than lastAppWriteAt confirms it."
+    },
+    {
+      "name": "deletedInSource",
+      "type": "boolean",
+      "description": "Sync: true when a fully-read Brain table no longer contains this key. Row and enrichment are kept."
+    },
+    {
+      "name": "obligoLimit",
+      "type": "number",
+      "description": "Mirror: maximum obligo in Priority (CUSTOMERS.MAX_OBLIGO), ILS"
+    },
+    {
+      "name": "creditInsuredAmount",
+      "type": "number",
+      "description": "Mirror: credit-insurance amount recorded in Priority (CUSTOMERS.ZMET_CREDITINSURAMNT), ILS"
+    },
+    {
+      "name": "priorityOwner",
+      "type": "string",
+      "description": "Mirror: Priority user who owns the customer card (CUSTOMERS.OWNERLOGIN)"
+    },
+    {
+      "name": "paymentTermsCode",
+      "type": "string",
+      "description": "Mirror: payment terms code (CUSTOMERS.PAYCODE)"
+    },
+    {
+      "name": "salesAgentCode",
+      "type": "string",
+      "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerName",
+  "uniqueKey": [
+    "customerCode"
+  ],
+  "defaultUpsert": true
+}

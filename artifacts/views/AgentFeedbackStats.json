@@ -1,0 +1,56 @@
+{
+  "name": "AgentFeedbackStats",
+  "description": "Right/wrong counts per receipts agent",
+  "technicalDescription": "AgentFeedback counted per agent, import batch, verdict and field. The UI joins importBatchId to ImportBatches.workDay to sum a week (e.g. קריאת הקובץ: 2 טעויות מתוך 46 שורות השבוע, lines from ReceiptsByBatch). Test rows are kept apart by isTestFixture.",
+  "query": {
+    "from": {
+      "table": "AgentFeedback",
+      "as": "f"
+    },
+    "select": [
+      {
+        "column": "f.agentName",
+        "as": "agentName"
+      },
+      {
+        "column": "f.importBatchId",
+        "as": "importBatchId"
+      },
+      {
+        "column": "f.verdict",
+        "as": "verdict"
+      },
+      {
+        "column": "f.field",
+        "as": "field"
+      },
+      {
+        "column": "f.isTestFixture",
+        "as": "isTestFixture"
+      },
+      {
+        "column": "f.id",
+        "function": "count",
+        "as": "feedbackCount"
+      }
+    ],
+    "groupBy": [
+      "f.agentName",
+      "f.importBatchId",
+      "f.verdict",
+      "f.field",
+      "f.isTestFixture"
+    ]
+  },
+  "calculatedColumns": [
+    {
+      "name": "feedbackCountN",
+      "type": "number",
+      "description": "Feedback rows",
+      "expression": "Number(item.feedbackCount || 0)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  }
+}

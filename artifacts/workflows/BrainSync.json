@@ -1,0 +1,19 @@
+{
+  "name": "BrainSync",
+  "description": "Twice a day, 06:30 and 18:30 Israel time (30 minutes after Brain's 06:00/18:00 copy from Priority), runs SyncFromBrain for customers and invoices (not dry). Results land in SyncRuns.",
+  "iconName": "database-zap",
+  "triggerTypeId": "686255085f46e24c41a1b536",
+  "triggerData": {
+    "cronExpression": "30 6,18 * * *",
+    "timezone": "Asia/Jerusalem"
+  },
+  "actionTypeId": "SyncFromBrain",
+  "actionInstanceInputs": {
+    "dryRun": false,
+    "tables": [
+      "customers",
+      "invoices"
+    ],
+    "trigger": "מתוזמן"
+  }
+}

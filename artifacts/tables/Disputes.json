@@ -1,0 +1,192 @@
+{
+  "name": "Disputes",
+  "description": "Invoice disputes",
+  "iconName": "scale",
+  "columns": [
+    {
+      "name": "disputeNumber",
+      "type": "string",
+      "description": "Dispute number, unique"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "disputeType",
+      "type": "string",
+      "description": "Dispute type",
+      "enum": [
+        "מחיר",
+        "תעודת משלוח חסרה",
+        "סחורה או החזרה",
+        "ממתין לאישור רכש",
+        "אחר"
+      ]
+    },
+    {
+      "name": "invoiceNumbers",
+      "type": "string",
+      "description": "Invoice numbers"
+    },
+    {
+      "name": "disputedAmount",
+      "type": "number",
+      "description": "Disputed amount ILS"
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "description": "Description (long text)"
+    },
+    {
+      "name": "ballWith",
+      "type": "string",
+      "description": "Who the ball is with",
+      "enum": [
+        "סוכן הגבייה",
+        "מנהלת חשבונות",
+        "סוכן מכירות",
+        "לוגיסטיקה",
+        "רכש הלקוח",
+        "מנהל הגבייה"
+      ]
+    },
+    {
+      "name": "ownerBookkeeperName",
+      "type": "string",
+      "description": "Owning bookkeeper"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Dispute status",
+      "enum": [
+        "פתוחה",
+        "בטיפול",
+        "ממתינה לסריקה",
+        "תזכורת בטיוטה",
+        "הוסלמה",
+        "ממתינה לאישור סוכן",
+        "ממתינה לאישור מנהל",
+        "ממתינה לזיכוי",
+        "מוכנה לשליחה ללקוח",
+        "נסגרה"
+      ]
+    },
+    {
+      "name": "openedAt",
+      "type": "datetime",
+      "description": "Opened at"
+    },
+    {
+      "name": "closedAt",
+      "type": "datetime",
+      "description": "Closed at"
+    },
+    {
+      "name": "resolution",
+      "type": "string",
+      "description": "Resolution (long text)"
+    },
+    {
+      "name": "inboundEmailId",
+      "type": "string",
+      "description": "Inbound email that opened the case (text link to InboundEmails.messageId)"
+    },
+    {
+      "name": "missingNoteNumbers",
+      "type": "string",
+      "description": "Delivery note numbers still not scanned, comma-separated"
+    },
+    {
+      "name": "productLine",
+      "type": "string",
+      "description": "Product line, routes the chase to the right logistics owner"
+    },
+    {
+      "name": "logisticsOwnerName",
+      "type": "string",
+      "description": "Logistics owner for the product line (display name)"
+    },
+    {
+      "name": "logisticsOwnerEmail",
+      "type": "string",
+      "description": "Logistics owner email"
+    },
+    {
+      "name": "nextReminderAt",
+      "type": "datetime",
+      "description": "When the next logistics reminder draft is due"
+    },
+    {
+      "name": "reminderCount",
+      "type": "number",
+      "description": "How many reminder drafts were created"
+    },
+    {
+      "name": "salesAgentName",
+      "type": "string",
+      "description": "Sales agent who must approve the price (display name)"
+    },
+    {
+      "name": "salesManagerName",
+      "type": "string",
+      "description": "Sales agent's manager who must approve after the agent (display name)"
+    },
+    {
+      "name": "salesAgentApprovedAt",
+      "type": "datetime",
+      "description": "When the bookkeeper marked the sales agent approval"
+    },
+    {
+      "name": "salesAgentApprovalMarkedBy",
+      "type": "string",
+      "description": "Bookkeeper who marked the sales agent approval"
+    },
+    {
+      "name": "salesAgentApprovalEvidence",
+      "type": "string",
+      "description": "Evidence of the agent approval: pasted email text or a link (mandatory)"
+    },
+    {
+      "name": "salesManagerApprovedAt",
+      "type": "datetime",
+      "description": "When the bookkeeper marked the manager approval"
+    },
+    {
+      "name": "salesManagerApprovalMarkedBy",
+      "type": "string",
+      "description": "Bookkeeper who marked the manager approval"
+    },
+    {
+      "name": "salesManagerApprovalEvidence",
+      "type": "string",
+      "description": "Evidence of the manager approval: pasted email text or a link (mandatory)"
+    },
+    {
+      "name": "creditDraftNote",
+      "type": "string",
+      "description": "Summary prepared for the credit note the bookkeeper creates in Priority"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "disputeNumber",
+  "uniqueKey": [
+    "disputeNumber"
+  ],
+  "defaultUpsert": true
+}

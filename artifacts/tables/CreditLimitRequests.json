@@ -1,0 +1,193 @@
+{
+  "name": "CreditLimitRequests",
+  "description": "Credit limit increase requests",
+  "iconName": "trending-up",
+  "columns": [
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "currentLimit",
+      "type": "number",
+      "description": "Current limit ILS"
+    },
+    {
+      "name": "obligoPct",
+      "type": "number",
+      "description": "Obligo %"
+    },
+    {
+      "name": "requestedLimit",
+      "type": "number",
+      "description": "Requested limit ILS"
+    },
+    {
+      "name": "justification",
+      "type": "string",
+      "description": "Justification (long text)"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "description": "Request status",
+      "enum": [
+        "טיוטה",
+        "הוצעה ע״י הסוכנת",
+        "אושר – לא הוגש",
+        "ממתינה להגשה",
+        "הוגשה למבטח",
+        "אושרה",
+        "אושרה חלקית",
+        "נדחתה",
+        "עודכן ב-Priority"
+      ]
+    },
+    {
+      "name": "requestCreatedAt",
+      "type": "datetime",
+      "description": "When the request was created"
+    },
+    {
+      "name": "triggeredAtPct",
+      "type": "number",
+      "description": "Insured-limit utilisation % when the proposal was created"
+    },
+    {
+      "name": "companyId",
+      "type": "string",
+      "description": "Company registration number (ח״פ)"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "description": "Currency of the request, e.g. ILS"
+    },
+    {
+      "name": "insuredLimitAtRequest",
+      "type": "number",
+      "description": "Insured limit ILS at the time of the request"
+    },
+    {
+      "name": "insurerFields",
+      "type": "object",
+      "description": "What would be sent to the credit insurer (בסס״ח) as an ICIC API quota request, field by field. Nothing is sent: the API connection opens when keys arrive",
+      "schema": {
+        "type": "object",
+        "description": "ICIC quota-increase request preview",
+        "additionalProperties": true,
+        "properties": {
+          "api": {
+            "type": "string",
+            "description": "Always ICIC"
+          },
+          "requestType": {
+            "type": "string",
+            "description": "Always increase (הגדלת מכסה); new-customer requests are not built"
+          },
+          "fields": {
+            "type": "array",
+            "description": "ICIC fields in send order",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "ICIC field name, e.g. REGISTERED_NO"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Hebrew label"
+                },
+                "value": {
+                  "description": "Value that would be sent; null when unknown or missing"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "מהנתונים",
+                    "קבוע",
+                    "חסר",
+                    "לא ידוע"
+                  ],
+                  "description": "מהנתונים = taken from the customer card or reports; קבוע = constant; חסר = the source field is empty; לא ידוע = not yet known (to clarify with Yaniv)"
+                },
+                "source": {
+                  "type": "string",
+                  "description": "Where the value comes from, in Hebrew"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Hebrew note, e.g. לא ידוע – לברר עם יניב"
+                }
+              }
+            }
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names of fields with status חסר or לא ידוע"
+          }
+        }
+      }
+    },
+    {
+      "name": "assignedBookkeeperName",
+      "type": "string",
+      "description": "Bookkeeper who owns the customer (display name)"
+    },
+    {
+      "name": "proposedBy",
+      "type": "string",
+      "description": "Who proposed the increase (agent display name or person)"
+    },
+    {
+      "name": "decidedBy",
+      "type": "string",
+      "description": "Who approved or rejected the proposal"
+    },
+    {
+      "name": "decidedAt",
+      "type": "datetime",
+      "description": "When the proposal was decided"
+    },
+    {
+      "name": "submittedAt",
+      "type": "datetime",
+      "description": "When the request was submitted to the insurer"
+    },
+    {
+      "name": "approvedAmount",
+      "type": "number",
+      "description": "Amount approved by the insurer ILS"
+    },
+    {
+      "name": "insurerCaseNumber",
+      "type": "string",
+      "description": "Insurer case number"
+    },
+    {
+      "name": "insurerResponseNote",
+      "type": "string",
+      "description": "Insurer response note"
+    },
+    {
+      "name": "isTestFixture",
+      "type": "boolean",
+      "description": "True for marked test data; DeleteTestFixtures removes these rows. Writers always set it (no defaults)."
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "customerName"
+}

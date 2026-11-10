@@ -1,0 +1,90 @@
+{
+  "name": "GetCreditExposure",
+  "type": "code",
+  "description": "Read only. Credit insurance and obligo (אובליגו) for the customer card tab אובליגו וביטוח and the alerts on היום. Two modes. With customerCode: the customer's cover (CreditCovers: the current cover = status תקף, else the newest; null when the customer has no cover; since 01.11 the card shows the אובליגו tab for every customer, so without a cover the static and dynamic obligo, the breakdown and the cheques are still returned and use is measured against the Priority credit limit (Customers.creditLimit, use.basis מסגרת אשראי) instead of the insured amount (use.basis ביטוח אשראי); with neither, use is null), the static obligo (CustomerExposure.obligoTotal and asOf, read as is from Priority, never computed), the dynamic obligo computed now and never stored = static − receipts approved here and not yet in Priority, each adjustment listed with its reason and link: (1) receipts approved and not yet in Priority = Receipts of the customer with status מוכנה (amount = the transfer amount), plus legacy approved MatchProposals without a receiptKey still in אושרה – לביצוע ב-Priority; a line never counts twice; (2) undeposited cheques (ExposureItems itemType צ׳ק שלא הופקד) are NOT subtracted: they are listed apart as expected to drop on deposit, with due date, and afterDeposit = dynamic − cheques is shown, because a cheque can bounce. Use: static and dynamic against the insured amount, in % and ILS, with level ok / high (≥ insuranceThresholdPct from AgentSettings, default 80) — there is no separate level above 100%. Breakdown: ExposureItems grouped by itemType in the order חשבונית פתוחה, תעודת משלוח שלא חויבה, צ׳ק שלא הופקד, הזמנה פתוחה, each group with its rows (reference, amount, docDate, dueDate) and subtotal. expiringSoon = validUntil within coverExpiryAlertDays (AgentSettings, default 30 in code; the real lead time is a gap with Yaniv). Also openRequest: the customer's open CreditLimitRequests row if any (read only). Without customerCode: alerts for every insured customer (cover תקף): kind ניצול גבוה when the DYNAMIC use reaches the threshold, and kind פקיעה when expiringSoon, each with customerCode, customerName, usePct (static and dynamic), insuredAmount, validUntil, daysToExpiry, so היום links straight to the customer's tab. Writes nothing; no call to ICIC; nothing to Priority.",
+  "iconName": "shield-check",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "A customer for the card tab; omit for the alerts of all insured customers"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Clock for tests: YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "bookkeeperName": {
+        "type": "string",
+        "description": "Alerts only: limit to one bookkeeper's customers (CustomerOwners override, else Priority)"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "customer": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "customerCode, customerName (null in alerts mode)"
+      },
+      "insured": {
+        "type": "boolean",
+        "description": "Customer mode: the customer has a cover (false = do not show the tab). Alerts mode: at least one insured customer"
+      },
+      "cover": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{id, insurer, coverNo, insuredAmount, validUntil, status, coverSource, syncedAt, daysToExpiry, expiringSoon, expired} or null (no cover = no tab)"
+      },
+      "staticObligo": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{amount, asOf, syncedAt} as in Priority (CustomerExposure); amount null when Priority sent no row"
+      },
+      "dynamicObligo": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{amount (never below 0), staticAmount, adjustmentsTotal, adjustments[{kind: קבלה שטרם נרשמה ב-Priority, amount, bankLineId, receiptKey, matchProposalId, valueDate, payerName, status, reason}], undepositedCheques[{id, reference, amount, docDate, dueDate}], chequesTotal, afterDeposit}"
+      },
+      "use": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Customer mode: {thresholdPct, insuredAmount, static{pct, amount, headroom, level}, dynamic{…}, afterDeposit{…}} where level is תקין / גבוה (null without an insured amount). Alerts mode: {thresholdPct, expiryAlertDays, insuredCustomers}"
+      },
+      "breakdown": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "[{itemType, count, total, items[{id, reference, amount, docDate, dueDate}]}]: all four types in the fixed order חשבונית פתוחה, תעודת משלוח שלא חויבה, צ׳ק שלא הופקד, הזמנה פתוחה (empty groups included)"
+      },
+      "openRequest": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Open CreditLimitRequests row of the customer, or null"
+      },
+      "alerts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Alerts mode: [{kind: ניצול גבוה / פקיעה, customerCode, customerName, bookkeeperName, insurer, coverNo, insuredAmount, staticAmount, dynamicAmount, staticPct, dynamicPct, thresholdPct, validUntil, daysToExpiry}], ניצול גבוה first (highest dynamic % first), then פקיעה (soonest first)"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening the \"אובליגו\" tab on a customer card**: Clicking the tab (shown for every customer), the \"אובליגו וביטוח\" link in the card's credit insurance box (insured customers), or arriving from an alert on the היום screen\n  Shows a one-sentence summary, the insurance cover (insurer, cover number, insured amount, validity, status, last sync) or, for a customer without credit insurance, the credit limit from Priority, static and dynamic obligo against the insured amount or that credit limit, the transfers and receipts that lower the dynamic obligo (each transfer links to its record on the receipts screen), cheques expected to drop on deposit, and the obligo breakdown by document type. Nothing is changed, sent or written to Priority.\n- **Opening the היום screen**: Runs on load for the credit insurance card (limited to the selected bookkeeper's customers when the screen is filtered)\n  Lists the customers whose dynamic obligo reached the threshold of the insured amount and the covers about to expire, each linking straight to the customer's \"אובליגו\" tab. Runs again after \"יצירת הצעות\" creates increase proposals from that card."
+}

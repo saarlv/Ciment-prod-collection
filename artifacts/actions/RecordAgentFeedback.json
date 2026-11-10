@@ -1,0 +1,111 @@
+{
+  "name": "RecordAgentFeedback",
+  "type": "code",
+  "description": "Stores structured feedback on a receipts agent from the receipts panel, with no agent reply: \"נקרא נכון / טעות בקריאה\" on a reader line, \"נינה צדקה / טעתה\" on a checked line, and file comments (verdict הערה). A צדק/טעה by the same person on the same agent+line+field replaces their earlier one; comments always add a row. For BankFileReader + טעה with a field (valueDate, amount, payerName, reference, lineType) and applyCorrection, it also corrects that BankLines field (correctedBy/At, flag cleared) and recomputes the batch extractedLineCount/extractedTotal/totalsCheck. Writes AgentFeedback (isTestFixture when the batch/line is test data) and BankLines/ImportBatches only for a correction.",
+  "iconName": "thumbs-up",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "agentName",
+      "verdict",
+      "byName"
+    ],
+    "properties": {
+      "agentName": {
+        "type": "string",
+        "description": "Agent",
+        "enum": [
+          "BankFileReader",
+          "CollectionsAgent"
+        ]
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "ImportBatches row id"
+      },
+      "bankLineId": {
+        "type": "string",
+        "description": "BankLines.bankLineId; empty for the whole file"
+      },
+      "verdict": {
+        "type": "string",
+        "description": "Verdict",
+        "enum": [
+          "צדק",
+          "טעה",
+          "הערה"
+        ]
+      },
+      "field": {
+        "type": "string",
+        "description": "Field: valueDate, amount, payerName, reference, lineType, customer, invoices"
+      },
+      "valueGiven": {
+        "type": "string",
+        "description": "What the agent gave"
+      },
+      "valueCorrect": {
+        "type": "string",
+        "description": "The correct value"
+      },
+      "comment": {
+        "type": "string",
+        "description": "Free note"
+      },
+      "applyCorrection": {
+        "type": "boolean",
+        "description": "For BankFileReader + טעה: also correct the line field to valueCorrect",
+        "default": true
+      },
+      "byName": {
+        "type": "string",
+        "description": "Display name of the person"
+      },
+      "byEmail": {
+        "type": "string",
+        "description": "Their email"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report what would be written; nothing changes",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "feedbackId": {
+        "type": "string"
+      },
+      "replacedId": {
+        "type": "string"
+      },
+      "lineUpdated": {
+        "type": "boolean"
+      },
+      "batch": {
+        "type": "object",
+        "properties": {
+          "extractedLineCount": {
+            "type": "number"
+          },
+          "extractedTotal": {
+            "type": "number"
+          },
+          "totalsCheck": {
+            "type": "string"
+          }
+        }
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Correcting an extracted line**: Clicking \"תיקון\" on a line of today's bank file on the \"תקבולים\" screen\n  Opens a short form (which field, the right value) that records the reader's mistake and corrects the line, recalculating the file's totals.\n- **Clicking \"נינה צדקה\" or \"נינה טעתה\" under a checked record**: With an optional note\n  Records whether Nina's identification and matching were right, to measure her accuracy. Nina does not reply."
+}

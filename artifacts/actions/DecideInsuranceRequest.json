@@ -1,0 +1,56 @@
+{
+  "name": "DecideInsuranceRequest",
+  "type": "code",
+  "description": "A person approves one credit-insurance increase proposal on the insurance screen: a CreditLimitRequests row in הוצעה ע״י הסוכנת moves to אושר – לא הוגש, with decidedBy and decidedAt. Nothing is submitted to the insurer (the API connection opens when keys arrive). Refuses any other current status, so a request is never approved twice.",
+  "iconName": "shield-check",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "requestId",
+      "decidedBy"
+    ],
+    "properties": {
+      "requestId": {
+        "type": "string",
+        "description": "CreditLimitRequests row id"
+      },
+      "decidedBy": {
+        "type": "string",
+        "description": "Display name of the person approving"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "refused": {
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "request": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Approving an increase proposal**: \"אישור\" on the increase proposal shown in the customer card's \"אובליגו וביטוח\" tab, while its status is \"הוצעה\"\n  Marks the proposal \"אושר – לא הוגש\" and records who approved it and when. Nothing is submitted to the insurer; submission opens once the insurer's API keys arrive. If the proposal was already decided, the screen shows why the approval was refused."
+}

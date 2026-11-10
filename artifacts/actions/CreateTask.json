@@ -1,0 +1,99 @@
+{
+  "name": "CreateTask",
+  "type": "code",
+  "description": "Creates one task in CollectionQueue for a customer, with the customer name and owning bookkeeper taken from the data (CustomerOwners first, else Customers.assignedBookkeeperName), never from the caller. Every task gets taskKey manual:<taskType>:<relatedId, else customerCode>, so it appears in the keyed tasks list and the daily scan never touches it; skips a duplicate (an open task with the same key, or the same customer, taskType and relatedId). Sets every task column (title, severity, severityScore, source, openedAt, lastCheckedAt). Test customers (TEST-) produce rows marked isTestFixture. Receipt first (r3): the unknown-payer type is written as 'לא זוהה' (input 'לא מזוהה' is accepted and stored as 'לא זוהה'); needsManagerApproval (default false) is always written.",
+  "iconName": "list-plus",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "customerCode",
+      "taskType",
+      "reasons"
+    ],
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Customer code"
+      },
+      "taskType": {
+        "type": "string",
+        "enum": [
+          "צ׳ק חוזר",
+          "לא זוהה",
+          "הבטחה הופרה",
+          "לאמת שולח",
+          "ביטוח 80%",
+          "אחר"
+        ],
+        "description": "Task type"
+      },
+      "reasons": {
+        "type": "string",
+        "description": "Why, in Hebrew, from the data"
+      },
+      "recommendedAction": {
+        "type": "string",
+        "enum": [
+          "לשלוח תזכורת",
+          "לשלוח WhatsApp",
+          "להתקשר",
+          "להסלים למנהל",
+          "לטפל במחלוקת",
+          "לבדוק הבטחה",
+          "לשחרר הזמנה חסומה"
+        ]
+      },
+      "priorityScore": {
+        "type": "number",
+        "description": "0–100, 100 = urgent. Default 50"
+      },
+      "dueAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When it should be handled. Default next business day 09:00 Israel"
+      },
+      "relatedTable": {
+        "type": "string"
+      },
+      "relatedId": {
+        "type": "string"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "When true, only report what would be written; nothing changes",
+        "default": false
+      },
+      "needsManagerApproval": {
+        "type": "boolean",
+        "description": "True when the task must be approved by a manager. Default false",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean"
+      },
+      "task": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "skippedDuplicate": {
+        "type": "boolean"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "toolEffect": "mutation"
+}

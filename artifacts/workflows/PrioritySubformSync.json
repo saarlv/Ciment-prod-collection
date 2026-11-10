@@ -1,0 +1,20 @@
+{
+  "name": "PrioritySubformSync",
+  "description": "Daily 07:00 Israel time (after BrainSync 06:30) runs SyncPrioritySubforms for contacts and payments (not dry, resume on).",
+  "iconName": "git-pull-request-arrow",
+  "triggerTypeId": "686255085f46e24c41a1b536",
+  "triggerData": {
+    "cronExpression": "0 7 * * *",
+    "timezone": "Asia/Jerusalem"
+  },
+  "actionTypeId": "SyncPrioritySubforms",
+  "actionInstanceInputs": {
+    "dryRun": false,
+    "scopes": [
+      "contacts",
+      "payments"
+    ],
+    "resume": true,
+    "trigger": "מתוזמן"
+  }
+}

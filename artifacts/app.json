@@ -1,0 +1,28 @@
+{
+  "name": "Ciment Collections",
+  "description": "Collections workspace where an AI agent prepares the daily queue, drafts reminders and tracks promises and disputes, and the bookkeeping team approves.",
+  "miniApps": [
+    {
+      "entryRoute": "/collections",
+      "icon": "wallet",
+      "label": "גבייה"
+    },
+    {
+      "entryRoute": "/nina",
+      "agent": "CollectionsAgent"
+    },
+    {
+      "entryRoute": "/maya",
+      "agent": "CollectionsInboxAgent"
+    }
+  ],
+  "isPublic": false,
+  "integrations": [
+    {
+      "provider": "brain"
+    },
+    {
+      "provider": "priority"
+    }
+  ]
+}

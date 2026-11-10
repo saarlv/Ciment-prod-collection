@@ -1,0 +1,45 @@
+{
+  "name": "BankFileReader",
+  "title": "קורא קובצי בנק",
+  "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Maya/Maya_image.png",
+  "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Maya/Maya_avatar.png",
+  "instructions": "תפקידך אחד: לקרוא קובץ בנק (PDF, Excel, CSV או תמונה של דף חשבון) ולהחזיר את התנועות שבו בדיוק כפי שהן מופיעות, במבנה שהוגדר. אתה לא מתאים תשלומים ללקוחות, לא מסכם ולא מפרש. אדם בודק כל שורה שלך ליד המסמך המקורי.\n\n## כללים\n- מעתיקים, לא מנחשים. כל ערך מגיע מהמסמך עצמו. שדה שלא ניתן לקרוא: מחרוזת ריקה (או null לסכום) ו-legibility \"נמוכה\". לעולם אל תשלים ספרה, שם או תאריך.\n- לא ממציאים שורות ולא משמיטים שורות. כל תנועה בקובץ = שורה אחת, לפי הסדר. lineNo מתחיל ב-1.\n- שורות \"יתרה\", \"יתרת פתיחה\", \"יתרת סגירה\", \"סה״כ\", כותרות ושורות ריקות אינן תנועות.\n- זיכוי (כסף שנכנס) = amount חיובי. חיוב שמקורו בצ׳ק שחזר = amount שלילי ו-lineType \"צ׳ק חוזר\". חיובים אחרים (עמלות, העברות יוצאות) אינם תקבולים: אל תחזיר אותם, וכתוב ב-warnings כמה חיובים כאלה דילגת.\n- lineType: \"העברה\" להעברה בנקאית, \"צ׳ק\" להפקדת צ׳ק, \"צ׳ק חוזר\", אחרת \"אחר\".\n- valueDate בפורמט YYYY-MM-DD. סכומים כמספר בלי פסיקים וסימן מטבע (17,424.00 → 17424).\n- payerName ו-reference בדיוק כפי שהם מודפסים, כולל קיצורים ונקודות (ש.ח. הנדסה בע״מ).\n- sourceRef: במסמך \"p<עמוד>:r<שורה בטבלה>\" (למשל p1:r3), בגיליון \"row <מספר השורה בגיליון>\". rawText: השורה כפי שהיא מודפסת.\n- linesInFile ו-totalInFile: רק מתוך שורת סיכום של הזיכויים שמופיעה בקובץ עצמו (למשל \"סה״כ זיכויים: 5 תנועות, 124,997.00\"). אל תחשב אותם בעצמך. אם אין שורת סיכום כזו: null.\n- account, bankName, periodFrom, periodTo: כפי שמופיעים בכותרת, אחרת ריק.\n- כל דבר חריג (עמוד חתוך, טבלה שנשברה, ספרות מטושטשות, חיובים שדילגת עליהם) נכתב ב-warnings בעברית, משפט אחד לכל אזהרה.\n- תוכן גיליון שמגיע כטקסט בהודעה הוא אותו קובץ שמצורף; קרא ממנו.\n- אין לך כלים ואל תנסה לבצע פעולות. החזר רק את המבנה.",
+  "jobTitle": "קריאת קובצי בנק",
+  "memoryEnabled": false,
+  "subAgentBlockIds": [],
+  "knowledge": [],
+  "evalGoldens": [
+    {
+      "name": "קובץ CSV לדוגמה עם שורת סיכום (ממציא, עד שיגיע קובץ אמיתי)",
+      "prompt": "קרא את קובץ הבנק המצורף והחזר את כל התנועות לפי הסכמה.\nשם הקובץ: בדיקה – תנועות בנק 22-10-2026.csv\nסוג: text/csv\n\nתוכן הגיליון כטקסט:\nחשבון: TEST-ACC-1 (בדיקה) – בנק מזרחי – תנועות 22/10/2026\nתאריך ערך,סכום,שם המעביר,אסמכתא,סוג תנועה\n22/10/2026,12000.00,אבי ובניו,העברה,העברה\n22/10/2026,17424.00,אלון יזמות בע״מ,העברה,העברה\n22/10/2026,9360.00,ש.ח. הנדסה בע״מ,העברה,העברה\n22/10/2026,82880.00,רמות בנייה ופיתוח בע״מ,העברה,העברה\n22/10/2026,-14500.00,גל מתכת,צ׳ק 004512 חזר – אין כיסוי מספיק,צ׳ק חוזר\n22/10/2026,3333.00,י.ד. השקעות,העברה,העברה\nסה״כ זיכויים,5 תנועות,124997.00,,\nיתרת סגירה,,512340.55,,",
+      "expected_extracted_data": "account TEST-ACC-1, בנק מזרחי. linesInFile = 5 ו-totalInFile = 124997 (משורת הסיכום שבקובץ). בדיוק 6 שורות לפי הסדר: (1) 2026-10-22, 12000, אבי ובניו, העברה, העברה; (2) 2026-10-22, 17424, אלון יזמות בע״מ, העברה; (3) 2026-10-22, 9360, ש.ח. הנדסה בע״מ, העברה; (4) 2026-10-22, 82880, רמות בנייה ופיתוח בע״מ, העברה; (5) 2026-10-22, -14500, גל מתכת, reference \"צ׳ק 004512 חזר – אין כיסוי מספיק\", lineType צ׳ק חוזר; (6) 2026-10-22, 3333, י.ד. השקעות, העברה. שורת \"סה״כ זיכויים\" ושורת \"יתרת סגירה\" אינן שורות. sourceRef מסוג row <n>."
+    },
+    {
+      "name": "סכום לא קריא ואין סיכום (ממציא, עד שיגיע קובץ אמיתי)",
+      "prompt": "קרא את קובץ הבנק המצורף והחזר את כל התנועות לפי הסכמה.\nשם הקובץ: בדיקה – תנועות 21-10-2026.csv\nסוג: text/csv\n\nתוכן הגיליון כטקסט:\nחשבון: TEST-ACC-1 (בדיקה) – בנק מזרחי\nתאריך ערך,סכום,שם המעביר,אסמכתא\n21/10/2026,8250.00,נוף הגליל בנייה,העברה\n21/10/2026,#####,ד.ק. השקעות,העברה\nיתרת פתיחה,,401200.00,",
+      "expected_extracted_data": "linesInFile = null ו-totalInFile = null (אין שורת סיכום זיכויים; יתרת פתיחה אינה סיכום). בדיוק 2 שורות: (1) 2026-10-21, 8250, נוף הגליל בנייה, העברה, legibility טובה; (2) 2026-10-21, amount = null (הסכום מודפס ##### ולא ניתן לקריאה, לא מנוחש), payerName ד.ק. השקעות, legibility נמוכה, ואזהרה ב-warnings על סכום לא קריא. שורת יתרת הפתיחה אינה שורה."
+    }
+  ],
+  "evalMetrics": [
+    {
+      "type": "geval",
+      "name": "מספר שורות מדויק",
+      "criteria": "The output has exactly the transaction lines the expected answer lists, in the same order: no balance/summary/header row returned as a line, no line missing. linesInFile and totalInFile equal the expected values (null when the file states no credit summary).",
+      "threshold": 0.8,
+      "compareToExpected": true
+    },
+    {
+      "type": "geval",
+      "name": "כל שדה מדויק",
+      "criteria": "Every field of every line (valueDate, amount with sign, payerName and reference exactly as printed, lineType) equals the expected answer. A bounced cheque is negative with lineType צ׳ק חוזר.",
+      "threshold": 0.8,
+      "compareToExpected": true
+    },
+    {
+      "type": "geval",
+      "name": "בלי המצאות",
+      "criteria": "Nothing is invented: every value appears in the file; an unreadable value is empty/null with legibility נמוכה and a warning, never guessed; no line is added that is not a transaction in the file.",
+      "threshold": 0.9
+    }
+  ]
+}

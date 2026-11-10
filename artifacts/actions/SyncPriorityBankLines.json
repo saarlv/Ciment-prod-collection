@@ -1,0 +1,145 @@
+{
+  "name": "SyncPriorityBankLines",
+  "type": "code",
+  "description": "Pulls the bank statement lines (Priority screen שורות דפי בנק) into BankLines – plan r3 stage 2. Priority is not connected yet: the source is a stub, so the action returns ok:false, reason \"Priority sync not connected yet\" and writes nothing (scenario inputs are ignored); rewritten in the sync turn. Each line: source priority-mock, priorityLineId, syncedAt, lineType (העברה / זיכוי בנק / פירעון צ׳ק / אחר); deduped on priorityLineId; an older file line with the same account, date, amount, payer and reference is adopted (gets the priorityLineId) instead of duplicated. Every pull writes one ImportBatches row (kind שורות דפי בנק – Priority). New lines of type העברה / זיכוי בנק then go to IdentifyCustomers (plan 04.11 stage 4, b/identify-receipt: customer + confidence, a draft receipt per identified line, and stop). The output reports bankLinesSource; the pull still runs from the button in either mode (until the API the test source stands in for Priority); פירעון צ׳ק / אחר are only stored. The day-not-loaded rule reads AgentSettings receiptsReadyBy (no hour in code): from that hour, when the source returned no lines for today, one task bank-missing:<date> (דפי בנק לא נטענו, source תקבולים) is opened; once lines arrive it is closed automatically. A missing setting is reported as configError and the rule is skipped. dryRun (default true) only reports what would be written. Never writes to Priority or contacts anyone.",
+  "iconName": "landmark",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report what would be written"
+      },
+      "asOfDate": {
+        "type": "string",
+        "format": "date",
+        "description": "Load day, YYYY-MM-DD. Defaults to today in Asia/Jerusalem"
+      },
+      "asOfTime": {
+        "type": "string",
+        "description": "HH:MM clock for testing the day-not-loaded rule. Defaults to now in Asia/Jerusalem"
+      },
+      "mockScenario": {
+        "type": "string",
+        "enum": [
+          "יום מלא",
+          "יום ריק"
+        ],
+        "default": "יום מלא",
+        "description": "Test source only: a full day or a day with no lines loaded yet"
+      },
+      "runChecks": {
+        "type": "boolean",
+        "default": true,
+        "description": "Identify the customers of the new העברה / זיכוי בנק lines (IdentifyCustomers) after writing them"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "importBatchId": {
+        "type": "string",
+        "description": "The ImportBatches row of this pull (empty on dryRun)"
+      },
+      "pulledAt": {
+        "type": "string"
+      },
+      "asOfDate": {
+        "type": "string"
+      },
+      "asOfTime": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "description": "priority-mock until the API is connected"
+      },
+      "mockScenario": {
+        "type": "string"
+      },
+      "settings": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{bankPollStart, bankPollEnd, bankPollInterval, receiptsReadyBy} as read from AgentSettings (null when a row is missing)"
+      },
+      "linesFromSource": {
+        "type": "number"
+      },
+      "created": {
+        "type": "number"
+      },
+      "adopted": {
+        "type": "number",
+        "description": "Older file lines that got a priorityLineId instead of a duplicate"
+      },
+      "alreadyThere": {
+        "type": "number"
+      },
+      "byLineType": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{העברה, זיכוי בנק, פירעון צ׳ק, אחר}: counts"
+      },
+      "lines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Per line: priorityLineId, bankLineId, lineType, amount, payerName, action (create / adopt / exists), willCheck"
+      },
+      "checked": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "description": "Per identified line (IdentifyCustomers): bankLineId, customerCode, confidence, identifyStatus, receiptKey, taskKey"
+      },
+      "identify": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "IdentifyCustomers summary: counts (lines, certain, uncertain, unidentified, skipped, autoApproved), certainAt, errors"
+      },
+      "bankLinesSource": {
+        "type": "string",
+        "description": "The AgentSettings bankLinesSource value at the time of the pull (קובץ / שורות פריוריטי)"
+      },
+      "bankMissingTask": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "{action: open / close / none, taskKey, reason}"
+      },
+      "checksLeft": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "New lines not checked before the time limit (they stay ממתינה לבדיקה)"
+      },
+      "configError": {
+        "type": "string"
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Pulling today's bank lines**: Clicking \"משוך עכשיו מפריוריטי\" at the top of the \"תקבולים\" screen, when the bank lines source in the settings is \"שורות פריוריטי\"\n  Brings in today's bank statement lines from Priority, adds only lines that are not there yet, and identifies the customer of each new transfer or bank credit with a confidence score. The button waits until it finishes and then shows one line with what came in and what the identification found. Cheque clearings and other lines are only listed. There is no automatic schedule yet, so this button is the only way the pull runs. Until the Priority connection is set up, the button shows a calm notice that the connection is not set up yet and nothing is pulled.",
+  "toolEffect": "mutation"
+}

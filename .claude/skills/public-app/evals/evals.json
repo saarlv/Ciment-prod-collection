@@ -1,0 +1,31 @@
+{
+  "skill_name": "public-app",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "This is a public app. Build a login page with two options: sign in with Google, or enter an email to receive a magic link. After the link is sent, show a confirmation message. If the user is already authenticated, redirect them to the dashboard.",
+      "expected_output": "A custom login route at src/routes/login.tsx using useGoogleLogin() for OAuth and useSendLoginLink() for magic link, with redirect logic using useEffect + useNavigate.",
+      "files": [],
+      "expectations": [
+        "Uses useGoogleLogin() for the Google sign-in URL",
+        "Uses useSendLoginLink() for magic link — not a custom fetch",
+        "Shows toast.success() or inline confirmation after link is sent",
+        "Redirects authenticated users with useNavigate('/dashboard'), not window.location",
+        "Does not invent a password field or custom auth implementation"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This public app should greet signed-out visitors with a landing page (hero + a 'Get started' button that goes to the login page) and show the real dashboard once they are authenticated.",
+      "expected_output": "A home route (routes/index.tsx) that branches on user.isAuthenticated: a landing hero with a sign-in CTA linking to /login for guests, and the authenticated home for signed-in users.",
+      "files": [],
+      "expectations": [
+        "Uses useUser() and branches on user.isAuthenticated",
+        "Signed-out visitors see landing content, not a crash or blank screen",
+        "The sign-in CTA links to the custom login route via /login",
+        "Authenticated users see the real app content",
+        "Guards against missing user fields (no unguarded access)"
+      ]
+    }
+  ]
+}

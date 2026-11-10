@@ -1,0 +1,143 @@
+{
+  "$comment": "AUTO-GENERATED from packages/common AGENT_REPOSITORY via apps/compiler/scripts/bundle-agent-personas.mjs — do not edit by hand. Regenerate: pnpm --filter @blockscom/compiler run bundle:agent-personas",
+  "personas": [
+    {
+      "title": "Morgan",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Morgan/Morgan_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Morgan/Morgan_avatar.png"
+    },
+    {
+      "title": "Leo",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Leo/Leo_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Leo/Leo_avatar.png"
+    },
+    {
+      "title": "Maya",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Maya/Maya_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Maya/Maya_avatar.png"
+    },
+    {
+      "title": "Ron",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Ron/Ron_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Ron/Ron_avatar.png"
+    },
+    {
+      "title": "Ryan",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Ryan/Ryan_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Ryan/Ryan_avatar.png"
+    },
+    {
+      "title": "Olive",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Olive/Olive_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Olive/Olive_avatar.png"
+    },
+    {
+      "title": "Nina",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Nina/Nina_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Nina/Nina_avatar.png"
+    },
+    {
+      "title": "Steve",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Steve/Steve_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Steve/Steve_avatar.png"
+    },
+    {
+      "title": "Eva",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Eva/Eva_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Eva/Eva_avatar.png"
+    },
+    {
+      "title": "Eryn",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Eryn/Eryn_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Eryn/Eryn_avatar.png"
+    },
+    {
+      "title": "Raya",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Raya/Raya_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Raya/Raya_avatar.png"
+    },
+    {
+      "title": "Nora",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Nora/Nora_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Nora/Nora_avatar.png"
+    },
+    {
+      "title": "Stella",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Stella/Stella_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Stella/Stella_avatar.png"
+    },
+    {
+      "title": "Nico",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Nico/Nico_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Nico/Nico_avatar.png"
+    },
+    {
+      "title": "Enzo",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Enzo/Enzo_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Enzo/Enzo_avatar.png"
+    },
+    {
+      "title": "Iris",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Iris/Iris_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Iris/Iris_avatar.png"
+    },
+    {
+      "title": "Lora",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Lora/Lora_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Lora/Lora_avatar.png"
+    },
+    {
+      "title": "Carmen",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Carmen/Carmen_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Carmen/Carmen_avatar.png"
+    },
+    {
+      "title": "Sienna",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Sienna/Sienna_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Sienna/Sienna_avatar.png"
+    },
+    {
+      "title": "Victor",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Victor/Victor_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Victor/Victor_avatar.png"
+    },
+    {
+      "title": "Zara",
+      "gender": "female",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Zara/Zara_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/Blocks/app-agents/Zara/Zara_avatar.png"
+    },
+    {
+      "title": "Mike",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/v1781614965/Blocks/app-agents/Mike/Mike_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/v1781614964/Blocks/app-agents/Mike/Mike_avatar.png"
+    },
+    {
+      "title": "Daniel",
+      "gender": "male",
+      "photoUrl": "https://res.cloudinary.com/blocksws/image/upload/v1781772566/Blocks/app-agents/Daniel/Daniel_image.png",
+      "avatarUrl": "https://res.cloudinary.com/blocksws/image/upload/v1781772565/Blocks/app-agents/Daniel/Daniel_avatar.png"
+    }
+  ]
+}

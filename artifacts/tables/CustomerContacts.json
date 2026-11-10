@@ -1,0 +1,149 @@
+{
+  "name": "CustomerContacts",
+  "description": "Customer contacts from Priority",
+  "technicalDescription": "Read-only mirror of contacts on the Priority customer card. Used to verify email senders (statements only go to registered contacts) and as step 2 of payer identification.",
+  "iconName": "contact",
+  "columns": [
+    {
+      "name": "contactKey",
+      "type": "string",
+      "description": "Unique contact key (customerCode + contact id in Priority)"
+    },
+    {
+      "name": "customerCode",
+      "type": "string",
+      "description": "Priority customer code (text link to Customers)"
+    },
+    {
+      "name": "customerName",
+      "type": "string",
+      "description": "Customer display name (denormalised)"
+    },
+    {
+      "name": "contactName",
+      "type": "string",
+      "description": "Contact person name"
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "description": "Contact email"
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "description": "Contact phone"
+    },
+    {
+      "name": "roleFlags",
+      "type": "string",
+      "description": "Roles, comma-separated from: הנהלת חשבונות, רכש, ראשי, אחר"
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "description": "Data source: priority-mock, priority-file (uploaded Priority export), priority-api, or test-fixture (marked test data, removed by DeleteTestFixtures)",
+      "enum": [
+        "priority-mock",
+        "priority-file",
+        "priority-api",
+        "test-fixture",
+        "נוסף אצלנו",
+        "priority-direct"
+      ]
+    },
+    {
+      "name": "syncedAt",
+      "type": "datetime",
+      "description": "When this row was last loaded from Priority / the bank file"
+    },
+    {
+      "name": "isApContact",
+      "type": "boolean",
+      "description": "The customer's accounts-payable (הנהלת חשבונות) contact: detail requests for unexplained transfers go to this person. From Priority (whether Priority maintains this flag is open with Yaniv); writers always set it"
+    },
+    {
+      "name": "signatureTitle",
+      "type": "string",
+      "description": "Plan 04.11 part C: job title from the mail signature of a sender we added"
+    },
+    {
+      "name": "addedFromEmailId",
+      "type": "string",
+      "description": "InboundEmails id the contact was confirmed from (source נוסף אצלנו); the Priority pull never touches these rows"
+    },
+    {
+      "name": "priorityKey",
+      "type": "string",
+      "description": "Mirror key from Priority (see table description); null on rows the app added"
+    },
+    {
+      "name": "syncRunId",
+      "type": "string",
+      "description": "SyncRuns.runId of the SyncPrioritySubforms run that last wrote the row"
+    },
+    {
+      "name": "deletedInSource",
+      "type": "boolean",
+      "description": "True when a full read of this scope no longer found the row in Priority; never deleted"
+    },
+    {
+      "name": "priorityContactId",
+      "type": "number",
+      "description": "CUSTPERSONNEL_SUBFORM.PHONE (contact id)"
+    },
+    {
+      "name": "firstName",
+      "type": "string",
+      "description": "FIRSTNAME"
+    },
+    {
+      "name": "lastName",
+      "type": "string",
+      "description": "LASTNAME"
+    },
+    {
+      "name": "position",
+      "type": "string",
+      "description": "POSITIONDES"
+    },
+    {
+      "name": "mobile",
+      "type": "string",
+      "description": "CELLPHONE"
+    },
+    {
+      "name": "officePhone",
+      "type": "string",
+      "description": "OFFICEPHONE"
+    },
+    {
+      "name": "fax",
+      "type": "string",
+      "description": "FAX"
+    },
+    {
+      "name": "priorityStatus",
+      "type": "string",
+      "description": "STATDES (e.g. פעיל)"
+    },
+    {
+      "name": "isInactive",
+      "type": "boolean",
+      "description": "INACTIVE flag set in Priority"
+    },
+    {
+      "name": "firm",
+      "type": "string",
+      "description": "FIRM (company name on the contact)"
+    }
+  ],
+  "permission": {
+    "type": "public"
+  },
+  "displayColumn": "contactName",
+  "uniqueKey": [
+    "contactKey"
+  ],
+  "defaultUpsert": true
+}

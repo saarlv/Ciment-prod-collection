@@ -1,7 +1,7 @@
 {
   "name": "CustomerActivity",
-  "description": "Per customer: how many Priority documents the app holds and the date of the latest one",
-  "technicalDescription": "Invoices grouped by customerCode: document count and latest invoiceDate (all forms, all statuses). Customers without any row here have no documents in the app. Used by the customer list to show only customers with activity by default.",
+  "description": "Per customer: how many Priority documents the app holds, the latest one and the active debt",
+  "technicalDescription": "Invoices grouped by customerCode: document count and latest invoiceDate (all forms, all statuses). Customers without any row here have no documents in the app. Used by the customer list to show only customers with activity by default. openDebt = sum of remainingAmount (what is still open after our allocations) over the customer's documents.",
   "query": {
     "from": {
       "table": "Invoices",
@@ -21,6 +21,11 @@
         "column": "i.invoiceDate",
         "function": "max",
         "as": "lastDocumentDate"
+      },
+      {
+        "column": "i.remainingAmount",
+        "function": "sum",
+        "as": "openDebt"
       }
     ],
     "groupBy": [

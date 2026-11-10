@@ -1,0 +1,38 @@
+{
+  "name": "GetCustomerPriorityDetails",
+  "type": "code",
+  "description": "Reads the FULL Priority customer record (all ~150 columns of RAW.PRIORITY_1_CUSTOMERS in Brain, via query_table, read-only) for one customer, for the customer card's details and finance tabs. No write anywhere; the Customers mirror is untouched.",
+  "iconName": "id-card",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCode": {
+        "type": "string",
+        "description": "Priority CUSTNAME"
+      }
+    },
+    "required": [
+      "customerCode"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "record": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Every column of the customer's row, keyed by the UPPER-case Priority column name; null when not found"
+      },
+      "readAt": {
+        "type": "string",
+        "description": "ISO time of the read"
+      },
+      "error": {
+        "type": "string",
+        "description": "Set when Brain could not be read"
+      }
+    }
+  },
+  "exposedToUI": true,
+  "usageDescription": "This action is triggered by:\n\n- **Opening a customer card tab**: Clicking the \"פרטי לקוח\" or \"פיננסי\" tab on a customer's card\n  Reads the customer's full, current record from Priority (identity, address, contacts, agent, payment terms, credit and insurance, bank) so everything is shown in organised cards."
+}

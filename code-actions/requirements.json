@@ -2702,6 +2702,40 @@
       },
       "browsingTask": false
     },
+    "GetCustomerPriorityDetails": {
+      "name": "GetCustomerPriorityDetails",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "customerCode": {
+            "type": "string",
+            "description": "Priority CUSTNAME"
+          }
+        },
+        "required": [
+          "customerCode"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "record": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Every column of the customer's row, keyed by the UPPER-case Priority column name; null when not found"
+          },
+          "readAt": {
+            "type": "string",
+            "description": "ISO time of the read"
+          },
+          "error": {
+            "type": "string",
+            "description": "Set when Brain could not be read"
+          }
+        }
+      },
+      "browsingTask": false
+    },
     "GetLedger": {
       "name": "GetLedger",
       "inputSchema": {
@@ -25771,6 +25805,52 @@
       "usageDescription": "This action is triggered by:\n\n- **Opening a customer card**: Clicking any customer name anywhere in the app opens the customer card, which runs it on load (the last card for that customer shows instantly while the fresh one loads)\n  Fills the header (balance, Priority credit limit, insured-limit use for insured customers, owner, sales agent, status, payment terms, payment method, collection note), the customer's aging row, the single timeline, contacts, the invoices tab (with partly paid invoices and their receipts; the \"שולם\" column shows how much receipts have paid on each invoice, and hovering it lists those receipts with their number, date and amount, marking estimates), the receipts tab (each receipt beside the invoices it closed), and decides whether the \"אובליגו וביטוח\" tab is shown (only for customers with credit insurance).\n- **After saving a promise or a note on the customer card**: Runs again right after \"הוספת הבטחה\" or \"הוספת הערה\" succeeds\n  So the new promise or note appears on the card immediately.",
       "toolEffect": "read-only"
     },
+    "GetCustomerPriorityDetails": {
+      "isCurrentAppAction": true,
+      "actionTypeId": "GetCustomerPriorityDetails",
+      "actionTypeName": "GetCustomerPriorityDetails",
+      "actionTypeDescription": "Execute code action",
+      "input": {
+        "type": "object",
+        "properties": {
+          "customerCode": {
+            "type": "string",
+            "description": "Priority CUSTNAME"
+          }
+        },
+        "required": [
+          "customerCode"
+        ],
+        "title": "GetCustomerPriorityDetailsInput",
+        "description": "GetCustomerPriorityDetails input payload"
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "record": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Every column of the customer's row, keyed by the UPPER-case Priority column name; null when not found"
+          },
+          "readAt": {
+            "type": "string",
+            "description": "ISO time of the read"
+          },
+          "error": {
+            "type": "string",
+            "description": "Set when Brain could not be read"
+          }
+        },
+        "title": "GetCustomerPriorityDetailsOutput",
+        "description": "GetCustomerPriorityDetails output payload"
+      },
+      "exposedToAiCode": true,
+      "exposedToAiAgent": true,
+      "actionSetId": "app",
+      "isFromDependency": false,
+      "productId": "6af30b2e6221f0a7126bea1d",
+      "usageDescription": "This action is triggered by:\n\n- **Opening a customer card tab**: Clicking the \"פרטי לקוח\" or \"פיננסי\" tab on a customer's card\n  Reads the customer's full, current record from Priority (identity, address, contacts, agent, payment terms, credit and insurance, bank) so everything is shown in organised cards."
+    },
     "GetFileBase64": {
       "isCurrentAppAction": false,
       "actionTypeId": "utils/GetFileBase64",
@@ -28235,6 +28315,11 @@
             "type": "number",
             "title": "lastDocumentDate",
             "description": "Max aggregation result"
+          },
+          "openDebt": {
+            "type": "number",
+            "title": "openDebt",
+            "description": "Sum aggregation result"
           }
         },
         "required": [],
@@ -41695,6 +41780,11 @@
                   "type": "number",
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
+                },
+                "openDebt": {
+                  "type": "number",
+                  "title": "openDebt",
+                  "description": "Sum aggregation result"
                 }
               }
             }
@@ -64296,6 +64386,11 @@
                   "type": "number",
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
+                },
+                "openDebt": {
+                  "type": "number",
+                  "title": "openDebt",
+                  "description": "Sum aggregation result"
                 }
               },
               "additionalProperties": false
@@ -64335,6 +64430,11 @@
                   "type": "number",
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
+                },
+                "openDebt": {
+                  "type": "number",
+                  "title": "openDebt",
+                  "description": "Sum aggregation result"
                 }
               }
             }
@@ -89008,6 +89108,11 @@
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
                 },
+                "openDebt": {
+                  "type": "number",
+                  "title": "openDebt",
+                  "description": "Sum aggregation result"
+                },
                 "id": {
                   "type": "string",
                   "description": "The id of the item to update. Must be an existing id in the table."
@@ -89053,6 +89158,11 @@
                   "type": "number",
                   "title": "lastDocumentDate",
                   "description": "Max aggregation result"
+                },
+                "openDebt": {
+                  "type": "number",
+                  "title": "openDebt",
+                  "description": "Sum aggregation result"
                 }
               }
             }

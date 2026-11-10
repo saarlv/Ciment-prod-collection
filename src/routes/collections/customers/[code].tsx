@@ -6,15 +6,14 @@ import {
   ArrowRightIcon,
   ArrowUpLeftIcon,
   HandCoinsIcon,
-  MailIcon,
   MessageSquarePlusIcon,
   MessageSquareTextIcon,
-  PhoneIcon,
   PlusIcon,
   ShieldCheckIcon,
 } from 'lucide-react';
 import { CustomerNotesEntity, CustomersEntity, GetCustomer360Action, PaymentsEntity } from '@/product-types';
 import { CustomerDailySummary } from '@/components/customer/CustomerDailySummary';
+import { CustomerDetailsTab, CustomerFinanceTab } from '@/components/customer/CustomerPriorityDetails';
 import { CustomerFeed } from '@/components/customer/CustomerFeed';
 import { TamarCardChat } from '@/components/customer/TamarCardChat';
 import { MonthNotesPopover } from '@/components/aging/MonthNotesPopover';
@@ -46,6 +45,8 @@ import { EMPTY, formatDate, formatILS, formatMoney, formatMonth, round2, todayIS
 const OPEN_TAB = 'open';
 const PAYMENTS_TAB = 'payments';
 const CLOSED_TAB = 'closed';
+const DETAILS_TAB = 'details';
+const FINANCE_TAB = 'finance';
 
 function Kpi({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -359,7 +360,7 @@ function CustomerBody({ code }: { code: string }) {
 
   const kpis = data?.kpis ?? {};
   const insured = !!data?.insured;
-  const tab = tabParam === CLOSED_TAB || tabParam === 'receipts' ? CLOSED_TAB : tabParam === CREDIT_TAB ? CREDIT_TAB : tabParam === PAYMENTS_TAB ? PAYMENTS_TAB : tabParam === OPEN_TAB ? OPEN_TAB : ALL_DOCS_TAB;
+  const tab = tabParam === CLOSED_TAB || tabParam === 'receipts' ? CLOSED_TAB : tabParam === CREDIT_TAB ? CREDIT_TAB : tabParam === PAYMENTS_TAB ? PAYMENTS_TAB : tabParam === OPEN_TAB ? OPEN_TAB : tabParam === DETAILS_TAB ? DETAILS_TAB : tabParam === FINANCE_TAB ? FINANCE_TAB : ALL_DOCS_TAB;
   const balance = kpis.openBalance ?? 0;
   const notes = data?.customerNotes ?? [];
   const openMonths = data?.openMonths ?? [];
@@ -372,6 +373,17 @@ function CustomerBody({ code }: { code: string }) {
   const openCount = invoices.filter(isInvoiceOpen).length;
   const closedCount = invoices.length - openCount;
   const balanceKnown = hasOpenData && kpis.openBalance !== null && kpis.openBalance !== undefined;
+  const financeSummary = [
+    { label: 'יתרה פתוחה', value: balanceKnown ? formatILS(balance) : WAITING_FOR_OPEN_MOVEMENTS },
+    { label: 'מתוכה בפיגור', value: formatILS(kpis.overdue) },
+    { label: 'חודשים פתוחים', value: String(openMonths.length) },
+    { label: 'חשבוניות פתוחות', value: hasOpenData ? String(openCount) : '—' },
+    { label: 'מסגרת אשראי', value: formatILS(c.creditLimit) },
+    { label: 'ניצול ביטוח', value: kpis.insuranceUsePct === null || kpis.insuranceUsePct === undefined ? '—' : formatPct1(kpis.insuranceUsePct) },
+    { label: 'תשלום אחרון', value: formatDate(kpis.lastPaymentDate) },
+    { label: 'אמצעי תשלום', value: c.paymentMethod || '—' },
+    { label: 'הערה לגבייה', value: c.collectionNote || '—' },
+  ];
   const headline = commitmentHeadline(notes, nina.bankReady ? 'התקבולים שלו ממשיכים להיבדק מול שורות הבנק.' : `${nina.waitingFor} כדי לבדוק תקבולים.`);
   const openNotes = (dueMonth: string | null, anchor: HTMLElement) =>
     setNotesTarget({
@@ -403,27 +415,9 @@ function CustomerBody({ code }: { code: string }) {
           )}
         </div>
         <p className="text-sm text-muted-foreground">
+          {balanceKnown && <span className="me-1.5 font-bold text-foreground tabular-nums">יתרה {formatILS(balance)} ·</span>}
           {c.customerType ?? '—'} · תשלום אחרון {formatDate(kpis.lastPaymentDate)}
         </p>
-        <dl className="flex flex-wrap gap-x-[21px] gap-y-1 text-sm">
-          {[
-            { label: 'סטטוס', value: c.priorityStatus },
-            { label: 'תנאי תשלום', value: [c.paymentTermsLabel, card?.paymentTermsCode && `קוד ${card.paymentTermsCode}`].filter(Boolean).join(' · ') },
-            { label: 'אמצעי תשלום', value: c.paymentMethod },
-            { label: 'הערה לגבייה', value: c.collectionNote },
-            { label: 'ח״פ', value: card?.companyId },
-            { label: 'כתובת', value: card?.address },
-            { label: 'דוא״ל כללי', value: card?.primaryEmail },
-            { label: 'מסגרת אובליגו', value: typeof card?.obligoLimit === 'number' ? formatILS(card.obligoLimit) : null },
-            { label: 'ביטוח אשראי בפריוריטי', value: typeof card?.creditInsuredAmount === 'number' ? formatILS(card.creditInsuredAmount) : null },
-            { label: 'בעלים בפריוריטי', value: card?.priorityOwner },
-          ].map((f) => (
-            <div key={f.label} className="flex items-baseline gap-1.5">
-              <dt className="text-xs text-muted-foreground">{f.label}</dt>
-              <dd className="font-semibold text-ink-2">{f.value || '—'}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
 
       <CustomerDailySummary code={c.customerCode}>
@@ -492,47 +486,7 @@ function CustomerBody({ code }: { code: string }) {
 
       <OpenMonthsPanel months={openMonths} onOpenNotes={(m, anchor) => openNotes(m, anchor)} />
 
-      <div className="grid items-start gap-[21px] lg:grid-cols-[1.618fr_1fr]">
-        <CustomerFeed data={data ?? {}} />
-
-        <div className="flex flex-col gap-[21px]">
-          <Panel title={`אנשי קשר (${contacts.length})`}>
-            <div className="flex flex-col gap-[13px] px-[21px] pb-[21px]">
-              {contacts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">אין אנשי קשר בכרטיס הלקוח בפריוריטי.</p>
-              ) : (
-                contacts.map((ct, i) => (
-                  <div key={`${ct.email}-${i}`} className="flex flex-col gap-0.5">
-                    <span className="font-semibold">{ct.contactName ?? '—'}</span>
-                    {ct.roleFlags && (
-                      <span className="text-xs text-muted-foreground">
-                        {Array.isArray(ct.roleFlags) ? ct.roleFlags.join(', ') : ct.roleFlags}
-                      </span>
-                    )}
-                    {ct.email && (
-                      <a href={`mailto:${ct.email}`} dir="ltr" className="flex items-center gap-1 self-start text-sm text-link hover:underline">
-                        <MailIcon className="size-3.5" />
-                        {ct.email}
-                      </a>
-                    )}
-                    {ct.phone && (
-                      <a href={`tel:${ct.phone}`} dir="ltr" className="flex items-center gap-1 self-start text-sm text-link hover:underline">
-                        <PhoneIcon className="size-3.5" />
-                        {ct.phone}
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </Panel>
-          {c.internalNotes && (
-            <Panel title="הערות פנימיות">
-              <p className="px-[21px] pb-[21px] text-sm whitespace-pre-wrap">{c.internalNotes}</p>
-            </Panel>
-          )}
-        </div>
-      </div>
+      <CustomerFeed data={data ?? {}} />
 
       <section ref={tabsRef} aria-label="חשבוניות ואובליגו" className="glass glass-lift flex scroll-mt-[90px] flex-col overflow-hidden rounded-[26px] border">
         <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
@@ -554,6 +508,12 @@ function CustomerBody({ code }: { code: string }) {
               <TabsTrigger value={ALL_DOCS_TAB} className="min-h-[34px] flex-none rounded-[17px] px-4 text-ink-2 data-active:font-semibold">
                 כל המסמכים
               </TabsTrigger>
+              <TabsTrigger value={DETAILS_TAB} className="min-h-[34px] flex-none rounded-[17px] px-4 text-ink-2 data-active:font-semibold">
+                פרטי לקוח
+              </TabsTrigger>
+              <TabsTrigger value={FINANCE_TAB} className="min-h-[34px] flex-none rounded-[17px] px-4 text-ink-2 data-active:font-semibold">
+                פיננסי
+              </TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value={OPEN_TAB}>
@@ -567,6 +527,12 @@ function CustomerBody({ code }: { code: string }) {
           </TabsContent>
           <TabsContent value={PAYMENTS_TAB}>
             <CustomerPayments customerCode={c.customerCode} />
+          </TabsContent>
+          <TabsContent value={DETAILS_TAB}>
+            <CustomerDetailsTab code={c.customerCode} mirror={card} contacts={contacts} internalNotes={c.internalNotes} />
+          </TabsContent>
+          <TabsContent value={FINANCE_TAB}>
+            <CustomerFinanceTab code={c.customerCode} mirror={card} summary={financeSummary} />
           </TabsContent>
           <TabsContent value={ALL_DOCS_TAB}>
             <CustomerAllDocuments customerCode={c.customerCode} />

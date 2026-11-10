@@ -38,8 +38,10 @@ const INTERNAL_CODE = /^1000\d{2}$/;
 type Cover = (typeof CreditCoversEntity)['instanceType'];
 
 /** CustomerActivity view row — the generated type has no columns yet, and counts/dates may arrive as strings. */
-type ActivityRow = { customerCode?: unknown; documentCount?: unknown; lastDocumentDate?: unknown };
-type Activity = { count: number; last: string | null };
+type ActivityRow = { customerCode?: unknown; documentCount?: unknown; lastDocumentDate?: unknown; openDebt?: unknown };
+type Activity = { count: number; last: string | null; debt: number | null };
+
+const ILS2 = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const PRIORITY_STATUSES = ['פעיל', 'לא פעיל', 'חסום', 'זמני', 'חסום BDI', 'בטיפול', 'פעיל-ח.ניירת', 'חס-חסר ניירת'];
 const PAGE_SIZE = 50;
@@ -52,6 +54,7 @@ const SORTS = [
   { value: 'last', label: 'מיון: מסמך אחרון' },
   { value: 'name', label: 'מיון: שם' },
   { value: 'count', label: 'מיון: מספר מסמכים' },
+  { value: 'debt', label: 'מיון: חוב פעיל' },
 ];
 
 function activityByCode(rows: ActivityRow[]): Map<string, Activity> {
@@ -61,7 +64,8 @@ function activityByCode(rows: ActivityRow[]): Map<string, Activity> {
     if (!code) continue;
     const count = Number(r.documentCount) || 0;
     const last = r.lastDocumentDate ? String(r.lastDocumentDate).slice(0, 10) : null;
-    out.set(code, { count, last });
+    const debt = r.openDebt === null || r.openDebt === undefined || r.openDebt === '' ? null : Number(r.openDebt);
+    out.set(code, { count, last, debt: debt === null || Number.isNaN(debt) ? null : debt });
   }
   return out;
 }
@@ -236,6 +240,7 @@ export default function CustomersPage() {
     if (sort === 'name') return (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
     const x = actOf(a.customerCode);
     const y = actOf(b.customerCode);
+    if (sort === 'debt') return (y?.debt ?? -Infinity) - (x?.debt ?? -Infinity) || (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
     if (sort === 'count') return (y?.count ?? 0) - (x?.count ?? 0) || (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
     return (y?.last ?? '').localeCompare(x?.last ?? '') || (a.customerName ?? '').localeCompare(b.customerName ?? '', 'he');
   });
@@ -351,7 +356,7 @@ export default function CustomersPage() {
                   הלקוחות יגיעו לכאן מפריוריטי אחרי החיבור, וסוכנת הגבייה תתחיל לעקוב אחרי כל אחד מהם.
                 </AgentEmpty>
               ) : (
-                <Table className="min-w-[1180px]">
+                <Table className="min-w-[1300px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="ps-4">לקוח</TableHead>
@@ -359,6 +364,7 @@ export default function CustomersPage() {
                       <TableHead>אחראית</TableHead>
                       <TableHead>סוכן</TableHead>
                       <TableHead>תנאים</TableHead>
+                      <TableHead>חוב פעיל</TableHead>
                       <TableHead>מסמכים</TableHead>
                       <TableHead>מסמך אחרון</TableHead>
                       <TableHead className="w-48">ניצול ביטוח · סטטי</TableHead>
@@ -393,6 +399,7 @@ export default function CustomersPage() {
                         <TableCell>{scope.ownerOf(c.customerCode, c.assignedBookkeeperName) ?? '—'}</TableCell>
                         <TableCell>{c.salesAgentName || '—'}</TableCell>
                         <TableCell>{c.paymentTermsLabel ?? (c.paymentTermsDays ? `שוטף+${c.paymentTermsDays}` : '—')}</TableCell>
+                        <TableCell className="font-semibold tabular-nums">{actOf(c.customerCode)?.debt == null ? '—' : ILS2.format(actOf(c.customerCode)?.debt ?? 0)}</TableCell>
                         <TableCell className="tabular-nums">{actOf(c.customerCode)?.count ? formatNumber(actOf(c.customerCode)?.count) : '—'}</TableCell>
                         <TableCell className="tabular-nums">{formatDate(actOf(c.customerCode)?.last)}</TableCell>
                         <TableCell>
@@ -412,7 +419,7 @@ export default function CustomersPage() {
                     ))}
                     {rows.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                        <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                           אין לקוחות שמתאימים לסינון.
                         </TableCell>
                       </TableRow>

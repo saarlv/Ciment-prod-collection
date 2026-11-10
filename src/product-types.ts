@@ -2928,6 +2928,8 @@ export interface ICustomerActivityEntity {
   documentCount?: number;
   /** Max aggregation result  */
   lastDocumentDate?: number;
+  /** Sum aggregation result  */
+  openDebt?: number;
 }
 
 export const CustomerActivityEntity = {
@@ -4626,6 +4628,42 @@ export const GetCustomer360Action = {
 
   inputInstanceType: {} as IGetCustomer360ActionInput,
   outputInstanceType: {} as IGetCustomer360ActionOutput,
+} as const;
+
+/**
+ * GetCustomerPriorityDetails input payload
+ */
+export interface IGetCustomerPriorityDetailsActionInput {
+  /** Priority CUSTNAME  */
+  customerCode: string;
+}
+
+/**
+ * Every column of the customer's row, keyed by the UPPER-case Priority column name; null when not found
+ */
+export interface IGetCustomerPriorityDetailsActionOutputRecordObject {}
+
+/**
+ * GetCustomerPriorityDetails output payload
+ */
+export interface IGetCustomerPriorityDetailsActionOutput {
+  /** Every column of the customer's row, keyed by the UPPER-case Priority column name; null when not found  */
+  record?: IGetCustomerPriorityDetailsActionOutputRecordObject;
+  /** ISO time of the read  */
+  readAt?: string;
+  /** Set when Brain could not be read  */
+  error?: string;
+}
+
+/**
+ * GetCustomerPriorityDetailsAction
+ * Execute code action
+ */
+export const GetCustomerPriorityDetailsAction = {
+  actionBlockId: "GetCustomerPriorityDetails",
+
+  inputInstanceType: {} as IGetCustomerPriorityDetailsActionInput,
+  outputInstanceType: {} as IGetCustomerPriorityDetailsActionOutput,
 } as const;
 
 /**

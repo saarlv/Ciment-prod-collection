@@ -116,7 +116,7 @@ export function InvoicePopup({
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:overflow-hidden">
+          <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden', inv.sourceDocUrl && 'lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]')}>
             <section aria-label="הנתונים שנשלפו" className="flex min-h-0 flex-col gap-[13px] p-[21px] lg:overflow-y-auto">
               <h3 className="text-sm font-bold">הנתונים שנשלפו</h3>
               {allocatedAmount != null && (
@@ -234,27 +234,15 @@ export function InvoicePopup({
               <InvoiceLinesLive invoiceNumber={invoiceNumber} />
             </section>
 
-            <section aria-label="המקור" className="flex min-h-[480px] flex-col gap-2 border-glass-edge p-[13px] lg:min-h-0 lg:border-s">
-              <div className="flex items-center justify-between gap-2 px-1">
-                <h3 className="flex items-center gap-1.5 text-sm font-bold">
+            {inv.sourceDocUrl && (
+              <section aria-label="המקור" className="flex min-h-[480px] flex-col gap-2 border-glass-edge p-[13px] lg:min-h-0 lg:border-s">
+                <h3 className="flex items-center gap-1.5 px-1 text-sm font-bold">
                   <ScanTextIcon className="size-4 text-muted-foreground" />
                   המקור
                 </h3>
-              </div>
-              {inv.sourceDocUrl ? (
                 <InvoiceSource url={inv.sourceDocUrl} invoiceNumber={invoiceNumber} />
-              ) : (
-                <Empty className="flex-1 rounded-[18px] bg-glass-faint py-12">
-                  <EmptyHeader>
-                    <EmptyMedia>
-                      <FileQuestionIcon />
-                    </EmptyMedia>
-                    <EmptyTitle>צילום החשבונית עוד לא הגיע מ-Priority</EmptyTitle>
-                    <EmptyDescription>כשהצילום של החשבונית שנשלחה ללקוח יגיע, הוא יוצג כאן ליד הנתונים.</EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              )}
-            </section>
+              </section>
+            )}
           </div>
         )}
       </DialogContent>

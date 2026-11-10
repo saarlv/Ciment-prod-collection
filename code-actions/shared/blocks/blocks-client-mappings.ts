@@ -107,6 +107,7 @@ export const blocksClientMappings = {
 "get_file": "brain-tools/get_file",
 "GetCreditExposure": "GetCreditExposure",
 "GetCustomer360": "GetCustomer360",
+"GetCustomerPriorityDetails": "GetCustomerPriorityDetails",
 "GetFileBase64": "utils/GetFileBase64",
 "GetIntegrationConnectionStatus": "utils/GetIntegrationConnectionStatus",
 "GetItemFromAgentBriefingsTable": "databases/TableOps&AgentBriefings&get-one",

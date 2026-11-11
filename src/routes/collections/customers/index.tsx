@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon } from 'lucide-react';
-import { CreditCoversEntity, CustomerActivityEntity, CustomerExposureEntity, CustomersEntity } from '@/product-types';
+import { CreditCoversEntity, CustomerExposureEntity, CustomersEntity } from '@/product-types';
 import { AgentPanel } from '@/components/AgentPanel';
 import { CustomerLink } from '@/components/CustomerLink';
 import { ObligoBar } from '@/components/ObligoBar';
@@ -37,9 +37,8 @@ const INTERNAL_CODE = /^1000\d{2}$/;
 
 type Cover = (typeof CreditCoversEntity)['instanceType'];
 
-/** CustomerActivity view row — the generated type has no columns yet, and counts/dates may arrive as strings. */
-type ActivityRow = { customerCode?: unknown; documentCount?: unknown; lastDocumentDate?: unknown; openDebt?: unknown };
-type Activity = { count: number; last: string | null; debt: number | null };
+/** Activity columns of a Customers row (calc, RefreshCustomerAggregates) — null until the aggregates first run. */
+type Activity = { count: number | null; last: string | null; debt: number | null };
 
 const ILS2 = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -57,15 +56,12 @@ const SORTS = [
   { value: 'debt', label: 'מיון: חוב פעיל' },
 ];
 
-function activityByCode(rows: ActivityRow[]): Map<string, Activity> {
+function activityByCode(rows: (typeof CustomersEntity)['instanceType'][]): Map<string, Activity> {
   const out = new Map<string, Activity>();
   for (const r of rows) {
-    const code = r.customerCode == null ? '' : String(r.customerCode);
-    if (!code) continue;
-    const count = Number(r.documentCount) || 0;
-    const last = r.lastDocumentDate ? String(r.lastDocumentDate).slice(0, 10) : null;
-    const debt = r.openDebt === null || r.openDebt === undefined || r.openDebt === '' ? null : Number(r.openDebt);
-    out.set(code, { count, last, debt: debt === null || Number.isNaN(debt) ? null : debt });
+    if (!r.customerCode) continue;
+    const num = (v: unknown) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
+    out.set(r.customerCode, { count: num(r.documentCount), last: r.lastDocumentDate ? r.lastDocumentDate.slice(0, 10) : null, debt: num(r.openBalance) });
   }
   return out;
 }
@@ -155,8 +151,7 @@ export default function CustomersPage() {
   const { data, isLoading, isError } = useEntityGetAll(CustomersEntity, {
     orderBy: [{ column: 'customerName', direction: 'asc' }],
   });
-  const activityQ = useEntityGetAll(CustomerActivityEntity);
-  const activity = activityByCode((activityQ.data ?? []) as ActivityRow[]);
+  const activity = activityByCode(data ?? []);
   const coversQ = useEntityGetAll(CreditCoversEntity);
   const exposureQ = useEntityGetAll(CustomerExposureEntity);
   const insuredCodes = new Set((coversQ.data ?? []).map((c) => c.customerCode).filter((c): c is string => !!c));
@@ -207,7 +202,11 @@ export default function CustomersPage() {
     ...new Set(all.map((c) => scope.ownerOf(c.customerCode, c.assignedBookkeeperName)).filter((n): n is string => !!n)),
   ].sort();
   const actOf = (code?: string) => (code ? activity.get(code) : undefined);
-  const hasActivity = (code?: string) => (actOf(code)?.count ?? 0) > 0;
+  // Before the aggregates first run the count is unknown: keep the customer in view rather than hide everyone.
+  const hasActivity = (code?: string) => {
+    const count = actOf(code)?.count;
+    return count === null || count === undefined || count > 0;
+  };
   const activeCount = all.filter((c) => hasActivity(c.customerCode)).length;
   const agents = [...new Set(all.map((c) => c.salesAgentName).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, 'he'));
   const termsList = [...new Set(all.map((c) => c.paymentTermsLabel).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, 'he'));
@@ -249,7 +248,7 @@ export default function CustomersPage() {
   const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const from = rows.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const to = Math.min(currentPage * PAGE_SIZE, rows.length);
-  const loading = isLoading || scope.isLoading || activityQ.isLoading;
+  const loading = isLoading || scope.isLoading;
   const overThreshold = all.filter((c) => (staticPct(c.customerCode) ?? 0) >= 80).length;
   const escalated = all.filter((c) => c.collectionStage === 'הוסלם למנהל').length;
 

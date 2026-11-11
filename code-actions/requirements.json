@@ -5005,6 +5005,63 @@
       },
       "browsingTask": false
     },
+    "RefreshCustomerAggregates": {
+      "name": "RefreshCustomerAggregates",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "customerCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only these customers (default all)"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": true,
+            "description": "Default true: only report"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "asOf": {
+            "type": "string"
+          },
+          "customersChecked": {
+            "type": "number"
+          },
+          "customersChanged": {
+            "type": "number"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "writeVerified": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "browsingTask": false
+    },
     "RefreshInvoiceLayer": {
       "name": "RefreshInvoiceLayer",
       "inputSchema": {
@@ -8856,7 +8913,7 @@
       "schema": {
         "$id": "6af30b2e6221f0a7126bea24",
         "title": "Customers",
-        "description": "Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link.",
+        "description": "Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link. Calc layer (6b): openBalance, openDebit, onAccountCredit, overdueAmount, oldestDueDate, openMovementCount, movementsSyncedAt, documentCount, lastDocumentDate, aggregatesAt are written ONLY by RefreshCustomerAggregates / PullOpenMovements (movementsSyncedAt); no sync writes them. Money truth = the ledger (memories/files/FINANCE_MODEL.md).",
         "type": "object",
         "properties": {
           "id": {
@@ -9198,6 +9255,70 @@
             "title": "salesAgentCode",
             "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
             "$id": "c07c1b0dfa9bb60b3cf56579"
+          },
+          "openBalance": {
+            "type": "number",
+            "title": "openBalance",
+            "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+            "$id": "6275e3ea3c0f5f8701b76e20"
+          },
+          "openDebit": {
+            "type": "number",
+            "title": "openDebit",
+            "description": "Calc: sum of positive OpenMovements amounts",
+            "$id": "2614ebf8abb08c6927b98083"
+          },
+          "onAccountCredit": {
+            "type": "number",
+            "title": "onAccountCredit",
+            "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+            "$id": "5a1f4e510c1c6c467d7d66ad"
+          },
+          "overdueAmount": {
+            "type": "number",
+            "title": "overdueAmount",
+            "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+            "$id": "27d3df9a3f331cfb73036119"
+          },
+          "oldestDueDate": {
+            "type": "string",
+            "format": "date",
+            "title": "oldestDueDate",
+            "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+            "$id": "84606d0b722f6005fd7b8fa6"
+          },
+          "openMovementCount": {
+            "type": "number",
+            "title": "openMovementCount",
+            "description": "Calc: number of open movements",
+            "$id": "143d0bbec70f48fbbc2eb824"
+          },
+          "movementsSyncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "movementsSyncedAt",
+            "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+            "$id": "91a3286bd717c5f0c0e6517c"
+          },
+          "documentCount": {
+            "type": "number",
+            "title": "documentCount",
+            "description": "Calc: number of Invoices rows of the customer",
+            "$id": "d709cb1067c9e133d3c03e1f"
+          },
+          "lastDocumentDate": {
+            "type": "string",
+            "format": "date",
+            "title": "lastDocumentDate",
+            "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+            "$id": "263551cbc9d5dd33cc4bf019"
+          },
+          "aggregatesAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "aggregatesAt",
+            "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+            "$id": "2f0f6f24e24352af7342e37c"
           }
         },
         "required": [],
@@ -11145,7 +11266,7 @@
       "schema": {
         "$id": "6af30b2e6221f0a7126bea28",
         "title": "Invoices",
-        "description": "Priority invoice mirror",
+        "description": "6b: openAmount and dueDate (and dueMonth) are calc-layer columns filled by the invoice layer from OpenMovements; no sync writes them.",
         "type": "object",
         "properties": {
           "id": {
@@ -11234,7 +11355,7 @@
             "type": "string",
             "format": "date",
             "title": "dueDate",
-            "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+            "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
             "$id": "032da427e5cb8c12b9ae788d"
           },
           "dueMonth": {
@@ -11252,7 +11373,7 @@
           "openAmount": {
             "type": "number",
             "title": "openAmount",
-            "description": "Open amount ILS",
+            "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
             "$id": "5bfd822cb52c3e8c94a5094c"
           },
           "status": {
@@ -20130,88 +20251,6 @@
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
-    "DeleteItemsFromCustomerActivityTable": {
-      "isCurrentAppAction": false,
-      "actionTypeId": "databases/TableOps&CustomerActivity&delete-many",
-      "actionTypeName": "DeleteItemsFromCustomerActivityTable",
-      "actionTypeDescription": "Delete items from the CustomerActivity table",
-      "input": {
-        "type": "object",
-        "properties": {
-          "tableBlockId": {
-            "type": "string",
-            "enum": [
-              "6af33d7b8142376209419a7d"
-            ],
-            "default": "6af33d7b8142376209419a7d",
-            "description": "The id of the table"
-          },
-          "where": {
-            "type": "object",
-            "properties": {
-              "column": {
-                "type": "string",
-                "description": "Column name to filter (for simple conditions)"
-              },
-              "operator": {
-                "type": "string",
-                "description": "Comparison operator (for simple conditions)",
-                "enum": [
-                  "=",
-                  ">",
-                  ">=",
-                  "<",
-                  "<=",
-                  "!=",
-                  "in"
-                ],
-                "default": "="
-              },
-              "value": {
-                "description": "Value to compare against (for simple conditions)",
-                "type": "string"
-              }
-            },
-            "required": [
-              "column",
-              "value"
-            ],
-            "description": "Rows to delete. column must be an existing column of the table; a where that matches no specific rows is rejected. Required unless allItems is true."
-          },
-          "allItems": {
-            "type": "boolean",
-            "description": "Set to true ONLY to delete every row in the table. Omit it for any targeted delete.",
-            "default": false
-          }
-        },
-        "required": [],
-        "title": "DeleteItemsFromCustomerActivityTableInput",
-        "description": "DeleteItemsFromCustomerActivityTable input payload"
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "affectedItems": {
-            "type": "array",
-            "description": "The items deleted from the table",
-            "items": {
-              "type": "string",
-              "description": "The item ids deleted from the table"
-            }
-          }
-        },
-        "required": [
-          "affectedItems"
-        ],
-        "title": "DeleteItemsFromCustomerActivityTableOutput",
-        "description": "DeleteItemsFromCustomerActivityTable output payload"
-      },
-      "exposedToAiCode": false,
-      "exposedToAiAgent": true,
-      "actionSetId": "table:CustomerActivity",
-      "isFromDependency": false,
-      "productId": "67692d6bf934f8a921e1777d"
-    },
     "DeleteItemsFromCustomerContactsTable": {
       "isCurrentAppAction": false,
       "actionTypeId": "databases/TableOps&CustomerContacts&delete-many",
@@ -28378,87 +28417,6 @@
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
-    "GetItemFromCustomerActivityTable": {
-      "isCurrentAppAction": false,
-      "actionTypeId": "databases/TableOps&CustomerActivity&get-one",
-      "actionTypeName": "GetItemFromCustomerActivityTable",
-      "actionTypeDescription": "Get item from the CustomerActivity table",
-      "input": {
-        "type": "object",
-        "properties": {
-          "tableBlockId": {
-            "type": "string",
-            "enum": [
-              "6af33d7b8142376209419a7d"
-            ],
-            "default": "6af33d7b8142376209419a7d",
-            "description": "The id of the table"
-          },
-          "itemId": {
-            "type": "string",
-            "description": "The id of the row to get"
-          }
-        },
-        "required": [
-          "itemId"
-        ],
-        "title": "GetItemFromCustomerActivityTableInput",
-        "description": "GetItemFromCustomerActivityTable input payload"
-      },
-      "output": {
-        "title": "GetItemFromCustomerActivityTableOutput",
-        "type": "object",
-        "properties": {
-          "customerCode": {
-            "type": "string",
-            "title": "customerCode",
-            "description": "Priority customer code (text link to Customers)",
-            "$id": "1eb74d440804c3716c580d45"
-          },
-          "documentCount": {
-            "type": "number",
-            "title": "documentCount",
-            "description": "Count aggregation result"
-          },
-          "lastDocumentDate": {
-            "type": "number",
-            "title": "lastDocumentDate",
-            "description": "Max aggregation result"
-          },
-          "openDebtRaw": {
-            "type": "number",
-            "title": "openDebtRaw",
-            "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
-          },
-          "openCountRaw": {
-            "type": "number",
-            "title": "openCountRaw",
-            "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
-          },
-          "openDebt": {
-            "type": "number",
-            "title": "openDebt",
-            "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
-            "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
-            "$id": "28c0b26803358e5a6b46d8ab"
-          },
-          "openInvoiceCount": {
-            "type": "number",
-            "title": "openInvoiceCount",
-            "description": "Unreconciled invoices",
-            "expression": "Number(item.openCountRaw || 0)",
-            "$id": "bec9e1b298276d5531ba3b4a"
-          }
-        },
-        "required": [],
-        "description": "GetItemFromCustomerActivityTable output payload"
-      },
-      "exposedToAiCode": false,
-      "exposedToAiAgent": true,
-      "actionSetId": "table:CustomerActivity",
-      "isFromDependency": false,
-      "productId": "67692d6bf934f8a921e1777d"
-    },
     "GetItemFromCustomerContactsTable": {
       "isCurrentAppAction": false,
       "actionTypeId": "databases/TableOps&CustomerContacts&get-one",
@@ -29820,6 +29778,70 @@
             "title": "salesAgentCode",
             "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
             "$id": "c07c1b0dfa9bb60b3cf56579"
+          },
+          "openBalance": {
+            "type": "number",
+            "title": "openBalance",
+            "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+            "$id": "6275e3ea3c0f5f8701b76e20"
+          },
+          "openDebit": {
+            "type": "number",
+            "title": "openDebit",
+            "description": "Calc: sum of positive OpenMovements amounts",
+            "$id": "2614ebf8abb08c6927b98083"
+          },
+          "onAccountCredit": {
+            "type": "number",
+            "title": "onAccountCredit",
+            "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+            "$id": "5a1f4e510c1c6c467d7d66ad"
+          },
+          "overdueAmount": {
+            "type": "number",
+            "title": "overdueAmount",
+            "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+            "$id": "27d3df9a3f331cfb73036119"
+          },
+          "oldestDueDate": {
+            "type": "string",
+            "format": "date",
+            "title": "oldestDueDate",
+            "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+            "$id": "84606d0b722f6005fd7b8fa6"
+          },
+          "openMovementCount": {
+            "type": "number",
+            "title": "openMovementCount",
+            "description": "Calc: number of open movements",
+            "$id": "143d0bbec70f48fbbc2eb824"
+          },
+          "movementsSyncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "movementsSyncedAt",
+            "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+            "$id": "91a3286bd717c5f0c0e6517c"
+          },
+          "documentCount": {
+            "type": "number",
+            "title": "documentCount",
+            "description": "Calc: number of Invoices rows of the customer",
+            "$id": "d709cb1067c9e133d3c03e1f"
+          },
+          "lastDocumentDate": {
+            "type": "string",
+            "format": "date",
+            "title": "lastDocumentDate",
+            "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+            "$id": "263551cbc9d5dd33cc4bf019"
+          },
+          "aggregatesAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "aggregatesAt",
+            "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+            "$id": "2f0f6f24e24352af7342e37c"
           }
         },
         "required": [],
@@ -32401,7 +32423,7 @@
             "type": "string",
             "format": "date",
             "title": "dueDate",
-            "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+            "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
             "$id": "032da427e5cb8c12b9ae788d"
           },
           "dueMonth": {
@@ -32419,7 +32441,7 @@
           "openAmount": {
             "type": "number",
             "title": "openAmount",
-            "description": "Open amount ILS",
+            "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
             "$id": "5bfd822cb52c3e8c94a5094c"
           },
           "status": {
@@ -41650,319 +41672,6 @@
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
-    "GetItemsFromCustomerActivityTable": {
-      "isCurrentAppAction": false,
-      "actionTypeId": "databases/TableOps&CustomerActivity&get-all",
-      "actionTypeName": "GetItemsFromCustomerActivityTable",
-      "actionTypeDescription": "Get items from the CustomerActivity table",
-      "input": {
-        "type": "object",
-        "properties": {
-          "tableBlockId": {
-            "type": "string",
-            "enum": [
-              "6af33d7b8142376209419a7d"
-            ],
-            "default": "6af33d7b8142376209419a7d",
-            "description": "The id of the table"
-          },
-          "minimalHeaderColumns": {
-            "type": "boolean",
-            "description": "true (default): rows carry the system fields id, createdAt, createdBy, updatedAt, updatedBy, createdByAgentId and createdByAgentThreadId; false: also accountId, appId and tableId",
-            "default": true
-          },
-          "responseFormat": {
-            "type": "string",
-            "enum": [
-              "json",
-              "csv"
-            ],
-            "default": "json",
-            "description": "How the rows come back: json — an `items` array of objects; csv — a `csv` string with a header line of column names and one line per row (far more compact, since column names appear once)"
-          },
-          "where": {
-            "type": "object",
-            "description": "A condition `{ column, operator, value }`, or `{ and: [...] }` / `{ or: [...] }` of conditions; `not: true` negates any of them. `expression` is a SQL-like condition over column names for comparisons a plain condition cannot express, including deeper and/or nesting.",
-            "properties": {
-              "column": {
-                "type": "string",
-                "description": "Column name"
-              },
-              "operator": {
-                "type": "string",
-                "enum": [
-                  "=",
-                  "!=",
-                  ">",
-                  ">=",
-                  "<",
-                  "<=",
-                  "in",
-                  "not in",
-                  "is null",
-                  "is not null"
-                ],
-                "default": "=",
-                "description": "`in` / `not in` take an array value; `is null` / `is not null` take no value"
-              },
-              "value": {
-                "description": "Value to compare against"
-              },
-              "and": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "description": "A condition `{ column, operator, value }` (or an `expression`); `not: true` negates it",
-                  "properties": {
-                    "column": {
-                      "type": "string",
-                      "description": "Column name"
-                    },
-                    "operator": {
-                      "type": "string",
-                      "enum": [
-                        "=",
-                        "!=",
-                        ">",
-                        ">=",
-                        "<",
-                        "<=",
-                        "in",
-                        "not in",
-                        "is null",
-                        "is not null"
-                      ],
-                      "default": "=",
-                      "description": "`in` / `not in` take an array value; `is null` / `is not null` take no value"
-                    },
-                    "value": {
-                      "description": "Value to compare against"
-                    },
-                    "not": {
-                      "type": "boolean",
-                      "description": "Negate this condition"
-                    },
-                    "expression": {
-                      "type": "string",
-                      "description": "SQL-like condition, e.g. \"price * qty > 100\""
-                    }
-                  }
-                },
-                "description": "All of these conditions"
-              },
-              "or": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "description": "A condition `{ column, operator, value }` (or an `expression`); `not: true` negates it",
-                  "properties": {
-                    "column": {
-                      "type": "string",
-                      "description": "Column name"
-                    },
-                    "operator": {
-                      "type": "string",
-                      "enum": [
-                        "=",
-                        "!=",
-                        ">",
-                        ">=",
-                        "<",
-                        "<=",
-                        "in",
-                        "not in",
-                        "is null",
-                        "is not null"
-                      ],
-                      "default": "=",
-                      "description": "`in` / `not in` take an array value; `is null` / `is not null` take no value"
-                    },
-                    "value": {
-                      "description": "Value to compare against"
-                    },
-                    "not": {
-                      "type": "boolean",
-                      "description": "Negate this condition"
-                    },
-                    "expression": {
-                      "type": "string",
-                      "description": "SQL-like condition, e.g. \"price * qty > 100\""
-                    }
-                  }
-                },
-                "description": "Any of these conditions"
-              },
-              "not": {
-                "type": "boolean",
-                "description": "Negate this condition"
-              },
-              "expression": {
-                "type": "string",
-                "description": "SQL-like condition, e.g. \"price * qty > 100\""
-              }
-            }
-          },
-          "select": {
-            "type": "array",
-            "description": "Columns to return (all when omitted). With an aggregate `function`, combine with `groupBy`.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "column": {
-                  "type": "string",
-                  "description": "Column name"
-                },
-                "as": {
-                  "type": "string",
-                  "description": "Name of the output column"
-                },
-                "function": {
-                  "type": "string",
-                  "enum": [
-                    "count",
-                    "sum",
-                    "avg",
-                    "min",
-                    "max"
-                  ],
-                  "description": "Aggregate to compute over the column"
-                },
-                "expression": {
-                  "type": "string",
-                  "description": "Calculated value, e.g. \"price * qty\""
-                }
-              }
-            }
-          },
-          "groupBy": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Columns to group by (use with aggregate selects)"
-          },
-          "orderBy": {
-            "type": "array",
-            "description": "Row order. Default: oldest first (id ascending); for the latest rows, order by `id` desc (indexed, unlike `createdAt`).",
-            "items": {
-              "type": "object",
-              "properties": {
-                "column": {
-                  "type": "string",
-                  "description": "Column name or a `select` alias"
-                },
-                "direction": {
-                  "type": "string",
-                  "enum": [
-                    "asc",
-                    "desc"
-                  ],
-                  "default": "asc"
-                }
-              },
-              "required": [
-                "column"
-              ]
-            }
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Maximum rows to return. The result then carries `nextCursor` when more rows follow, or `limitReached` when they do but the read cannot be paged (groupBy, aggregate or expression selects)."
-          },
-          "cursor": {
-            "type": "string",
-            "description": "The `nextCursor` of the previous page, to read the next one. Send the same where / orderBy / select as that page."
-          },
-          "maxChars": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Caps the response at about this many characters of rows; a cut page sets `truncated` and, when paged, `nextCursor`"
-          }
-        },
-        "required": [],
-        "title": "GetItemsFromCustomerActivityTableInput",
-        "description": "GetItemsFromCustomerActivityTable input payload"
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "title": "items",
-            "description": "The rows (responseFormat json)",
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "customerCode": {
-                  "type": "string",
-                  "title": "customerCode",
-                  "description": "Priority customer code (text link to Customers)",
-                  "$id": "1eb74d440804c3716c580d45"
-                },
-                "documentCount": {
-                  "type": "number",
-                  "title": "documentCount",
-                  "description": "Count aggregation result"
-                },
-                "lastDocumentDate": {
-                  "type": "number",
-                  "title": "lastDocumentDate",
-                  "description": "Max aggregation result"
-                },
-                "openDebtRaw": {
-                  "type": "number",
-                  "title": "openDebtRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
-                },
-                "openCountRaw": {
-                  "type": "number",
-                  "title": "openCountRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
-                },
-                "openDebt": {
-                  "type": "number",
-                  "title": "openDebt",
-                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
-                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
-                  "$id": "28c0b26803358e5a6b46d8ab"
-                },
-                "openInvoiceCount": {
-                  "type": "number",
-                  "title": "openInvoiceCount",
-                  "description": "Unreconciled invoices",
-                  "expression": "Number(item.openCountRaw || 0)",
-                  "$id": "bec9e1b298276d5531ba3b4a"
-                }
-              }
-            }
-          },
-          "csv": {
-            "title": "csv",
-            "description": "The rows as CSV: a header line of column names, then one line per row (responseFormat csv)",
-            "type": "string"
-          },
-          "nextCursor": {
-            "title": "nextCursor",
-            "description": "Cursor of the next page — pass it back as `cursor` to read on; absent after the last page",
-            "type": "string"
-          },
-          "truncated": {
-            "title": "truncated",
-            "description": "True when a size cap cut this page short",
-            "type": "boolean"
-          }
-        },
-        "title": "GetItemsFromCustomerActivityTableOutput",
-        "description": "GetItemsFromCustomerActivityTable output payload"
-      },
-      "exposedToAiCode": false,
-      "exposedToAiAgent": true,
-      "actionSetId": "table:CustomerActivity",
-      "isFromDependency": false,
-      "productId": "67692d6bf934f8a921e1777d"
-    },
     "GetItemsFromCustomerContactsTable": {
       "isCurrentAppAction": false,
       "actionTypeId": "databases/TableOps&CustomerContacts&get-all",
@@ -44682,6 +44391,70 @@
                   "title": "salesAgentCode",
                   "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
                   "$id": "c07c1b0dfa9bb60b3cf56579"
+                },
+                "openBalance": {
+                  "type": "number",
+                  "title": "openBalance",
+                  "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+                  "$id": "6275e3ea3c0f5f8701b76e20"
+                },
+                "openDebit": {
+                  "type": "number",
+                  "title": "openDebit",
+                  "description": "Calc: sum of positive OpenMovements amounts",
+                  "$id": "2614ebf8abb08c6927b98083"
+                },
+                "onAccountCredit": {
+                  "type": "number",
+                  "title": "onAccountCredit",
+                  "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+                  "$id": "5a1f4e510c1c6c467d7d66ad"
+                },
+                "overdueAmount": {
+                  "type": "number",
+                  "title": "overdueAmount",
+                  "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+                  "$id": "27d3df9a3f331cfb73036119"
+                },
+                "oldestDueDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "oldestDueDate",
+                  "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "84606d0b722f6005fd7b8fa6"
+                },
+                "openMovementCount": {
+                  "type": "number",
+                  "title": "openMovementCount",
+                  "description": "Calc: number of open movements",
+                  "$id": "143d0bbec70f48fbbc2eb824"
+                },
+                "movementsSyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "movementsSyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Calc: number of Invoices rows of the customer",
+                  "$id": "d709cb1067c9e133d3c03e1f"
+                },
+                "lastDocumentDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "lastDocumentDate",
+                  "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "263551cbc9d5dd33cc4bf019"
+                },
+                "aggregatesAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "aggregatesAt",
+                  "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "2f0f6f24e24352af7342e37c"
                 }
               }
             }
@@ -50020,7 +49793,7 @@
                   "type": "string",
                   "format": "date",
                   "title": "dueDate",
-                  "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
                   "$id": "032da427e5cb8c12b9ae788d"
                 },
                 "dueMonth": {
@@ -50038,7 +49811,7 @@
                 "openAmount": {
                   "type": "number",
                   "title": "openAmount",
-                  "description": "Open amount ILS",
+                  "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
                   "$id": "5bfd822cb52c3e8c94a5094c"
                 },
                 "status": {
@@ -64498,149 +64271,6 @@
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
-    "InsertItemsToCustomerActivityTable": {
-      "isCurrentAppAction": false,
-      "actionTypeId": "databases/TableOps&CustomerActivity&insert-many",
-      "actionTypeName": "InsertItemsToCustomerActivityTable",
-      "actionTypeDescription": "Insert items into the CustomerActivity table",
-      "input": {
-        "type": "object",
-        "properties": {
-          "tableBlockId": {
-            "type": "string",
-            "enum": [
-              "6af33d7b8142376209419a7d"
-            ],
-            "default": "6af33d7b8142376209419a7d",
-            "description": "The id of the table"
-          },
-          "items": {
-            "type": "array",
-            "description": "The items to insert into the table, array of records to insert. Maximum 1000 items.",
-            "maxItems": 1000,
-            "items": {
-              "type": "object",
-              "description": "The item to insert into the table, keys are the column names, values are the column values",
-              "properties": {
-                "customerCode": {
-                  "type": "string",
-                  "title": "customerCode",
-                  "description": "Priority customer code (text link to Customers)",
-                  "$id": "1eb74d440804c3716c580d45"
-                },
-                "documentCount": {
-                  "type": "number",
-                  "title": "documentCount",
-                  "description": "Count aggregation result"
-                },
-                "lastDocumentDate": {
-                  "type": "number",
-                  "title": "lastDocumentDate",
-                  "description": "Max aggregation result"
-                },
-                "openDebtRaw": {
-                  "type": "number",
-                  "title": "openDebtRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
-                },
-                "openCountRaw": {
-                  "type": "number",
-                  "title": "openCountRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
-                },
-                "openDebt": {
-                  "type": "number",
-                  "title": "openDebt",
-                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
-                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
-                  "$id": "28c0b26803358e5a6b46d8ab"
-                },
-                "openInvoiceCount": {
-                  "type": "number",
-                  "title": "openInvoiceCount",
-                  "description": "Unreconciled invoices",
-                  "expression": "Number(item.openCountRaw || 0)",
-                  "$id": "bec9e1b298276d5531ba3b4a"
-                }
-              },
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "InsertItemsToCustomerActivityTableInput",
-        "description": "InsertItemsToCustomerActivityTable input payload"
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "title": "items",
-            "type": "array",
-            "description": "The items inserted into the table",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "The item inserted into the table, keys are the column names, values are the column values",
-              "properties": {
-                "customerCode": {
-                  "type": "string",
-                  "title": "customerCode",
-                  "description": "Priority customer code (text link to Customers)",
-                  "$id": "1eb74d440804c3716c580d45"
-                },
-                "documentCount": {
-                  "type": "number",
-                  "title": "documentCount",
-                  "description": "Count aggregation result"
-                },
-                "lastDocumentDate": {
-                  "type": "number",
-                  "title": "lastDocumentDate",
-                  "description": "Max aggregation result"
-                },
-                "openDebtRaw": {
-                  "type": "number",
-                  "title": "openDebtRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
-                },
-                "openCountRaw": {
-                  "type": "number",
-                  "title": "openCountRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
-                },
-                "openDebt": {
-                  "type": "number",
-                  "title": "openDebt",
-                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
-                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
-                  "$id": "28c0b26803358e5a6b46d8ab"
-                },
-                "openInvoiceCount": {
-                  "type": "number",
-                  "title": "openInvoiceCount",
-                  "description": "Unreconciled invoices",
-                  "expression": "Number(item.openCountRaw || 0)",
-                  "$id": "bec9e1b298276d5531ba3b4a"
-                }
-              }
-            }
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "InsertItemsToCustomerActivityTableOutput",
-        "description": "InsertItemsToCustomerActivityTable output payload"
-      },
-      "exposedToAiCode": false,
-      "exposedToAiAgent": true,
-      "actionSetId": "table:CustomerActivity",
-      "isFromDependency": false,
-      "productId": "67692d6bf934f8a921e1777d"
-    },
     "InsertItemsToCustomerContactsTable": {
       "isCurrentAppAction": false,
       "actionTypeId": "databases/TableOps&CustomerContacts&insert-many",
@@ -66553,6 +66183,70 @@
                   "title": "salesAgentCode",
                   "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
                   "$id": "c07c1b0dfa9bb60b3cf56579"
+                },
+                "openBalance": {
+                  "type": "number",
+                  "title": "openBalance",
+                  "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+                  "$id": "6275e3ea3c0f5f8701b76e20"
+                },
+                "openDebit": {
+                  "type": "number",
+                  "title": "openDebit",
+                  "description": "Calc: sum of positive OpenMovements amounts",
+                  "$id": "2614ebf8abb08c6927b98083"
+                },
+                "onAccountCredit": {
+                  "type": "number",
+                  "title": "onAccountCredit",
+                  "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+                  "$id": "5a1f4e510c1c6c467d7d66ad"
+                },
+                "overdueAmount": {
+                  "type": "number",
+                  "title": "overdueAmount",
+                  "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+                  "$id": "27d3df9a3f331cfb73036119"
+                },
+                "oldestDueDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "oldestDueDate",
+                  "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "84606d0b722f6005fd7b8fa6"
+                },
+                "openMovementCount": {
+                  "type": "number",
+                  "title": "openMovementCount",
+                  "description": "Calc: number of open movements",
+                  "$id": "143d0bbec70f48fbbc2eb824"
+                },
+                "movementsSyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "movementsSyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Calc: number of Invoices rows of the customer",
+                  "$id": "d709cb1067c9e133d3c03e1f"
+                },
+                "lastDocumentDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "lastDocumentDate",
+                  "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "263551cbc9d5dd33cc4bf019"
+                },
+                "aggregatesAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "aggregatesAt",
+                  "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "2f0f6f24e24352af7342e37c"
                 }
               },
               "additionalProperties": false
@@ -66916,6 +66610,70 @@
                   "title": "salesAgentCode",
                   "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
                   "$id": "c07c1b0dfa9bb60b3cf56579"
+                },
+                "openBalance": {
+                  "type": "number",
+                  "title": "openBalance",
+                  "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+                  "$id": "6275e3ea3c0f5f8701b76e20"
+                },
+                "openDebit": {
+                  "type": "number",
+                  "title": "openDebit",
+                  "description": "Calc: sum of positive OpenMovements amounts",
+                  "$id": "2614ebf8abb08c6927b98083"
+                },
+                "onAccountCredit": {
+                  "type": "number",
+                  "title": "onAccountCredit",
+                  "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+                  "$id": "5a1f4e510c1c6c467d7d66ad"
+                },
+                "overdueAmount": {
+                  "type": "number",
+                  "title": "overdueAmount",
+                  "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+                  "$id": "27d3df9a3f331cfb73036119"
+                },
+                "oldestDueDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "oldestDueDate",
+                  "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "84606d0b722f6005fd7b8fa6"
+                },
+                "openMovementCount": {
+                  "type": "number",
+                  "title": "openMovementCount",
+                  "description": "Calc: number of open movements",
+                  "$id": "143d0bbec70f48fbbc2eb824"
+                },
+                "movementsSyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "movementsSyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Calc: number of Invoices rows of the customer",
+                  "$id": "d709cb1067c9e133d3c03e1f"
+                },
+                "lastDocumentDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "lastDocumentDate",
+                  "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "263551cbc9d5dd33cc4bf019"
+                },
+                "aggregatesAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "aggregatesAt",
+                  "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "2f0f6f24e24352af7342e37c"
                 }
               }
             }
@@ -71227,7 +70985,7 @@
                   "type": "string",
                   "format": "date",
                   "title": "dueDate",
-                  "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
                   "$id": "032da427e5cb8c12b9ae788d"
                 },
                 "dueMonth": {
@@ -71245,7 +71003,7 @@
                 "openAmount": {
                   "type": "number",
                   "title": "openAmount",
-                  "description": "Open amount ILS",
+                  "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
                   "$id": "5bfd822cb52c3e8c94a5094c"
                 },
                 "status": {
@@ -71580,7 +71338,7 @@
                   "type": "string",
                   "format": "date",
                   "title": "dueDate",
-                  "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
                   "$id": "032da427e5cb8c12b9ae788d"
                 },
                 "dueMonth": {
@@ -71598,7 +71356,7 @@
                 "openAmount": {
                   "type": "number",
                   "title": "openAmount",
-                  "description": "Open amount ILS",
+                  "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
                   "$id": "5bfd822cb52c3e8c94a5094c"
                 },
                 "status": {
@@ -82993,6 +82751,75 @@
       "productId": "6af30b2e6221f0a7126bea1d",
       "usageDescription": "This action is triggered by:\n\n- **Correcting an extracted line**: Clicking \"תיקון\" on a line of today's bank file on the \"תקבולים\" screen\n  Opens a short form (which field, the right value) that records the reader's mistake and corrects the line, recalculating the file's totals.\n- **Clicking \"נינה צדקה\" or \"נינה טעתה\" under a checked record**: With an optional note\n  Records whether Nina's identification and matching were right, to measure her accuracy. Nina does not reply."
     },
+    "RefreshCustomerAggregates": {
+      "isCurrentAppAction": true,
+      "actionTypeId": "RefreshCustomerAggregates",
+      "actionTypeName": "RefreshCustomerAggregates",
+      "actionTypeDescription": "Execute code action",
+      "input": {
+        "type": "object",
+        "properties": {
+          "customerCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Only these customers (default all)"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": true,
+            "description": "Default true: only report"
+          }
+        },
+        "title": "RefreshCustomerAggregatesInput",
+        "description": "RefreshCustomerAggregates input payload"
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "asOf": {
+            "type": "string"
+          },
+          "customersChecked": {
+            "type": "number"
+          },
+          "customersChanged": {
+            "type": "number"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "writeVerified": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "title": "RefreshCustomerAggregatesOutput",
+        "description": "RefreshCustomerAggregates output payload"
+      },
+      "exposedToAiCode": false,
+      "exposedToAiAgent": true,
+      "actionSetId": "app",
+      "isFromDependency": false,
+      "productId": "6af30b2e6221f0a7126bea1d",
+      "toolEffect": "mutation"
+    },
     "RefreshInvoiceLayer": {
       "isCurrentAppAction": true,
       "actionTypeId": "RefreshInvoiceLayer",
@@ -89368,156 +89195,6 @@
       "isFromDependency": false,
       "productId": "67692d6bf934f8a921e1777d"
     },
-    "UpdateItemsInCustomerActivityTable": {
-      "isCurrentAppAction": false,
-      "actionTypeId": "databases/TableOps&CustomerActivity&update-many",
-      "actionTypeName": "UpdateItemsInCustomerActivityTable",
-      "actionTypeDescription": "Update items in the CustomerActivity table\nIMPORTANT TOOL BEHAVIOR:\nWhen calling this tool, the assistant MUST omit any column that should not be changed.\nNull MUST only be used when intentionally setting a column to NULL.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "tableBlockId": {
-            "type": "string",
-            "enum": [
-              "6af33d7b8142376209419a7d"
-            ],
-            "default": "6af33d7b8142376209419a7d",
-            "description": "The id of the table"
-          },
-          "items": {
-            "type": "array",
-            "description": "The items to update in the table by id, array of records to update. Maximum 1000 items.",
-            "maxItems": 1000,
-            "items": {
-              "type": "object",
-              "description": "The item to update in the table by id, keys are the column names, values are the column values. \nUPDATE RULES:\n- Only include columns you want to modify.\n- To leave a column unchanged: OMIT it entirely.\n- To clear a column value: explicitly set it to null.\n- Never send null as a placeholder or default for columns that should not change.\n- Do NOT send undefined values.",
-              "properties": {
-                "customerCode": {
-                  "type": "string",
-                  "title": "customerCode",
-                  "description": "Priority customer code (text link to Customers)",
-                  "$id": "1eb74d440804c3716c580d45"
-                },
-                "documentCount": {
-                  "type": "number",
-                  "title": "documentCount",
-                  "description": "Count aggregation result"
-                },
-                "lastDocumentDate": {
-                  "type": "number",
-                  "title": "lastDocumentDate",
-                  "description": "Max aggregation result"
-                },
-                "openDebtRaw": {
-                  "type": "number",
-                  "title": "openDebtRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
-                },
-                "openCountRaw": {
-                  "type": "number",
-                  "title": "openCountRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
-                },
-                "openDebt": {
-                  "type": "number",
-                  "title": "openDebt",
-                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
-                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
-                  "$id": "28c0b26803358e5a6b46d8ab"
-                },
-                "openInvoiceCount": {
-                  "type": "number",
-                  "title": "openInvoiceCount",
-                  "description": "Unreconciled invoices",
-                  "expression": "Number(item.openCountRaw || 0)",
-                  "$id": "bec9e1b298276d5531ba3b4a"
-                },
-                "id": {
-                  "type": "string",
-                  "description": "The id of the item to update. Must be an existing id in the table."
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "id"
-              ]
-            }
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "UpdateItemsInCustomerActivityTableInput",
-        "description": "UpdateItemsInCustomerActivityTable input payload"
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "title": "items",
-            "type": "array",
-            "description": "The items updated in the table",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "The item updated in the table, keys are the column names, values are the column values",
-              "properties": {
-                "customerCode": {
-                  "type": "string",
-                  "title": "customerCode",
-                  "description": "Priority customer code (text link to Customers)",
-                  "$id": "1eb74d440804c3716c580d45"
-                },
-                "documentCount": {
-                  "type": "number",
-                  "title": "documentCount",
-                  "description": "Count aggregation result"
-                },
-                "lastDocumentDate": {
-                  "type": "number",
-                  "title": "lastDocumentDate",
-                  "description": "Max aggregation result"
-                },
-                "openDebtRaw": {
-                  "type": "number",
-                  "title": "openDebtRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)"
-                },
-                "openCountRaw": {
-                  "type": "number",
-                  "title": "openCountRaw",
-                  "description": "Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)"
-                },
-                "openDebt": {
-                  "type": "number",
-                  "title": "openDebt",
-                  "description": "Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)",
-                  "expression": "Math.round(Number(item.openDebtRaw || 0)*100)/100",
-                  "$id": "28c0b26803358e5a6b46d8ab"
-                },
-                "openInvoiceCount": {
-                  "type": "number",
-                  "title": "openInvoiceCount",
-                  "description": "Unreconciled invoices",
-                  "expression": "Number(item.openCountRaw || 0)",
-                  "$id": "bec9e1b298276d5531ba3b4a"
-                }
-              }
-            }
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "UpdateItemsInCustomerActivityTableOutput",
-        "description": "UpdateItemsInCustomerActivityTable output payload"
-      },
-      "exposedToAiCode": false,
-      "exposedToAiAgent": true,
-      "actionSetId": "table:CustomerActivity",
-      "isFromDependency": false,
-      "productId": "67692d6bf934f8a921e1777d"
-    },
     "UpdateItemsInCustomerContactsTable": {
       "isCurrentAppAction": false,
       "actionTypeId": "databases/TableOps&CustomerContacts&update-many",
@@ -91466,6 +91143,70 @@
                   "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
                   "$id": "c07c1b0dfa9bb60b3cf56579"
                 },
+                "openBalance": {
+                  "type": "number",
+                  "title": "openBalance",
+                  "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+                  "$id": "6275e3ea3c0f5f8701b76e20"
+                },
+                "openDebit": {
+                  "type": "number",
+                  "title": "openDebit",
+                  "description": "Calc: sum of positive OpenMovements amounts",
+                  "$id": "2614ebf8abb08c6927b98083"
+                },
+                "onAccountCredit": {
+                  "type": "number",
+                  "title": "onAccountCredit",
+                  "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+                  "$id": "5a1f4e510c1c6c467d7d66ad"
+                },
+                "overdueAmount": {
+                  "type": "number",
+                  "title": "overdueAmount",
+                  "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+                  "$id": "27d3df9a3f331cfb73036119"
+                },
+                "oldestDueDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "oldestDueDate",
+                  "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "84606d0b722f6005fd7b8fa6"
+                },
+                "openMovementCount": {
+                  "type": "number",
+                  "title": "openMovementCount",
+                  "description": "Calc: number of open movements",
+                  "$id": "143d0bbec70f48fbbc2eb824"
+                },
+                "movementsSyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "movementsSyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Calc: number of Invoices rows of the customer",
+                  "$id": "d709cb1067c9e133d3c03e1f"
+                },
+                "lastDocumentDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "lastDocumentDate",
+                  "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "263551cbc9d5dd33cc4bf019"
+                },
+                "aggregatesAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "aggregatesAt",
+                  "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "2f0f6f24e24352af7342e37c"
+                },
                 "id": {
                   "type": "string",
                   "description": "The id of the item to update. Must be an existing id in the table."
@@ -91835,6 +91576,70 @@
                   "title": "salesAgentCode",
                   "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)",
                   "$id": "c07c1b0dfa9bb60b3cf56579"
+                },
+                "openBalance": {
+                  "type": "number",
+                  "title": "openBalance",
+                  "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet",
+                  "$id": "6275e3ea3c0f5f8701b76e20"
+                },
+                "openDebit": {
+                  "type": "number",
+                  "title": "openDebit",
+                  "description": "Calc: sum of positive OpenMovements amounts",
+                  "$id": "2614ebf8abb08c6927b98083"
+                },
+                "onAccountCredit": {
+                  "type": "number",
+                  "title": "onAccountCredit",
+                  "description": "Calc: sum of קבלה movements (receipts left on account), negative",
+                  "$id": "5a1f4e510c1c6c467d7d66ad"
+                },
+                "overdueAmount": {
+                  "type": "number",
+                  "title": "overdueAmount",
+                  "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)",
+                  "$id": "27d3df9a3f331cfb73036119"
+                },
+                "oldestDueDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "oldestDueDate",
+                  "description": "Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "84606d0b722f6005fd7b8fa6"
+                },
+                "openMovementCount": {
+                  "type": "number",
+                  "title": "openMovementCount",
+                  "description": "Calc: number of open movements",
+                  "$id": "143d0bbec70f48fbbc2eb824"
+                },
+                "movementsSyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "movementsSyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "documentCount": {
+                  "type": "number",
+                  "title": "documentCount",
+                  "description": "Calc: number of Invoices rows of the customer",
+                  "$id": "d709cb1067c9e133d3c03e1f"
+                },
+                "lastDocumentDate": {
+                  "type": "string",
+                  "format": "date",
+                  "title": "lastDocumentDate",
+                  "description": "Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "$id": "263551cbc9d5dd33cc4bf019"
+                },
+                "aggregatesAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "aggregatesAt",
+                  "description": "Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "2f0f6f24e24352af7342e37c"
                 }
               }
             }
@@ -96223,7 +96028,7 @@
                   "type": "string",
                   "format": "date",
                   "title": "dueDate",
-                  "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
                   "$id": "032da427e5cb8c12b9ae788d"
                 },
                 "dueMonth": {
@@ -96241,7 +96046,7 @@
                 "openAmount": {
                   "type": "number",
                   "title": "openAmount",
-                  "description": "Open amount ILS",
+                  "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
                   "$id": "5bfd822cb52c3e8c94a5094c"
                 },
                 "status": {
@@ -96583,7 +96388,7 @@
                   "type": "string",
                   "format": "date",
                   "title": "dueDate",
-                  "description": "Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
+                  "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30",
                   "$id": "032da427e5cb8c12b9ae788d"
                 },
                 "dueMonth": {
@@ -96601,7 +96406,7 @@
                 "openAmount": {
                   "type": "number",
                   "title": "openAmount",
-                  "description": "Open amount ILS",
+                  "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync",
                   "$id": "5bfd822cb52c3e8c94a5094c"
                 },
                 "status": {

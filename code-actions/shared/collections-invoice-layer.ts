@@ -20,7 +20,7 @@
 // left open, else בבירור > שולמה חלקית > פתוחה (הובטחה is no longer set: commitments are per customer + due month in
 // CustomerNotes, not per invoice). The amount paid stays in paidSeenAmount.
 import type { BlocksClient, Item, WhereClause } from './blocks/blocks-client.ts';
-import { sortableTime, toIsraelDate } from './collections-dates.ts';
+import { monthKeyOf, sortableTime, toIsraelDate } from './collections-dates.ts';
 import { errText, mapLimit, num, numOrNull, readAll, readByIds, readWhereIn, round2, splitList, str } from './collections-data.ts';
 
 // ---------- enums (exactly as in the table artifacts) ----------
@@ -70,6 +70,8 @@ export type LayerField = (typeof LAYER_FIELDS)[number];
 
 const NUMBER_FIELDS = new Set<string>(['paidSeenAmount', 'remainingAmount']);
 const DATETIME_FIELDS = new Set<string>(['paidSeenAt', 'paidPriorityDoneAt']);
+const LEDGER_NUMBER_FIELDS = new Set<string>(['openAmount']);
+const DATE_FIELDS = new Set<string>(['dueDate']);
 
 export interface PaymentLayer {
   paymentState: string | null;
@@ -394,7 +396,8 @@ export function computeInvoiceLayer(
       const remaining = numOrNull(merged.remainingAmount) ?? effectiveOpen(merged);
       Object.assign(layer, {
         openDisputeId,
-        subStatus: subStatusOf({ remaining, disputeId: openDisputeId, paidSeen: num(merged.paidSeenAmount), priorityStatus: str(inv.status).trim() }),
+        // 6b: Invoices.status (a stale mirror column) no longer feeds the sub-status – only the ledger amount and our payments do
+        subStatus: subStatusOf({ remaining, disputeId: openDisputeId, paidSeen: num(merged.paidSeenAmount), priorityStatus: '' }),
       });
     }
   }
@@ -497,9 +500,71 @@ export async function readStatusSources(client: BlocksClient, customerCodes: str
   return { disputes };
 }
 
+// ---------- ledger (6b): open / closed from the customer's open movements ----------
+/**
+ * Invoices columns the invoice layer derives from the ledger (OpenMovements) since 6b. No sync writes them.
+ * openAmount = sum of the invoice's open movements (OpenMovements.docNumber = invoiceNumber, same customer); 0 when the
+ * customer's ledger was read (Customers.movementsSyncedAt set) and the invoice has no open movement; null while the
+ * customer's ledger was never read (unknown – "ממתין לתנועות פתוחות מפריוריטי"). dueDate = the earliest dueDate of the
+ * open movements, dueMonth its YYYY-MM; both are left as they are when there is no open movement.
+ */
+export const LEDGER_FIELDS = ['openAmount', 'dueDate', 'dueMonth'] as const;
+export type LedgerField = (typeof LEDGER_FIELDS)[number];
+export interface LedgerFacts {
+  openAmount: number | null;
+  dueDate?: string | null;
+  dueMonth?: string | null;
+}
+
+/** The customer codes whose ledger was read (Customers.movementsSyncedAt set). */
+export function ledgerCodesOf(customers: Item[]): Set<string> {
+  const out = new Set<string>();
+  for (const c of customers) if (str(c.movementsSyncedAt).trim() && str(c.customerCode).trim()) out.add(str(c.customerCode).trim());
+  return out;
+}
+
+/** invoice number → its ledger facts (see LEDGER_FIELDS). Pure. */
+export function ledgerOfInvoices(invoices: Item[], movements: Item[], ledgerCodes: Set<string>): Map<string, LedgerFacts> {
+  const byDoc = new Map<string, Item[]>();
+  for (const m of movements) {
+    const k = `${str(m.customerCode).trim()}|${str(m.docNumber).trim()}`;
+    if (!byDoc.has(k)) byDoc.set(k, []);
+    byDoc.get(k)!.push(m);
+  }
+  const out = new Map<string, LedgerFacts>();
+  for (const inv of invoices) {
+    const no = str(inv.invoiceNumber).trim();
+    const code = str(inv.customerCode).trim();
+    if (!no || out.has(no)) continue;
+    if (!code || !ledgerCodes.has(code)) {
+      out.set(no, { openAmount: null });
+      continue;
+    }
+    const ms = byDoc.get(`${code}|${no}`) ?? [];
+    if (!ms.length) {
+      out.set(no, { openAmount: 0 });
+      continue;
+    }
+    const dues = ms.map((m) => toIsraelDate(m.dueDate)).filter(Boolean).sort() as string[];
+    const dueDate = dues[0] ?? null;
+    out.set(no, { openAmount: round2(ms.reduce((s, m) => s + num(m.amount), 0)), dueDate, dueMonth: dueDate ? monthKeyOf(dueDate) : null });
+  }
+  return out;
+}
+
+/** The invoices with their ledger facts merged in (openAmount always; dueDate / dueMonth only when open movements exist). */
+export function applyLedger(invoices: Item[], movements: Item[], ledgerCodes: Set<string>): Item[] {
+  const facts = ledgerOfInvoices(invoices, movements, ledgerCodes);
+  return invoices.map((inv) => {
+    const f = facts.get(str(inv.invoiceNumber).trim());
+    return f ? { ...inv, ...f } : { ...inv };
+  });
+}
+
 // ---------- stored layer: diff, write, verify ----------
 function norm(field: string, v: unknown): string | number | null {
-  if (NUMBER_FIELDS.has(field)) {
+  if (DATE_FIELDS.has(field)) return toIsraelDate(v);
+  if (NUMBER_FIELDS.has(field) || LEDGER_NUMBER_FIELDS.has(field)) {
     const n = numOrNull(v);
     return n === null ? null : round2(n);
   }
@@ -507,10 +572,14 @@ function norm(field: string, v: unknown): string | number | null {
   return textOrNull(v);
 }
 
-/** The stored layer columns of the row that differ from the computed layer: field → [stored, computed]. */
-export function layerDiff(row: Item, layer: InvoiceLayer): Record<string, [unknown, unknown]> {
+/**
+ * The stored layer columns of the row that differ from the computed layer: field → [stored, computed]. The ledger
+ * columns (openAmount, dueDate, dueMonth) are compared only when the computed layer carries them.
+ */
+export function layerDiff(row: Item, layer: InvoiceLayer & Partial<LedgerFacts>): Record<string, [unknown, unknown]> {
   const d: Record<string, [unknown, unknown]> = {};
-  for (const f of LAYER_FIELDS) {
+  const fields: string[] = [...LAYER_FIELDS, ...LEDGER_FIELDS.filter((f) => f in layer)];
+  for (const f of fields) {
     if (norm(f, row[f]) !== norm(f, (layer as Item)[f])) d[f] = [row[f] ?? null, (layer as Item)[f] ?? null];
   }
   return d;
@@ -588,17 +657,37 @@ export async function refreshInvoiceLayer(client: BlocksClient, opts: RefreshOpt
     return result({});
   }
 
-  const layers = computeInvoiceLayer(invoices, proposals, status);
+  // 6b: open / closed from the ledger – the customers' read state and their open movements
+  let facts: Map<string, LedgerFacts>;
+  try {
+    const custCodes = [...new Set(invoices.map((i) => str(i.customerCode).trim()).filter(Boolean))];
+    const full = !codes.length && !nos.length;
+    const customers = full
+      ? await readAll(client, 'Customers', { column: 'movementsSyncedAt', operator: 'is not null' })
+      : custCodes.length ? await readWhereIn(client, 'Customers', 'customerCode', custCodes) : [];
+    const ledgerCodes = ledgerCodesOf(customers);
+    const movements = !ledgerCodes.size ? [] : full ? await readAll(client, 'OpenMovements') : await readWhereIn(client, 'OpenMovements', 'customerCode', [...ledgerCodes]);
+    facts = ledgerOfInvoices(invoices, movements, ledgerCodes);
+    console.log(`[invoice-layer] ledger: ${ledgerCodes.size}/${custCodes.length} customers read, ${movements.length} open movements`);
+  } catch (e) {
+    errors.push(`קריאת התנועות הפתוחות לשכבת החשבוניות נכשלה: ${errText(e)}`);
+    return result({});
+  }
+  const ledgered = invoices.map((i) => ({ ...i, ...(facts.get(str(i.invoiceNumber).trim()) ?? {}) }));
+
+  const layers = computeInvoiceLayer(ledgered, proposals, status);
   const planned: { row: Item; fields: Item; previous: Item }[] = [];
   for (const row of invoices) {
     if (row.id === undefined || row.id === null) continue;
     const computed = layers.get(str(row.invoiceNumber).trim());
     if (!computed) continue;
-    const layer = { ...EMPTY_PAYMENT, ...EMPTY_STATUS, ...computed } as InvoiceLayer;
+    const ledger = facts.get(str(row.invoiceNumber).trim()) ?? { openAmount: null };
+    const layer = { ...EMPTY_PAYMENT, ...EMPTY_STATUS, ...computed, ...ledger } as InvoiceLayer & LedgerFacts;
     const diff = layerDiff(row, layer);
     if (!Object.keys(diff).length) continue;
     const fields: Item = {};
     for (const f of LAYER_FIELDS) fields[f] = (layer as Item)[f] ?? null;
+    for (const f of LEDGER_FIELDS) if (f in ledger) fields[f] = (layer as Item)[f] ?? null;
     planned.push({ row, fields, previous: Object.fromEntries(Object.entries(diff).map(([k, [from]]) => [k, from])) });
   }
   const changes = planned.map((x) => ({
@@ -651,7 +740,7 @@ export async function refreshInvoiceLayer(client: BlocksClient, opts: RefreshOpt
       problems.push(`${str(x.row.invoiceNumber)}: לא נקראה בחזרה`);
       continue;
     }
-    const still = Object.keys(layerDiff(r, x.fields as InvoiceLayer));
+    const still = Object.keys(layerDiff(r, x.fields as InvoiceLayer & LedgerFacts));
     if (still.length) problems.push(`${str(x.row.invoiceNumber)}: ${still.join(', ')} לא נשמרו`);
   }
   errors.push(...problems.map((p) => `שכבת החשבוניות: ${p}`));

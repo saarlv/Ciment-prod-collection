@@ -12,8 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { isIls } from '@/utils/Currency';
 import type { Customer360Invoice } from '@/utils/CollectionsTypes';
-import { HIDDEN_DOC_STATUSES, formatDate, formatForeignExtra, formatILS, formatMoney, isILS, round2 } from '@/utils/Format';
+import { HIDDEN_DOC_STATUSES, formatDate, formatForeignExtra, formatILS, formatMoney, round2 } from '@/utils/Format';
 import { Switch } from '@/components/ui/switch';
 import { invoiceNumbersOf, invoiceSubStatusOf, isInvoiceOpen } from '@/utils/InvoiceSubStatus';
 import type { InvoiceSubStatus } from '@/utils/InvoiceSubStatus';
@@ -158,7 +159,13 @@ export function CustomerOpenInvoices({ customerCode, invoices }: { customerCode:
   const disputes = useEntityGetAll(DisputesEntity, { where: byCode });
   const [showHidden, setShowHidden] = useState(false);
   // Priority's document status and currency live on the Invoices mirror; joined by invoice number.
-  const mirror = useEntityGetAll(InvoicesEntity, { where: byCode });
+  // Only the open invoices' own rows — never the customer's whole document history.
+  const openNumbers = invoices.filter(isInvoiceOpen).map((i) => (i.invoiceNumber ?? '').trim()).filter(Boolean);
+  const mirror = useEntityGetAll(
+    InvoicesEntity,
+    { where: { column: 'invoiceNumber', operator: 'in', value: openNumbers }, page: { size: 1000 } },
+    { enabled: openNumbers.length > 0 },
+  );
   const mirrorByNo = new Map((mirror.data ?? []).map((m) => [(m.invoiceNumber ?? '').trim(), m]));
   const isHidden = (inv: Customer360Invoice) => HIDDEN_DOC_STATUSES.includes(mirrorByNo.get((inv.invoiceNumber ?? '').trim())?.priorityDocStatus ?? '');
 
@@ -189,10 +196,10 @@ export function CustomerOpenInvoices({ customerCode, invoices }: { customerCode:
   const open = rows;
   const near = open.filter((r) => r.dueIn === null || r.dueIn <= settings.dueWindowDays).sort(compare(sort));
   const far = open.filter((r) => r.dueIn !== null && r.dueIn > settings.dueWindowDays).sort(compare(sort));
-  const farIls = far.filter((r) => isILS(r.currencyCode));
+  const farIls = far.filter((r) => isIls(r.currencyCode));
   const farTotal = farIls.reduce((n, r) => n + r.remaining, 0);
   const farExtra = formatForeignExtra(far.map((r) => ({ amount: r.remaining, currencyCode: r.currencyCode })));
-  const totalOpen = round2(open.filter((r) => isILS(r.currencyCode)).reduce((n, r) => n + r.remaining, 0));
+  const totalOpen = round2(open.filter((r) => isIls(r.currencyCode)).reduce((n, r) => n + r.remaining, 0));
   const foreignExtra = formatForeignExtra(open.map((r) => ({ amount: r.remaining, currencyCode: r.currencyCode })));
 
   if (open.length === 0)

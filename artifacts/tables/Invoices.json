@@ -1,6 +1,7 @@
 {
   "name": "Invoices",
   "description": "Priority invoice mirror",
+  "technicalDescription": "6b: openAmount and dueDate (and dueMonth) are calc-layer columns filled by the invoice layer from OpenMovements; no sync writes them.",
   "iconName": "file-text",
   "columns": [
     {
@@ -31,7 +32,7 @@
     {
       "name": "dueDate",
       "type": "date",
-      "description": "Due date"
+      "description": "Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync"
     },
     {
       "name": "dueMonth",
@@ -46,7 +47,7 @@
     {
       "name": "openAmount",
       "type": "number",
-      "description": "Open amount ILS"
+      "description": "Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync"
     },
     {
       "name": "status",

@@ -918,7 +918,7 @@ export type CustomersEntityCollectionStageEnum =
   | "הוסלם למנהל";
 
 /**
- * Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link.
+ * Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link. Calc layer (6b): openBalance, openDebit, onAccountCredit, overdueAmount, oldestDueDate, openMovementCount, movementsSyncedAt, documentCount, lastDocumentDate, aggregatesAt are written ONLY by RefreshCustomerAggregates / PullOpenMovements (movementsSyncedAt); no sync writes them. Money truth = the ledger (memories/files/FINANCE_MODEL.md).
  */
 export interface ICustomersEntity {
   /** Priority customer code, unique  */
@@ -1007,6 +1007,26 @@ export interface ICustomersEntity {
   paymentTermsCode?: string;
   /** Mirror: sales agent code (CUSTOMERS.AGENTCODE)  */
   salesAgentCode?: string;
+  /** Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet  */
+  openBalance?: number;
+  /** Calc: sum of positive OpenMovements amounts  */
+  openDebit?: number;
+  /** Calc: sum of קבלה movements (receipts left on account), negative  */
+  onAccountCredit?: number;
+  /** Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)  */
+  overdueAmount?: number;
+  /** Calc: earliest dueDate of the customer's open movements. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30  */
+  oldestDueDate?: string;
+  /** Calc: number of open movements  */
+  openMovementCount?: number;
+  /** Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30  */
+  movementsSyncedAt?: string;
+  /** Calc: number of Invoices rows of the customer  */
+  documentCount?: number;
+  /** Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30  */
+  lastDocumentDate?: string;
+  /** Calc: when RefreshCustomerAggregates last computed this row. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30  */
+  aggregatesAt?: string;
 }
 
 export const CustomersEntity = {
@@ -1714,7 +1734,7 @@ export type InvoicesEntitySubStatusEnum =
 export type InvoicesEntityPriorityFormEnum = "CINVOICES" | "AINVOICES";
 
 /**
- * Priority invoice mirror
+ * 6b: openAmount and dueDate (and dueMonth) are calc-layer columns filled by the invoice layer from OpenMovements; no sync writes them.
  */
 export interface IInvoicesEntity {
   /** Invoice number, unique  */
@@ -1727,13 +1747,13 @@ export interface IInvoicesEntity {
   salesAgentName?: string;
   /** Invoice date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30  */
   invoiceDate?: string;
-  /** Due date. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30  */
+  /** Calc (invoice layer, 6b): earliest dueDate of the invoice's open movements (ledger FNCDATE). Never written by a sync. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30  */
   dueDate?: string;
   /** Due month YYYY-MM  */
   dueMonth?: string;
   /** Invoice amount ILS  */
   amount?: number;
-  /** Open amount ILS  */
+  /** Calc (invoice layer, 6b): sum of the invoice's OpenMovements (docNumber = invoiceNumber); 0 when the customer's ledger was read and nothing is open; null when not read yet. Never written by a sync  */
   openAmount?: number;
   /** Invoice status  */
   status?: InvoicesEntityStatusEnum;
@@ -2920,31 +2940,6 @@ export interface IAgingByMonthEntity {
 export const AgingByMonthEntity = {
   tableBlockId: "AgingByMonth",
   instanceType: {} as IAgingByMonthEntity,
-} as const;
-
-/**
- * undefined
- */
-export interface ICustomerActivityEntity {
-  /** Priority customer code (text link to Customers)  */
-  customerCode?: string;
-  /** Count aggregation result  */
-  documentCount?: number;
-  /** Max aggregation result  */
-  lastDocumentDate?: number;
-  /** Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false THEN COALESCE(i.amount, 0) ELSE 0 END)  */
-  openDebtRaw?: number;
-  /** Computed: SUM(CASE WHEN i.reconciledDate IS NULL AND COALESCE(i.deletedInSource, false) = false AND COALESCE(i.amount,0) > 0 THEN 1 ELSE 0 END)  */
-  openCountRaw?: number;
-  /** Active debt ILS: sum of amount of documents with no Priority reconciliation (credit notes negative)  */
-  openDebt?: number;
-  /** Unreconciled invoices  */
-  openInvoiceCount?: number;
-}
-
-export const CustomerActivityEntity = {
-  tableBlockId: "CustomerActivity",
-  instanceType: {} as ICustomerActivityEntity,
 } as const;
 
 export type InboxFoldersEntityCategoryEnum =

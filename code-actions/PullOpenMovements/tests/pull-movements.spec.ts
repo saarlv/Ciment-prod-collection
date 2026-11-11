@@ -1,8 +1,28 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { makeWorld, writesSince } from '../../shared/fake-world.ts';
-import { seedTablesOk } from '../../shared/fake-receipts.ts';
-import { pullOpenMovements } from '../../shared/collections-morning-pull.ts';
-import { DOC_TYPES, type MovementsSource, testMovementsSource } from '../../shared/priority-movements-source.ts';
+// PullOpenMovements on the real source (priorityMovementsSource) with a fake priorityRead: no Priority call, no
+// SeedTestFixtures. Covers the 6b rules – completed customers with no open line are a success (their old rows are
+// cleared), incomplete customers keep their rows, a pass that read no customer fails, and a real run sets
+// Customers.movementsSyncedAt and refreshes the calc layer (RefreshCustomerAggregates + RefreshInvoiceLayer).
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FakeBlocks } from '../../shared/fake-blocks.ts';
+import { refreshCustomerAggregates } from '../../shared/collections-customer-aggregates.ts';
+import { refreshInvoiceLayer } from '../../shared/collections-invoice-layer.ts';
+
+/** FNCTRANS headers per customer code; a code in `failing` throws like a 400 from Priority. */
+const ledger: Record<string, any[]> = {};
+const failing = new Set<string>();
+const reads: string[] = [];
+vi.mock('../../shared/priority-direct.ts', async (orig) => {
+  const real: any = await orig();
+  return {
+    ...real,
+    priorityRead: vi.fn(async (_client: any, input: any) => {
+      const code = /ACCNAME1 eq '([^']+)'/.exec(input.filter)?.[1] ?? '';
+      reads.push(code);
+      if (failing.has(code)) throw Object.assign(new Error(`FNCTRANS ${code}: 400 bad request`), { statusCode: 400 });
+      return input.skip ? [] : (ledger[code] ?? []);
+    }),
+  };
+});
 
 let current: any;
 vi.mock('../../shared/blocks/blocks-client.ts', () => ({
@@ -11,134 +31,101 @@ vi.mock('../../shared/blocks/blocks-client.ts', () => ({
   }),
 }));
 
-import { invoke as seed } from '../../SeedTestFixtures/code.ts';
-import { invoke as seedReceiptFirst } from '../../SeedReceiptFirstFixtures/code.ts';
-import { invoke as customer360 } from '../../GetCustomer360/code.ts';
 import { invoke } from '../code.ts';
 
-const T = '2026-11-04';
-const NOW = '2026-11-04T04:05:00.000Z';
-const LATER = '2026-11-05T04:05:00.000Z';
 const ctx: any = {};
+const C = '121205';
+const writes = (fake: FakeBlocks, mark: number) => fake.calls.slice(mark).filter((c) => /^(create|update|delete)/.test(c.method));
 
-describe('PullOpenMovements (test source derived from TEST-001..029)', () => {
-  const w = makeWorld({ inboxActions: true });
-  const movements = () => w.fake.rows('OpenMovements');
-  beforeAll(async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(Date.parse(NOW));
-    current = w.client;
-    expect(seedTablesOk(await seed({ dryRun: false, asOfDate: T }, ctx))).toBe(true);
-    expect((await seedReceiptFirst({ dryRun: false, asOfDate: T }, ctx)).ok).toBe(true);
-    // a real customer's movement: never touched by the test source
-    w.fake.insert('OpenMovements', [{ movementId: 'R-1', customerCode: '10001', customerName: 'אלון יזמות בע״מ', docType: 'חשבונית', amount: 5000, dueMonth: '2026-09', source: 'priority-api' }]);
+const receipt25028956 = {
+  FNCNUM: '25028956', BALDATE: '2025-11-12T00:00:00+02:00', FNCDATE: '2025-11-12T00:00:00+02:00', DETAILS: 'קבלה',
+  FNCITEMS_SUBFORM: [
+    { KLINE: 5, ACCNAME: C, FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 0, DETAILS: 'קבלה', FNCDATE: '2025-11-30T00:00:00+02:00' },
+    { KLINE: 6, ACCNAME: C, FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 0, DETAILS: 'קבלה', FNCDATE: '2025-12-05T00:00:00+02:00' },
+  ],
+};
+const invoiceCF251816 = {
+  FNCNUM: '25027001', BALDATE: '2025-11-15T00:00:00+02:00', FNCDATE: '2025-12-15T00:00:00+02:00', DETAILS: 'חשבונית',
+  FNCITEMS_SUBFORM: [{ KLINE: 1, ACCNAME: C, FNCIREF1: 'CF251816', DEBIT1: 160975.6, CREDIT1: 0, FRECONNUM: 0, DETAILS: null, FNCDATE: '2025-12-15T00:00:00+02:00' }],
+};
+
+describe('PullOpenMovements (priority-direct source, fake priorityRead)', () => {
+  let fake: FakeBlocks;
+  beforeEach(() => {
+    for (const k of Object.keys(ledger)) delete ledger[k];
+    failing.clear();
+    reads.length = 0;
+    fake = new FakeBlocks();
+    const client: any = fake.client();
+    // the calc-layer follow-ups run the same shared code as their actions
+    client.invokeAction = async (name: string, input: any) => {
+      if (name === 'RefreshCustomerAggregates') return refreshCustomerAggregates(client, { ...input, asOf: '2025-12-01' });
+      if (name === 'RefreshInvoiceLayer') return refreshInvoiceLayer(client, input);
+      return {};
+    };
+    current = client;
+    fake.insert('Customers', [
+      { customerCode: C, customerName: 'לקוח 121205' },
+      { customerCode: '200', customerName: 'שולם הכל' },
+      { customerCode: 'BAD', customerName: 'נכשל' },
+    ]);
+    fake.insert('Invoices', [{ invoiceNumber: 'CF251816', customerCode: C, documentType: 'חשבונית', invoiceDate: '2025-11-15', amount: 160975.6, status: 'שולמה', reconciledDate: '2025-11-20' }]);
+    fake.insert('OpenMovements', [
+      { customerCode: '200', movementId: 'OLD:1', docType: 'חשבונית', docNumber: 'IN1', amount: 10, source: 'priority-direct' },
+      { customerCode: 'BAD', movementId: 'KEEP:1', docType: 'חשבונית', docNumber: 'IN2', amount: 20, source: 'priority-direct' },
+    ]);
+    ledger[C] = [receipt25028956, invoiceCF251816];
+    ledger['200'] = [];
+    failing.add('BAD');
   });
-  afterAll(() => vi.useRealTimers());
 
-  it('dryRun is the default (invoke): reports the plan, writes nothing', async () => {
-    const mark = w.fake.calls.length;
-    const r = await invoke({}, ctx);
-    expect(r.dryRun).toBe(true);
-    expect(r.ok).toBe(true);
-    expect(r.fromSource).toBeGreaterThan(20);
-    expect(r.written).toBe(r.fromSource);
-    expect(writesSince(w.fake, mark)).toEqual([]);
+  it('dryRun is the default: reports the plan, writes nothing', async () => {
+    const mark = fake.calls.length;
+    const r = await invoke({ customerCodes: [C, '200', 'BAD'] }, ctx);
+    expect(r).toMatchObject({ ok: true, dryRun: true, customersRead: 2, fromSource: 3, written: 3, deleted: 1 });
+    expect(r.customersIncomplete.map((x: any) => x.customerCode)).toEqual(['BAD']);
+    expect('completedCodes' in r).toBe(false);
+    expect(writes(fake, mark)).toEqual([]);
   });
 
-  it('writes every movement with the real customer link, valid docType / dueMonth, 2-decimal amounts and source test-fixture', async () => {
-    const r = await pullOpenMovements(w.client, { dryRun: false, importBatchId: '501' }, { nowIso: NOW });
-    expect(r.errors).toEqual([]);
+  it('real run: replaces completed customers, keeps the incomplete one, sets movementsSyncedAt and refreshes the calc layer', async () => {
+    const r = await invoke({ dryRun: false, customerCodes: [C, '200', 'BAD'] }, ctx);
     expect(r.ok).toBe(true);
     expect(r.writeVerified).toBe(true);
-    expect(r.unknownCustomers).toEqual([]);
-    const rows = movements().filter((m) => String(m.customerCode).startsWith('TEST-'));
-    expect(rows).toHaveLength(r.fromSource);
-    const customers = w.fake.rows('Customers');
-    for (const m of rows) {
-      const c = customers.find((x) => x.customerCode === m.customerCode)!;
-      expect(m.customer).toBe(Number(c.id));
-      expect(DOC_TYPES).toContain(m.docType);
-      expect(m.dueMonth).toBe(String(m.dueDate).slice(0, 7));
-      expect(Math.round(m.amount * 100) / 100).toBe(m.amount);
-      expect([m.source, m.importBatchId, m.syncedAt]).toEqual(['test-fixture', '501', NOW]);
-    }
-    expect(rows.some((m) => m.docType === 'קבלה' && m.amount < 0) || rows.every((m) => m.docType !== 'קבלה')).toBe(true);
-    expect(movements().find((m) => m.movementId === 'R-1')).toBeTruthy();
-  });
-
-  it('per customer, the movements total equals the customer card aging total (GetCustomer360)', async () => {
-    const r = await pullOpenMovements(w.client, { dryRun: true }, { nowIso: NOW });
-    const codes = Object.keys(r.totalsByCustomer);
-    expect(codes.length).toBeGreaterThan(10);
-    for (const code of codes) {
-      const card = await customer360({ customerCode: code, asOfDate: T }, ctx);
-      const total = Object.values(r.totalsByCustomer[code]).reduce((s: number, v: any) => s + Number(v), 0);
-      expect([code, Math.round(total * 100) / 100]).toEqual([code, Math.round(Number(card.aging?.total ?? 0) * 100) / 100]);
-    }
-  });
-
-  it('a second pull replaces the snapshot: same rows, no duplicates, a stale row of a covered customer is deleted', async () => {
-    const count = movements().length;
-    w.fake.insert('OpenMovements', [{ movementId: 'INV-GONE', customerCode: 'TEST-001', customerName: 'x', docType: 'חשבונית', amount: 10, source: 'test-fixture' }]);
-    const r = await pullOpenMovements(w.client, { dryRun: false }, { nowIso: LATER });
-    expect(r.ok).toBe(true);
-    expect(r.deleted).toBe(1);
-    expect(r.created).toBe(0);
-    expect(movements()).toHaveLength(count);
-    expect(movements().find((m) => m.movementId === 'INV-GONE')).toBeUndefined();
-    expect(movements().filter((m) => String(m.customerCode).startsWith('TEST-')).every((m) => m.syncedAt === LATER)).toBe(true);
-    const keys = movements().map((m) => `${m.customerCode}|${m.movementId}`);
-    expect(new Set(keys).size).toBe(keys.length);
-  });
-
-  it('customerCodes limits the pull to those customers', async () => {
-    const r = await pullOpenMovements(w.client, { dryRun: true, customerCodes: ['TEST-001'] }, { nowIso: LATER });
-    expect(r.customers).toBe(1);
-    expect(Object.keys(r.totalsByCustomer)).toEqual(['TEST-001']);
-  });
-
-  it('an empty or failing source never empties the table; unknown customer codes are skipped and listed', async () => {
-    const before = JSON.stringify(movements());
-    for (const source of [
-      { ...testMovementsSource, fetchOpenMovements: async () => ({ customers: ['TEST-001', 'TEST-002'], movements: [] }) },
-      { ...testMovementsSource, fetchOpenMovements: async () => Promise.reject(new Error('Priority down')) },
-    ] as MovementsSource[]) {
-      const mark = w.fake.calls.length;
-      const r = await pullOpenMovements(w.client, { dryRun: false }, { nowIso: LATER, source });
-      expect(r.ok).toBe(false);
-      expect(writesSince(w.fake, mark)).toEqual([]);
-      expect(JSON.stringify(movements())).toBe(before);
-    }
-    const unknown: MovementsSource = {
-      ...testMovementsSource,
-      fetchOpenMovements: async () => ({ customers: ['NOPE-1'], movements: [{ customerCode: 'NOPE-1', movementId: 'X', docType: 'חשבונית', docNumber: 'X', docDate: T, dueDate: T, amount: 1, details: null }] }),
-    };
-    const r = await pullOpenMovements(w.client, { dryRun: false }, { nowIso: LATER, source: unknown });
-    expect(r.unknownCustomers).toEqual(['NOPE-1']);
-    expect(r.written).toBe(0);
-    expect(JSON.stringify(movements())).toBe(before);
-  });
-});
-
-describe('movementsFromData (the test source rules)', () => {
-  it('invoice at its open amount net of seen payments, credit note negative, approved receipt on account negative at its value date', async () => {
-    const { movementsFromData } = await import('../../shared/priority-movements-source.ts');
-    const m = movementsFromData({
-      invoices: [
-        { invoiceNumber: 'A1', customerCode: 'C1', documentType: 'חשבונית', invoiceDate: '2026-08-01', dueDate: '2026-09-30', amount: 1000, openAmount: 1000, paidPendingAmount: 400 },
-        { invoiceNumber: 'Z1', customerCode: 'C1', documentType: 'חשבונית זיכוי', invoiceDate: '2026-08-05', dueDate: '2026-08-05', amount: -200, openAmount: -200 },
-        { invoiceNumber: 'P1', customerCode: 'C1', documentType: 'חשבונית', dueDate: '2026-09-30', amount: 500, openAmount: 500, paidPendingAmount: 500 },
-      ],
-      receipts: [
-        { receiptKey: 'RCPT-1', customerCode: 'C1', receiptStatus: 'אושרה – לא נשלחה', unallocatedAmount: 150.5, valueDate: '2026-11-02', payerName: 'לקוח' },
-        { receiptKey: 'RCPT-2', customerCode: 'C1', receiptStatus: 'טיוטה – ממתינה לאישור', unallocatedAmount: 99, valueDate: '2026-11-02' },
-      ],
-    });
-    expect(m.map((x) => [x.movementId, x.docType, x.amount, x.dueDate])).toEqual([
-      ['INV-A1', 'חשבונית', 600, '2026-09-30'],
-      ['CRN-Z1', 'זיכוי', -200, '2026-08-05'],
-      ['REC-RCPT-1', 'קבלה', -150.5, '2026-11-02'],
+    const rows = fake.rows('OpenMovements');
+    expect(rows.filter((m) => m.customerCode === C).map((m) => [m.movementId, m.docType, m.amount, m.dueDate]).sort()).toEqual([
+      ['25027001:1', 'חשבונית', 160975.6, '2025-12-15'],
+      ['25028956:5', 'קבלה', -61820.6, '2025-11-30'],
+      ['25028956:6', 'קבלה', -61820.6, '2025-12-05'],
     ]);
-    expect(m[0].details).toContain('יתרה חלקית');
+    expect(rows.find((m) => m.movementId === 'OLD:1')).toBeUndefined(); // 200 completed with no open line → cleared
+    expect(rows.find((m) => m.movementId === 'KEEP:1')).toBeTruthy(); // BAD incomplete → kept
+    const cust = new Map(fake.rows('Customers').map((c) => [c.customerCode, c]));
+    expect(cust.get(C)!.movementsSyncedAt).toBe(r.syncedAt);
+    expect(cust.get('200')!.movementsSyncedAt).toBe(r.syncedAt);
+    expect(cust.get('BAD')!.movementsSyncedAt).toBeUndefined();
+    expect(cust.get(C)).toMatchObject({ openBalance: 37334.4, onAccountCredit: -123641.2, openDebit: 160975.6, openMovementCount: 3, documentCount: 1 });
+    expect(cust.get('200')).toMatchObject({ openBalance: 0, openMovementCount: 0 });
+    expect(cust.get('BAD')!.openBalance).toBeUndefined();
+    expect(fake.rows('Invoices')[0]).toMatchObject({ openAmount: 160975.6, dueDate: '2025-12-15', paymentStatus: 'פתוחה', subStatus: 'פתוחה' });
+    expect(r.notes.some((n: string) => n.startsWith('RefreshCustomerAggregates'))).toBe(true);
+    expect(r.notes.some((n: string) => n.startsWith('RefreshInvoiceLayer'))).toBe(true);
+  });
+
+  it('completed customers with no open line at all: success, their old rows cleared', async () => {
+    ledger[C] = [];
+    const r = await invoke({ dryRun: false, customerCodes: [C, '200'] }, ctx);
+    expect(r).toMatchObject({ ok: true, fromSource: 0, customersRead: 2, deleted: 1 });
+    expect(fake.rows('OpenMovements').map((m) => m.movementId)).toEqual(['KEEP:1']);
+  });
+
+  it('a pass that planned customers and read none fails and changes nothing', async () => {
+    failing.add(C).add('200');
+    const mark = fake.calls.length;
+    const r = await invoke({ dryRun: false, customerCodes: [C, '200', 'BAD'] }, ctx);
+    expect(r.ok).toBe(false);
+    expect(r.customersRead).toBe(0);
+    expect(writes(fake, mark).filter((c) => c.table !== 'ImportBatches')).toEqual([]);
+    expect(fake.rows('OpenMovements')).toHaveLength(2);
   });
 });

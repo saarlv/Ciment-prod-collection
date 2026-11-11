@@ -1,7 +1,7 @@
 {
   "name": "Customers",
   "description": "Priority customer mirror (read-only for the agent)",
-  "technicalDescription": "Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link.",
+  "technicalDescription": "Since 27.10 the credit-insurance and obligo fields live in CreditCovers, CustomerExposure and ExposureItems (moved from obligoUsed, obligoPct, creditInsurer, insuranceApprovedAmount, insurerCaseNumber). creditLimit stays: it is Priority's own credit limit, not the insured limit. Mirror vs enrichment (plan 04.11): the morning pull (PullPriorityCustomers) upserts by customerCode and writes ONLY the Priority columns, listed explicitly in code: customerName, customerType, priorityStatus, paymentTermsDays, paymentTermsLabel, creditLimit, salesAgentName, salesAgentPhone, apContact*, procurementContact*, primaryEmail, priceListCode, ledgerBalance, address, paymentMethod, companyId (only when Priority has one), source, syncedAt. Our columns (checkRemittanceMail, remittanceSenders, assignedBookkeeperName, preferredChannel, doNotContact, collectionStage, internalNotes, collectionNote, companyId when Priority has none) are never overwritten. A customer that disappears from Priority is never deleted: priorityStatus becomes לא פעיל בפריוריטי, so CustomerNotes and OpenMovements keep their link. Calc layer (6b): openBalance, openDebit, onAccountCredit, overdueAmount, oldestDueDate, openMovementCount, movementsSyncedAt, documentCount, lastDocumentDate, aggregatesAt are written ONLY by RefreshCustomerAggregates / PullOpenMovements (movementsSyncedAt); no sync writes them. Money truth = the ledger (memories/files/FINANCE_MODEL.md).",
   "iconName": "users",
   "columns": [
     {
@@ -245,6 +245,56 @@
       "name": "salesAgentCode",
       "type": "string",
       "description": "Mirror: sales agent code (CUSTOMERS.AGENTCODE)"
+    },
+    {
+      "name": "openBalance",
+      "type": "number",
+      "description": "Calc (RefreshCustomerAggregates): sum of OpenMovements.amount, ILS. Null = ledger not read yet"
+    },
+    {
+      "name": "openDebit",
+      "type": "number",
+      "description": "Calc: sum of positive OpenMovements amounts"
+    },
+    {
+      "name": "onAccountCredit",
+      "type": "number",
+      "description": "Calc: sum of קבלה movements (receipts left on account), negative"
+    },
+    {
+      "name": "overdueAmount",
+      "type": "number",
+      "description": "Calc: positive movements with dueDate before asOf (AgentSettings balanceAsOfDate, else today)"
+    },
+    {
+      "name": "oldestDueDate",
+      "type": "date",
+      "description": "Calc: earliest dueDate of the customer's open movements"
+    },
+    {
+      "name": "openMovementCount",
+      "type": "number",
+      "description": "Calc: number of open movements"
+    },
+    {
+      "name": "movementsSyncedAt",
+      "type": "datetime",
+      "description": "Calc: when PullOpenMovements last completed this customer's ledger read"
+    },
+    {
+      "name": "documentCount",
+      "type": "number",
+      "description": "Calc: number of Invoices rows of the customer"
+    },
+    {
+      "name": "lastDocumentDate",
+      "type": "date",
+      "description": "Calc: latest Invoices.invoiceDate of the customer"
+    },
+    {
+      "name": "aggregatesAt",
+      "type": "datetime",
+      "description": "Calc: when RefreshCustomerAggregates last computed this row"
     }
   ],
   "permission": {

@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useEntityGetAll } from '@blocksdiy/blocks-client-sdk/reactSdk';
+import { useAsOfDate } from '@/hooks/useAsOfDate';
+import { useCustomerOpenMovements } from '@/hooks/useCustomerOpenMovements';
+import { WAITING_FOR_OPEN_MOVEMENTS } from '@/hooks/useHasOpenMovements';
 import { InvoicesEntity } from '@/product-types';
 import { HiddenDocsToggle } from '@/components/CustomerOpenInvoices';
 import { LoadError, LoadingRows } from '@/components/PageStates';
@@ -8,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { EMPTY, HIDDEN_DOC_STATUSES, formatDate, formatForeignExtra, formatILS, formatMoney, formatNumber, isILS, PRIORITY_FORM_LABEL, round2 } from '@/utils/Format';
+import { isIls } from '@/utils/Currency';
+import { EMPTY, HIDDEN_DOC_STATUSES, daysPastDue, formatDate, formatForeignExtra, formatILS, formatMoney, formatNumber, PRIORITY_FORM_LABEL, round2 } from '@/utils/Format';
 
 const HEAD = 'text-xs font-semibold text-muted-foreground';
 const PAGE = 100;
@@ -16,33 +20,56 @@ const PAGE = 100;
 export type DocsFilter = 'open' | 'closed' | 'all';
 
 /**
- * The customer's documents (Invoices mirror), newest first, paged by 100. open = no reconciliation date in Priority,
- * closed = reconciled, all = every document. Every row opens the invoice pop-up.
+ * The customer's documents (Invoices mirror), paged on the server by 100. open = invoice numbers among the customer's
+ * open movements in Priority (earliest due first), closed = every other document, all = every document (newest first).
+ * Open/closed is never inferred from Priority's reconciliation date. Every row opens the invoice pop-up.
  */
-export function CustomerAllDocuments({ customerCode, filter = 'all' }: { customerCode: string; filter?: DocsFilter }) {
+export function CustomerAllDocuments({ customerCode, filter = 'all', ledgerRead }: { customerCode: string; filter?: DocsFilter; ledgerRead: boolean }) {
   const [showHidden, setShowHidden] = useState(false);
   const { rowProps, popup } = useInvoiceRowOpener();
+  const asOf = useAsOfDate();
+  const needsLedger = filter !== 'all';
+  const movements = useCustomerOpenMovements(customerCode, needsLedger && ledgerRead);
+  const openNumbers = [...new Set((movements.data ?? []).map((m) => (m.docNumber ?? '').trim()).filter(Boolean))];
   const byCustomer = { column: 'customerCode' as const, value: customerCode };
-  const docs = useEntityGetAll(InvoicesEntity, {
-    where:
-      filter === 'all'
-        ? byCustomer
-        : { and: [byCustomer, { column: 'reconciledDate' as const, operator: filter === 'open' ? ('is null' as const) : ('is not null' as const) }] },
-    orderBy: [
-      { column: 'invoiceDate', direction: 'desc' },
-      { column: 'invoiceNumber', direction: 'desc' },
-    ],
-    page: { size: PAGE },
-  });
+  const where =
+    filter === 'all' || (filter === 'closed' && openNumbers.length === 0)
+      ? byCustomer
+      : { and: [byCustomer, { column: 'invoiceNumber' as const, operator: filter === 'open' ? ('in' as const) : ('not in' as const), value: openNumbers }] };
+  const ready = !needsLedger || (ledgerRead && !movements.isLoading && !movements.isError);
+  const docs = useEntityGetAll(
+    InvoicesEntity,
+    {
+      where,
+      orderBy:
+        filter === 'open'
+          ? [{ column: 'dueDate', direction: 'asc' }, { column: 'invoiceNumber', direction: 'asc' }]
+          : [{ column: 'invoiceDate', direction: 'desc' }, { column: 'invoiceNumber', direction: 'desc' }],
+      page: { size: PAGE },
+    },
+    { enabled: ready && !(filter === 'open' && openNumbers.length === 0) },
+  );
 
+  if (needsLedger && !ledgerRead)
+    return (
+      <div className="flex flex-col gap-1 px-[21px] pb-[21px] text-sm text-muted-foreground">
+        <p className="font-semibold text-ink-2">{WAITING_FOR_OPEN_MOVEMENTS}</p>
+        <p>עד שיגיעו אי אפשר לדעת אילו מסמכים פתוחים ואילו נסגרו. כל המסמכים מופיעים תחת ״הכל״.</p>
+      </div>
+    );
+  if (movements.isError) return <div className="px-[21px] pb-[21px]"><LoadError what="התנועות הפתוחות" /></div>;
+  if (filter === 'open' && !movements.isLoading && openNumbers.length === 0)
+    return <p className="px-[21px] pb-[21px] text-sm text-muted-foreground">אין ללקוח מסמכים פתוחים בפריוריטי.</p>;
   if (docs.isError) return <div className="px-[21px] pb-[21px]"><LoadError what="המסמכים" /></div>;
-  if (docs.isLoading) return <div className="px-[21px] pb-[21px]"><LoadingRows rows={4} /></div>;
+  if (!ready || docs.isLoading) return <div className="px-[21px] pb-[21px]"><LoadingRows rows={4} /></div>;
 
   const all = docs.data ?? [];
   const hiddenCount = all.filter((d) => HIDDEN_DOC_STATUSES.includes(d.priorityDocStatus ?? '')).length;
   const rows = showHidden ? all : all.filter((d) => !HIDDEN_DOC_STATUSES.includes(d.priorityDocStatus ?? ''));
-  const total = round2(rows.filter((d) => isILS(d.currencyCode)).reduce((s, d) => s + (d.amount ?? 0), 0));
-  const foreignExtra = formatForeignExtra(rows.map((d) => ({ amount: d.amount, currencyCode: d.currencyCode })));
+  const isOpen = filter === 'open';
+  const valueOf = (d: (typeof rows)[number]) => (isOpen ? (d.openAmount ?? 0) : (d.amount ?? 0));
+  const total = round2(rows.filter((d) => isIls(d.currencyCode)).reduce((s, d) => s + valueOf(d), 0));
+  const foreignExtra = formatForeignExtra(rows.map((d) => ({ amount: valueOf(d), currencyCode: d.currencyCode })));
 
   return (
     <div className="flex flex-col">
@@ -68,10 +95,12 @@ export function CustomerAllDocuments({ customerCode, filter = 'all' }: { custome
               <TableHead className={HEAD}>סוג מסמך</TableHead>
               <TableHead className={HEAD}>טופס</TableHead>
               <TableHead className={HEAD}>תאריך</TableHead>
+              {isOpen && <TableHead className={HEAD}>פירעון</TableHead>}
+              {isOpen && <TableHead className={HEAD}>ימי פיגור</TableHead>}
               <TableHead className={HEAD}>סכום</TableHead>
+              <TableHead className={HEAD}>יתרה פתוחה</TableHead>
               <TableHead className={HEAD}>סטטוס בפריוריטי</TableHead>
-              <TableHead className={HEAD}>סוכן</TableHead>
-              <TableHead className={cn(HEAD, 'pe-[21px]')}>תאריך התאמה</TableHead>
+              <TableHead className={cn(HEAD, 'pe-[21px]')}>סוכן</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,10 +112,20 @@ export function CustomerAllDocuments({ customerCode, filter = 'all' }: { custome
                 <TableCell>{d.documentType || EMPTY}</TableCell>
                 <TableCell>{PRIORITY_FORM_LABEL[d.priorityForm ?? ''] ?? EMPTY}</TableCell>
                 <TableCell className="tabular-nums">{formatDate(d.invoiceDate)}</TableCell>
+                {isOpen && <TableCell className="tabular-nums">{formatDate(d.dueDate)}</TableCell>}
+                {isOpen && <TableCell className={cn('tabular-nums', daysPastDue(d.dueDate, asOf) && 'font-semibold text-critical-ink')}>{daysPastDue(d.dueDate, asOf) ?? ''}</TableCell>}
                 <TableCell className="tabular-nums">{formatMoney(d.amount, d.currencyCode)}</TableCell>
+                <TableCell className="tabular-nums">
+                  {d.openAmount === null || d.openAmount === undefined ? (
+                    <span className="text-xs text-muted-foreground">{WAITING_FOR_OPEN_MOVEMENTS}</span>
+                  ) : d.openAmount === 0 ? (
+                    <span className="text-muted-foreground">סגורה</span>
+                  ) : (
+                    <span className="font-semibold">{formatMoney(d.openAmount, d.currencyCode)}</span>
+                  )}
+                </TableCell>
                 <TableCell>{d.priorityDocStatus || EMPTY}</TableCell>
-                <TableCell>{d.salesAgentName || EMPTY}</TableCell>
-                <TableCell className="pe-[21px] tabular-nums">{formatDate(d.reconciledDate)}</TableCell>
+                <TableCell className="pe-[21px]">{d.salesAgentName || EMPTY}</TableCell>
               </TableRow>
             ))}
           </TableBody>

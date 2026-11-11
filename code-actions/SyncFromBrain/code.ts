@@ -912,6 +912,19 @@ export const invoke = async (input: any, context: any) => {
         }
       }
     }
+
+    // 6b: the Customers calc layer (documentCount / lastDocumentDate, ledger balances), started in the background the
+    // same way as the invoice layer so it runs in its own time budget. All customers: one run is cheap and idempotent.
+    if (!dryRun && wrote.length > 0) {
+      try {
+        const started = await client.invokeActionAsync('RefreshCustomerAggregates', { dryRun: false });
+        notes.push(`RefreshCustomerAggregates הופעל ברקע (${started?.workflowId ?? '-'})`);
+        console.log(`[run] RefreshCustomerAggregates started async workflowId=${started?.workflowId}`);
+      } catch (e) {
+        notes.push(`RefreshCustomerAggregates: ההפעלה ברקע נכשלה – ${errText(e)}`);
+        console.error(`[run] RefreshCustomerAggregates async start failed: ${errText(e)}`);
+      }
+    }
   } catch (e) {
     status = perTable.some((t) => t.gate === 'passed' && (t.inserted || t.updated)) ? 'הצליח חלקית' : 'נכשל';
     errors.push(errText(e));

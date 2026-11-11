@@ -2,7 +2,7 @@ import { BlocksClient, Item } from '../shared/blocks/blocks-client.ts';
 import { resolveAsOf, sortableTime, toIsraelDate } from '../shared/collections-dates.ts';
 import { buildOwnerMap, formatIls, num, numberSetting, numOrNull, ownerOf, readAll, readSettings, readWhereIn, round2, str } from '../shared/collections-data.ts';
 import { buildWindow, computeAging, isDebtRow, isOpenCommitment, paidSeenPendingOf } from '../shared/collections-aging.ts';
-import { computeInvoiceLayer, effectiveOpen, hasOpenAmount, LAYER_FIELDS, type PaymentSources } from '../shared/collections-invoice-layer.ts';
+import { applyLedger, computeInvoiceLayer, effectiveOpen, hasOpenAmount, LAYER_FIELDS, ledgerCodesOf, type PaymentSources } from '../shared/collections-invoice-layer.ts';
 import { receiptView } from '../shared/collections-receipt-record.ts';
 import { customerCoverage } from '../shared/collections-allocation.ts';
 import { closingReceiptsByInvoice, invoiceClosingOf, invoicePaidOf } from '../shared/collections-closing-receipts.ts';
@@ -32,6 +32,13 @@ import { isActiveNote, isCommitment, monthBalances, noteTypeLabel, OUT_OPEN } fr
 // openAfter} and stillOpen[] {invoiceNumber, dueDate, dueMonth, openAmount} + stillOpenTotal (the customer's open invoices
 // it did not touch), and openInvoices[] lists the customer's open invoices now (OpenMovements minus every allocation) with
 // the receipts that paid part of each – "שילמת על X, Y, Z ולא על א, ב, ג". Same rule as ProposeAllocation.
+// Since 6b: never reads all of a customer's invoices – only the open ones (invoice numbers of the customer's
+// OpenMovements) and the newest NEWEST_INVOICES (by invoiceDate), and delivery notes only for those. Open / closed comes
+// from the ledger with the invoice layer's shared rule (applyLedger): when the customer's ledger was read
+// (movementsSyncedAt) an invoice with open movements is open for their sum (dueDate = the earliest), one without is
+// closed (openAmount 0); otherwise openAmount is null (unknown). isPaid no longer reads the stale Invoices.status, and
+// kpis.openBalance is the Customers aggregate openBalance (minus the payment seen) when the ledger was read.
+const NEWEST_INVOICES = 100;
 type TimelineItem = {
   at: string;
   kind: string;
@@ -60,9 +67,8 @@ export const invoke = async (input: any, context: any) => {
   const [
     customerRows,
     owners,
-    dnByCode,
     contacts,
-    invoices,
+    newestInvoices,
     payments,
     bankLines,
     matchProposals,
@@ -79,9 +85,10 @@ export const invoke = async (input: any, context: any) => {
   ] = await Promise.all([
     readAll(client, 'Customers', byCode),
     readAll(client, 'CustomerOwners', byCode),
-    readAll(client, 'DeliveryNotes', byCode),
     readAll(client, 'CustomerContacts', byCode),
-    readAll(client, 'Invoices', byCode),
+    client
+      .queryTable('Invoices', { from: { table: 'Invoices' }, where: byCode, orderBy: [{ column: 'invoiceDate', direction: 'desc' }], limit: NEWEST_INVOICES })
+      .then((r) => (r?.items ?? []) as Item[]),
     readAll(client, 'Payments', byCode),
     readAll(client, 'BankLines', byCode),
     readAll(client, 'MatchProposals', byCode),
@@ -100,13 +107,23 @@ export const invoke = async (input: any, context: any) => {
   const customer = customerRows[0];
   if (!customer) return { error: `לקוח ${customerCode} לא נמצא`, customer: null };
 
-  // round trip 2: delivery notes by the customer's invoice numbers (chunks in parallel), merged with
-  // the ones carrying the customer code
-  const invoiceNumbers = invoices.map((i) => str(i.invoiceNumber)).filter(Boolean);
+  // round trip 2: the open invoices (OpenMovements doc numbers) not among the newest, beside the newest ones'
+  // delivery notes; round trip 3 (only when there were such invoices): their delivery notes
+  const newestNos = new Set(newestInvoices.map((i) => str(i.invoiceNumber).trim()).filter(Boolean));
+  const openNos = [...new Set(openMovements.map((m) => str(m.docNumber).trim()).filter((no) => no && !newestNos.has(no)))];
+  const [openRead, dnNewest] = await Promise.all([
+    openNos.length ? readWhereIn(client, 'Invoices', 'invoiceNumber', openNos) : Promise.resolve([] as Item[]),
+    readWhereIn(client, 'DeliveryNotes', 'invoiceNumber', [...newestNos]),
+  ]);
+  const openOnly = openRead.filter((i) => str(i.customerCode).trim() === customerCode && !newestNos.has(str(i.invoiceNumber).trim()));
+  const dnOpen = openOnly.length ? await readWhereIn(client, 'DeliveryNotes', 'invoiceNumber', openOnly.map((i) => str(i.invoiceNumber))) : [];
   const dnById = new Map<string, Item>();
-  for (const r of await readWhereIn(client, 'DeliveryNotes', 'invoiceNumber', invoiceNumbers)) dnById.set(str(r.id), r);
-  for (const r of dnByCode) dnById.set(str(r.id), r);
+  for (const r of [...dnNewest, ...dnOpen]) dnById.set(str(r.id), r);
   const deliveryNotes = [...dnById.values()];
+  // the ledger decides open / closed (the invoice layer's shared rule)
+  const invoices = applyLedger([...newestInvoices, ...openOnly], openMovements, ledgerCodesOf([customer]));
+  const ledgerRead = !!str(customer.movementsSyncedAt).trim();
+  console.log(`[GetCustomer360] ${customerCode}: invoices newest=${newestInvoices.length} open-extra=${openOnly.length} ledgerRead=${ledgerRead} movements=${openMovements.length}`);
   const creditSources = await creditPromise;
 
   const ownerMap = buildOwnerMap(owners);
@@ -144,8 +161,9 @@ export const invoke = async (input: any, context: any) => {
     // remainingAmount / effectiveOpenAmount null) – it is never listed or scored as open debt
     const openAmountKnown = hasOpenAmount(inv);
     const effectiveOpenAmount = openAmountKnown ? effectiveOpen(row) : null;
-    // paid in Priority, or paid by a match the app saw (the card shows שולם)
-    const isPaid = str(inv.status) === 'שולמה' || (!!row.paymentState && effectiveOpenAmount !== null && effectiveOpenAmount <= 0.005);
+    // closed: the ledger shows nothing open, or the payment the app saw covers what is open (the card shows שולם).
+    // 6b: the stale Invoices.status ('שולמה') no longer closes an invoice.
+    const isPaid = effectiveOpenAmount !== null && Math.abs(effectiveOpenAmount) <= 0.005;
     const isOpen = !isPaid && openAmountKnown;
     const no = str(inv.invoiceNumber).trim();
     const applied = closingByInvoice.get(no) ?? [];
@@ -200,7 +218,8 @@ export const invoke = async (input: any, context: any) => {
       .reduce((s, i) => s + effectiveOpen(i), 0),
   );
   const paidSeenPending = round2(layered.reduce((s, i) => s + paidSeenPendingOf(i), 0));
-  const ledgerRaw = numOrNull(customer.ledgerBalance);
+  // 6b: the ledger aggregate (RefreshCustomerAggregates) when the customer's ledger was read, else Priority's balance
+  const ledgerRaw = ledgerRead && numOrNull(customer.openBalance) !== null ? numOrNull(customer.openBalance) : numOrNull(customer.ledgerBalance);
   const ledger = ledgerRaw === null ? null : round2(ledgerRaw - paidSeenPending);
   const credit = creditViewsFor(creditSources, [customerCode], asOfDate, thresholdPctOf(settings), expiryAlertDaysOf(settings)).get(customerCode)!;
   const receiptDates = payments.map((p) => toIsraelDate(p.paymentDate)).filter(Boolean) as string[];

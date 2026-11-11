@@ -16,9 +16,11 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { PdfViewer } from '@/components/ui/pdf-viewer';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { isIls } from '@/utils/Currency';
+import { WAITING_FOR_OPEN_MOVEMENTS } from '@/hooks/useHasOpenMovements';
 import { noteTypeLabel } from '@/utils/AgingMonths';
 import { bankFileKind, openableFileUrl } from '@/utils/BankFile';
-import { EMPTY, PRIORITY_FORM_LABEL, daysOverdue, formatDate, formatDateTime, formatILS, formatMoney, formatNumber, isILS } from '@/utils/Format';
+import { EMPTY, PRIORITY_FORM_LABEL, daysOverdue, formatDate, formatDateTime, formatILS, formatMoney, formatNumber } from '@/utils/Format';
 
 const HEAD = 'h-8 text-xs font-semibold text-muted-foreground';
 const stop = (e: SyntheticEvent) => e.stopPropagation();
@@ -91,7 +93,7 @@ export function InvoicePopup({
           <DialogTitle className="flex flex-wrap items-center gap-2 text-xl font-extrabold tracking-[-0.01em]">
             <FileTextIcon className="size-5 text-muted-foreground" />
             {inv?.documentType ?? 'חשבונית'} <span dir="ltr">{invoiceNumber}</span>
-            {inv && <StatusBadge value={inv.reconciledDate ? 'סגורה' : 'פתוחה'} tone={inv.reconciledDate ? 'done' : 'active'} />}
+            {inv && inv.openAmount != null && <StatusBadge value={inv.openAmount === 0 ? 'סגורה' : 'פתוחה'} tone={inv.openAmount === 0 ? 'done' : 'active'} />}
           </DialogTitle>
           <DialogDescription>{inv ? inv.customerName ?? inv.customerCode ?? '' : 'הנתונים שנשלפו מ-Priority לצד החשבונית כפי שנשלחה ללקוח.'}</DialogDescription>
           {inv && (
@@ -102,13 +104,13 @@ export function InvoicePopup({
               </div>
               <div className="glass flex min-w-[150px] flex-col gap-0.5 rounded-[18px] border px-[13px] py-2">
                 <dt className="text-xs font-semibold text-muted-foreground">נשאר לתשלום</dt>
-                <dd className="text-xl leading-tight font-extrabold tabular-nums">{inv.reconciledDate ? formatILS(0) : formatILS(inv.remainingAmount ?? inv.openAmount)}</dd>
+                <dd className="text-xl leading-tight font-extrabold tabular-nums">{inv.openAmount == null ? <span className="text-sm font-semibold text-muted-foreground">{WAITING_FOR_OPEN_MOVEMENTS}</span> : formatILS(inv.remainingAmount ?? inv.openAmount)}</dd>
               </div>
               <div className="glass flex min-w-[150px] flex-col gap-0.5 rounded-[18px] border px-[13px] py-2">
                 <dt className="text-xs font-semibold text-muted-foreground">פירעון</dt>
                 <dd className="text-base font-bold tabular-nums">
                   {formatDate(inv.dueDate)}
-                  {!inv.reconciledDate && overdue && overdue > 0 ? <span className="ms-1.5 text-xs font-semibold text-critical-ink">באיחור {formatNumber(overdue)} ימים</span> : null}
+                  {(inv.openAmount ?? 0) > 0 && overdue && overdue > 0 ? <span className="ms-1.5 text-xs font-semibold text-critical-ink">באיחור {formatNumber(overdue)} ימים</span> : null}
                 </dd>
               </div>
             </dl>
@@ -149,7 +151,7 @@ export function InvoicePopup({
                 </Fact>
                 <Fact label="סוג מסמך">{inv.documentType ?? 'חשבונית'}</Fact>
                 <Fact label="טופס">{PRIORITY_FORM_LABEL[inv.priorityForm ?? ''] ?? EMPTY}</Fact>
-                <Fact label="מטבע">{isILS(inv.currencyCode) ? 'ש״ח' : inv.currencyCode}</Fact>
+                <Fact label="מטבע">{isIls(inv.currencyCode) ? 'ש״ח' : inv.currencyCode}</Fact>
                 <Fact label="לקוח" wide>
                   {customerLink ? (
                     <CustomerPopupLink code={inv.customerCode} name={inv.customerName} showCode />
@@ -161,7 +163,7 @@ export function InvoicePopup({
                 </Fact>
                 <Fact label="תאריך חשבונית">{formatDate(inv.invoiceDate)}</Fact>
                 <Fact label="יתרה פתוחה ב-Priority">
-                  <span className="tabular-nums">{formatILS(inv.openAmount)}</span>
+                  <span className="tabular-nums">{inv.openAmount == null ? WAITING_FOR_OPEN_MOVEMENTS : formatILS(inv.openAmount)}</span>
                 </Fact>
                 <Fact label="מצב תשלום">{inv.paymentStatus ? <StatusBadge value={inv.paymentStatus} /> : '—'}</Fact>
                 <Fact label="סטטוס ב-Priority">{inv.status ? <StatusBadge value={inv.status} /> : '—'}</Fact>

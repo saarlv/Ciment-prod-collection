@@ -12,6 +12,15 @@ vi.mock('../../shared/blocks/blocks-client.ts', () => ({
 
 import { invoke as refresh } from '../code.ts';
 
+
+/** 6b: openAmount / dueDate come from the ledger – mirror each invoice's open amount as its open movement, ledger read. */
+const seedLedger = (fake: any) => {
+  const invs = fake.rows('Invoices');
+  const codes = [...new Set(invs.map((i: any) => i.customerCode))];
+  fake.insert('Customers', codes.map((customerCode) => ({ customerCode, movementsSyncedAt: '2026-10-21T03:00:00.000Z' })));
+  fake.insert('OpenMovements', invs.filter((i: any) => Number(i.openAmount)).map((i: any) => ({ customerCode: i.customerCode, docNumber: i.invoiceNumber, docType: 'חשבונית', amount: i.openAmount, dueDate: i.dueDate, movementId: `M-${i.invoiceNumber}` })));
+};
+
 const ctx: any = {};
 const C = 'TEST-060';
 const APPROVED = 'אושרה – לביצוע ב-Priority';
@@ -70,6 +79,7 @@ describe('RefreshInvoiceLayer', () => {
     fake.insert('Invoices', [inv('A', 5000, '2026-09-30'), inv('B', 3000, '2026-10-15'), inv('Z', 100, '2026-10-15', { customerCode: 'TEST-061' })]);
     fake.insert('MatchProposals', [{ bankLineId: 'BL-1', customerCode: C, status: APPROVED, decidedAt: '2026-10-20T09:00:00.000Z', allocations: { lines: [{ invoiceNumber: 'A', amount: 5000 }] } }]);
     fake.insert('Disputes', [{ customerCode: C, invoiceNumbers: 'B', status: 'פתוחה', disputeType: 'מחיר', openedAt: '2026-10-19T08:00:00.000Z' }]);
+    seedLedger(fake);
     current = fake.client();
   });
   const writes = (mark: number) => fake.calls.slice(mark).filter((c) => /^(create|update|delete)/.test(c.method));
@@ -79,8 +89,9 @@ describe('RefreshInvoiceLayer', () => {
     const r = await refresh({ customerCodes: [C] }, ctx);
     expect(r).toMatchObject({ dryRun: true, invoicesChecked: 2, invoicesChanged: 2, writeVerified: false, errors: [] });
     expect(r.changes.map((c: any) => [c.invoiceNumber, Object.keys(c.fields).sort()])).toEqual([
-      ['A', ['paidSeenAmount', 'paidSeenAt', 'paidSeenBankLineIds', 'paymentState', 'paymentStatus', 'remainingAmount', 'subStatus']],
-      ['B', ['openDisputeId', 'paymentStatus', 'remainingAmount', 'subStatus']],
+      // 6b: dueMonth now comes from the ledger (the fixtures had none)
+      ['A', ['dueMonth', 'paidSeenAmount', 'paidSeenAt', 'paidSeenBankLineIds', 'paymentState', 'paymentStatus', 'remainingAmount', 'subStatus']],
+      ['B', ['dueMonth', 'openDisputeId', 'paymentStatus', 'remainingAmount', 'subStatus']],
     ]);
     expect(writes(mark)).toHaveLength(0);
   });

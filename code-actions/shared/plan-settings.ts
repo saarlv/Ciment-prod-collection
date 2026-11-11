@@ -196,6 +196,16 @@ export const PLAN_SETTINGS: PlanSetting[] = [
     basis: 'ברירת מחדל',
     part: 'A',
   },
+  {
+    settingKey: 'balanceAsOfDate',
+    value: '',
+    valueType: TXT,
+    label: 'תאריך חישוב יתרות (ריק = היום)',
+    description:
+      'YYYY-MM-DD. התאריך שלפיו מחושב "באיחור" ביתרות הלקוח (RefreshCustomerAggregates): תנועה פתוחה בחובה שתאריך הפירעון שלה לפני התאריך הזה נספרת כפיגור. ריק = היום (שעון ישראל).',
+    basis: 'ברירת מחדל',
+    part: 'A',
+  },
   // ---------- part B: receipts ----------
   {
     settingKey: 'bankLinesSource',

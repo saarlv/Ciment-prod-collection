@@ -1,4 +1,12 @@
 import { describe, expect, it } from 'vitest';
+
+/** 6b: openAmount / dueDate come from the ledger – mirror each invoice's open amount as its open movement, ledger read. */
+const seedLedger = (fake: any) => {
+  const invs = fake.rows('Invoices');
+  const codes = [...new Set(invs.map((i: any) => i.customerCode))];
+  fake.insert('Customers', codes.map((customerCode) => ({ customerCode, movementsSyncedAt: '2026-10-21T03:00:00.000Z' })));
+  fake.insert('OpenMovements', invs.filter((i: any) => Number(i.openAmount)).map((i: any) => ({ customerCode: i.customerCode, docNumber: i.invoiceNumber, docType: 'חשבונית', amount: i.openAmount, dueDate: i.dueDate, movementId: `M-${i.invoiceNumber}` })));
+};
 import { FakeBlocks } from '../../shared/fake-blocks.ts';
 import { refreshInvoiceLayer } from '../../shared/collections-invoice-layer.ts';
 
@@ -14,6 +22,7 @@ function world() {
     { receiptKey: 'RCPT-BL-1', bankLineId: 'BL-1', customerCode: C, amount: 1000, allocatedAmount: 1000, unallocatedAmount: 0, receiptStatus: 'הונפקה ב-Priority', matchStatus: 'מפוזרת', preparedAt: '2026-10-21T05:00:00.000Z', issuedAt: ISSUED_AT, isTestFixture: true },
   ]);
   fake.insert('ReceiptAllocations', [{ receiptKey: 'RCPT-BL-1', bankLineId: 'BL-1', invoiceNumber: 'A', customerCode: C, amount: 1000, status: 'הונפקה ב-Priority', at: '2026-10-21T05:00:00.000Z', isTestFixture: true }]);
+  seedLedger(fake);
   return fake;
 }
 

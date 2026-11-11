@@ -320,7 +320,7 @@ export interface MovementsPullResult {
   sumCredit: number;
   /** docType → { count, sum } */
   byDocType: Record<string, { count: number; sum: number }>;
-  /** the 5 customers with the largest open-movements sum, next to the CustomerActivity openDebt (unreconciled Invoices.amount) */
+  /** the 5 customers with the largest open-movements sum, next to their unreconciled Invoices.amount (not deletedInSource) */
   topCustomers: { customerCode: string; customerName: string | null; openMovementsSum: number; invoicesOpenDebt: number | null; difference: number | null }[];
   /** dry run: customerCode → { count, sum } */
   perCustomer?: Record<string, { count: number; sum: number }>;
@@ -336,6 +336,9 @@ export interface MovementsPullResult {
   needsResume: boolean;
   resumed: boolean;
   notes: string[];
+  /** customers whose read completed AND who exist in Customers (their snapshot was replaced). Internal: PullOpenMovements
+   *  uses it for movementsSyncedAt and the calc layer and strips it from its output. */
+  completedCodes?: string[];
 }
 
 const movementKey = (code: unknown, id: unknown) => `${str(code).trim()}|${str(id).trim()}`;
@@ -425,8 +428,18 @@ export async function pullOpenMovements(
     return true;
   });
   out.fromSource = movements.length;
-  if (!movements.length) {
-    errors.push('המקור החזיר 0 תנועות – המשיכה נחשבת כנכשלה, הטבלה לא רוקנה');
+  // 6b: a pass whose completed customers have no open line is a success (their old rows are cleared below). It fails
+  // only when no customer was read at all on a pass that planned customers. Incomplete customers are never in
+  // answer.customers, so their rows are never touched.
+  if (!movements.length && out.customersRead === 0) {
+    if (out.customersPlanned === 0) {
+      out.ok = true;
+      out.writeVerified = true;
+      out.notes.push('לא תוכננו לקוחות לקריאה – לא נכתב ולא נמחק דבר');
+      if (!dryRun) await answer?.afterWrite?.(true);
+      return out;
+    }
+    errors.push('אף לקוח לא נקרא עד הסוף – המשיכה נחשבת כנכשלה, הטבלה לא רוקנה');
     if (!dryRun) await answer?.afterWrite?.(false);
     return out;
   }
@@ -447,6 +460,8 @@ export async function pullOpenMovements(
   out.unknownCustomers = coveredCodes.filter((c) => !customerByCode.has(c)).sort();
   const known = new Set(coveredCodes.filter((c) => customerByCode.has(c)));
   out.customers = known.size;
+  const completed = new Set((answer.customers ?? []).map((c) => str(c).trim()));
+  out.completedCodes = [...known].filter((c) => completed.has(c)).sort();
 
   const existingByKey = new Map<string, Item>();
   const dupIds: string[] = [];
@@ -548,7 +563,7 @@ export async function pullOpenMovements(
   return out;
 }
 
-/** Counts and sums of the movements written (or that would be), the 5 largest customers against CustomerActivity. */
+/** Counts and sums of the movements written (or that would be), the 5 largest customers against their unreconciled invoices. */
 async function summarizeMovements(client: BlocksClient, out: MovementsPullResult, rows: Item[], dryRun: boolean) {
   const per: Record<string, { count: number; sum: number }> = {};
   for (const r of rows) {
@@ -571,10 +586,17 @@ async function summarizeMovements(client: BlocksClient, out: MovementsPullResult
   let activity = new Map<string, number>();
   if (top.length) {
     try {
-      const act = await readWhereIn(client, 'CustomerActivity', 'customerCode', top.map(([c]) => c));
-      activity = new Map(act.map((r) => [str(r.customerCode).trim(), round2(num(r.openDebt ?? r.openDebtRaw))]));
+      // the deleted CustomerActivity view's openDebt, computed directly: amount of the unreconciled, not deleted invoices
+      const codes = top.map(([c]) => c);
+      const inv = await readWhereIn(client, 'Invoices', 'customerCode', codes);
+      activity = new Map(codes.map((c) => [c, 0]));
+      for (const r of inv) {
+        const c = str(r.customerCode).trim();
+        if (!activity.has(c) || r.deletedInSource === true || str(r.reconciledDate).trim()) continue;
+        activity.set(c, round2(activity.get(c)! + num(r.amount)));
+      }
     } catch (e) {
-      out.notes.push(`CustomerActivity: ${errText(e)}`);
+      out.notes.push(`Invoices (חוב חשבוניות פתוחות): ${errText(e)}`);
     }
   }
   const names = new Map(rows.map((r) => [str(r.customerCode), str(r.customerName) || null]));

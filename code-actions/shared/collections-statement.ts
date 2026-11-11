@@ -9,6 +9,7 @@
 // and document number is wrapped in a left-to-right span so it reads correctly inside the RTL text. The
 // "תצוגה – נכון ל-…" stamp and the page number are @page margin boxes, so they are printed on every page.
 // Credit balances are shown as negative numbers, as in Priority.
+import { currencyLabel, ILS_SYMBOL, isIls } from './collections-currency.ts';
 import type { BlocksClient } from './blocks/blocks-client.ts';
 import { diffDays, TZ } from './collections-dates.ts';
 import { round2, str } from './collections-data.ts';
@@ -34,7 +35,8 @@ export const COMPANY_LINES: [string, string][] = [
 export const BRAND_BLUE = '#2C44A6';
 /** Kept for the other documents that print a department header (collections-documents). */
 export const COMPANY_HEADER = 'סימנט – מחלקת הנהלת חשבונות';
-export const CURRENCY = 'ש״ח';
+/** Amount cells print the shekel as ₪ (shared/collections-currency.ts), never "שח". */
+export const CURRENCY = ILS_SYMBOL;
 
 export type StatementKind = 'כרטסת' | 'חובות פתוחים';
 export const KIND_TITLE: Record<StatementKind, string> = { כרטסת: 'כרטסת', 'חובות פתוחים': 'הדפסת חובות פתוחים ללקוח' };
@@ -224,7 +226,9 @@ export function renderOpenDebtsHtml(data: OpenDebtsResult, asOf: string, opts: {
   let running = 0;
   const rows = data.documents
     .map((d) => {
-      running = round2(running + d.openAmount);
+      // a document in another currency is listed with its own code and stays out of the shekel totals
+      const ils = isIls((d as any).currencyCode);
+      if (ils) running = round2(running + d.openAmount);
       const late = daysLate(d, asOf);
       return `<tr>
 <td style="${CTR}">${dateCell(d.dueDate)}</td>
@@ -236,13 +240,13 @@ export function renderOpenDebtsHtml(data: OpenDebtsResult, asOf: string, opts: {
 <td style="${NUM}">${money(signedAmount(d))}</td>
 <td style="${NUM}">${money(d.openAmount)}</td>
 <td style="${NUM}">${money(running)}</td>
-<td style="${CTR}">${esc(CURRENCY)}</td>
+<td style="${CTR}">${esc(currencyLabel((d as any).currencyCode))}</td>
 </tr>`;
     })
     .join('\n');
-  const total = round2(data.documents.reduce((s, d) => s + d.openAmount, 0));
+  const total = round2(data.documents.filter((d) => isIls((d as any).currencyCode)).reduce((s, d) => s + d.openAmount, 0));
 
-  const buckets = agingBuckets(data.documents, asOf);
+  const buckets = agingBuckets(data.documents.filter((d) => isIls((d as any).currencyCode)), asOf);
   const shown = buckets.filter((b) => b.count > 0);
   const agingCols = shown.length ? shown : buckets.filter((b) => b.key !== 'notDue');
   const agingTable = `<table style="width: 100%; border-collapse: collapse; margin-top: 4px;">

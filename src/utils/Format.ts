@@ -1,3 +1,5 @@
+import { isIls } from '@/utils/Currency';
+
 const ilsFormatter = new Intl.NumberFormat('he-IL', {
   style: 'currency',
   currency: 'ILS',
@@ -259,14 +261,9 @@ export function formatDayMonth(value?: string | null): string {
 export function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
-/** True for shekel rows: Priority leaves currencyCode empty or 'ILS' for local currency. */
-export function isILS(currencyCode?: string | null): boolean {
-  return !currencyCode || currencyCode.toUpperCase() === 'ILS' || currencyCode === 'ש"ח' || currencyCode === 'ש״ח';
-}
-
 /** Formats an amount in its own currency (ILS when empty); unknown codes fall back to "<amount> <code>". */
 export function formatMoney(value?: number | null, currencyCode?: string | null): string {
-  if (isILS(currencyCode)) return formatILS(value);
+  if (isIls(currencyCode)) return formatILS(value);
   if (value === undefined || value === null || Number.isNaN(value)) return EMPTY;
   const code = (currencyCode ?? '').trim().toUpperCase();
   try {
@@ -280,7 +277,7 @@ export function formatMoney(value?: number | null, currencyCode?: string | null)
 export function formatForeignExtra(rows: { amount?: number | null; currencyCode?: string | null }[]): string {
   const byCur = new Map<string, number>();
   for (const r of rows) {
-    if (isILS(r.currencyCode)) continue;
+    if (isIls(r.currencyCode)) continue;
     const code = (r.currencyCode ?? '').trim().toUpperCase();
     byCur.set(code, (byCur.get(code) ?? 0) + (r.amount ?? 0));
   }
@@ -292,3 +289,12 @@ export function formatForeignExtra(rows: { amount?: number | null; currencyCode?
 export const HIDDEN_DOC_STATUSES = ['מבוטלת', 'טיוטא'];
 /** The Priority form a document came from, as the app labels it. */
 export const PRIORITY_FORM_LABEL: Record<string, string> = { CINVOICES: 'חשבונית', AINVOICES: 'חשבונית יצוא/מט״ח' };
+/** Whole days a `YYYY-MM-DD` due date is past `asOf`; null when not yet due or no date. */
+export function daysPastDue(dueDate?: string | null, asOf?: string | null): number | null {
+  if (!dueDate || !asOf) return null;
+  const due = dateOnlyToUtc(dueDate);
+  const ref = dateOnlyToUtc(asOf);
+  if (due === null || ref === null) return null;
+  const days = Math.round((ref - due) / 86_400_000);
+  return days > 0 ? days : null;
+}

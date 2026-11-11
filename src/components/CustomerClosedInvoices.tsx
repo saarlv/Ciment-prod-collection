@@ -233,11 +233,17 @@ export function CustomerClosedInvoices({
   receipts: Customer360Receipt[];
 }) {
   // GetCustomer360 does not carry the document type or agent; read them off the customer's Invoices mirror rows.
-  const docs = useEntityGetAll(InvoicesEntity, { where: { column: 'customerCode', value: customerCode }, page: { size: 1000 } });
-  const metaOf = new Map((docs.data ?? []).map((d) => [d.invoiceNumber ?? '', { documentType: d.documentType, salesAgentName: d.salesAgentName }]));
+  // Only the closed invoices' own rows, not the customer's whole history.
   const closed = invoices
     .filter(isInvoiceClosed)
     .sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? '') || (b.dueDate ?? '').localeCompare(a.dueDate ?? ''));
+  const closedNumbers = closed.map((i) => i.invoiceNumber ?? '').filter(Boolean);
+  const docs = useEntityGetAll(
+    InvoicesEntity,
+    { where: { and: [{ column: 'customerCode', value: customerCode }, { column: 'invoiceNumber', operator: 'in', value: closedNumbers }] }, page: { size: 1000 } },
+    { enabled: closedNumbers.length > 0 },
+  );
+  const metaOf = new Map((docs.data ?? []).map((d) => [d.invoiceNumber ?? '', { documentType: d.documentType, salesAgentName: d.salesAgentName }]));
   const { rowProps, popup } = useInvoiceRowOpener();
   const href = useReceiptLineLinks([...closed.flatMap((i) => (i.closingReceipts ?? []).map((r) => r.bankLineId)), ...receipts.map((r) => r.bankLineId)]).href;
 

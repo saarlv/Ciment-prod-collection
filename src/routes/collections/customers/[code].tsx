@@ -4,14 +4,12 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { useEntityGetAll, useExecuteAction } from '@blocksdiy/blocks-client-sdk/reactSdk';
 import {
   ArrowRightIcon,
-  ArrowUpLeftIcon,
   HandCoinsIcon,
   MessageSquarePlusIcon,
   MessageSquareTextIcon,
   PlusIcon,
-  ShieldCheckIcon,
 } from 'lucide-react';
-import { CustomerActivityEntity, CustomerNotesEntity, CustomersEntity, GetCustomer360Action, PaymentsEntity } from '@/product-types';
+import { CustomerNotesEntity, CustomersEntity, GetCustomer360Action, PaymentsEntity } from '@/product-types';
 import { CustomerDailySummary } from '@/components/customer/CustomerDailySummary';
 import { CustomerDetailsTab, CustomerFinanceTab } from '@/components/customer/CustomerPriorityDetails';
 import { CustomerFeed } from '@/components/customer/CustomerFeed';
@@ -30,6 +28,9 @@ import { StatusBadge, statusToneClass } from '@/components/StatusBadge';
 import { useActionQuery } from '@/hooks/useActionQuery';
 import { useNinaActivity } from '@/hooks/useNinaActivity';
 import { useNinaFocus } from '@/hooks/useNinaFocus';
+import { useAsOfDate } from '@/hooks/useAsOfDate';
+import { useCustomerOpenMovements } from '@/hooks/useCustomerOpenMovements';
+import { useOwnerScope } from '@/hooks/useOwnerScope';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -40,8 +41,8 @@ import { cn } from '@/lib/utils';
 import { ACTIVE_STATUS, PROMISE, commitmentProgress } from '@/utils/AgingMonths';
 import { isCustomer360 } from '@/utils/CollectionsTypes';
 import type { Customer360, Customer360Month, FeedRow } from '@/utils/CollectionsTypes';
-import { CREDIT_TAB, formatPct1 } from '@/utils/CreditExposure';
-import { EMPTY, formatDate, formatILS, formatMoney, formatMonth, round2, todayISO } from '@/utils/Format';
+import { CREDIT_TAB } from '@/utils/CreditExposure';
+import { EMPTY, daysPastDue, formatDate, formatILS, formatMoney, formatMonth, formatNumber, round2, todayISO } from '@/utils/Format';
 
 const DETAILS_TAB = 'details';
 const FINANCE_TAB = 'finance';
@@ -61,14 +62,6 @@ function resolveTab(param: string | null): { tab: string; filter: DocsFilter } {
   if (param === 'closed' || param === 'receipts') return { tab: FINANCE_TAB, filter: 'closed' };
   if (param === COLLECTION_TAB) return { tab: COLLECTION_TAB, filter: 'open' };
   return { tab: DETAILS_TAB, filter: 'open' };
-}
-
-/** CustomerActivity view row of one customer — openDebt / openInvoiceCount may arrive as strings. */
-function useActiveDebt(code: string) {
-  const q = useEntityGetAll(CustomerActivityEntity);
-  const row = ((q.data ?? []) as { customerCode?: unknown; openDebt?: unknown; openInvoiceCount?: unknown }[]).find((r) => String(r.customerCode ?? '') === code);
-  const num = (v: unknown) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
-  return { isLoading: q.isLoading, debt: row ? (num(row.openDebt) ?? 0) : null, count: row ? (num(row.openInvoiceCount) ?? 0) : null };
 }
 
 function Kpi({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
@@ -323,32 +316,207 @@ function CustomerPayments({ customerCode }: { customerCode: string }) {
   );
 }
 
-function CustomerBody({ code }: { code: string }) {
-  const cardQ = useEntityGetAll(CustomersEntity, { where: { column: 'customerCode', value: code } });
-  const active = useActiveDebt(code);
-  const card = cardQ.data?.[0];
+type CustomerRow = (typeof CustomersEntity)['instanceType'];
+
+/** "זכות על חשבון – קבלות שלא הותאמו": receipts left open on the customer's ledger. Hidden when there are none. */
+function OnAccountReceipts({ customerCode }: { customerCode: string }) {
+  const q = useCustomerOpenMovements(customerCode);
+  const rows = (q.data ?? []).filter((m) => m.docType === 'קבלה');
+  if (q.isError) return <LoadError what="הקבלות שלא הותאמו" />;
+  if (q.isLoading || rows.length === 0) return null;
+  const head = 'h-9 text-xs font-semibold text-muted-foreground';
+  return (
+    <Panel title="זכות על חשבון – קבלות שלא הותאמו">
+      <p className="-mt-1 px-[21px] pb-[13px] text-[13px] text-muted-foreground">קבלות שעוד לא הותאמו לחשבוניות בפריוריטי. הן מקטינות את החוב הפעיל.</p>
+      <div className="overflow-x-auto pb-[13px]">
+        <Table className="min-w-[480px]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={cn(head, 'ps-[21px]')}>קבלה</TableHead>
+              <TableHead className={head}>תאריך</TableHead>
+              <TableHead className={head}>פירעון</TableHead>
+              <TableHead className={cn(head, 'pe-[21px]')}>סכום</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((m) => (
+              <TableRow key={m.id} className="hover:bg-glass-faint">
+                <TableCell className="ps-[21px] font-semibold tabular-nums" dir="ltr">{m.docNumber || EMPTY}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(m.docDate)}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(m.dueDate)}</TableCell>
+                <TableCell className="pe-[21px] font-semibold tabular-nums">{formatILS(m.amount)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </Panel>
+  );
+}
+
+/** The finance tab: ledger KPIs from the Customers row, on-account receipts, the documents (paged), receipts, terms, credit. */
+function FinanceTab({ card, deepLinkedCredit, initialFilter }: { card: CustomerRow; deepLinkedCredit: boolean; initialFilter: DocsFilter }) {
+  const code = card.customerCode ?? '';
+  const asOf = useAsOfDate();
+  const [docsFilter, setDocsFilter] = useState<DocsFilter>(initialFilter);
+  const ledgerRead = !!card.movementsSyncedAt;
+  const known = (v?: number | null) => (ledgerRead && v !== null && v !== undefined ? formatILS(v) : EMPTY);
+  const oldestLate = ledgerRead ? daysPastDue(card.oldestDueDate, asOf) : null;
+  const waiting = <span className="text-xs text-muted-foreground">{WAITING_FOR_OPEN_MOVEMENTS}</span>;
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (!deepLinkedCredit || scrolled.current) return;
+    scrolled.current = true;
+    document.getElementById('credit')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [deepLinkedCredit]);
+  return (
+    <>
+      <div className="flex flex-wrap gap-[13px]">
+        <Kpi label="חוב פעיל">
+          <span className="text-[26px] leading-tight font-extrabold tabular-nums">{known(card.openBalance)}</span>
+          {ledgerRead ? <span className="text-xs text-muted-foreground tabular-nums">{formatNumber(card.openMovementCount ?? 0)} תנועות פתוחות בפריוריטי</span> : waiting}
+        </Kpi>
+        <Kpi label="בפיגור">
+          <span className={cn('text-[26px] leading-tight font-extrabold tabular-nums', ledgerRead && (card.overdueAmount ?? 0) > 0 && 'text-critical-ink')}>{known(card.overdueAmount)}</span>
+          {ledgerRead ? <span className="text-xs text-muted-foreground tabular-nums">נכון ל־{formatDate(asOf)}</span> : waiting}
+        </Kpi>
+        <Kpi label="זכות על חשבון">
+          <span className="text-[26px] leading-tight font-extrabold tabular-nums">{ledgerRead && card.onAccountCredit != null ? formatILS(Math.abs(card.onAccountCredit)) : EMPTY}</span>
+          {ledgerRead ? <span className="text-xs text-muted-foreground">קבלות שלא הותאמו</span> : waiting}
+        </Kpi>
+        <Kpi label="פירעון הכי ישן">
+          <span className="text-[26px] leading-tight font-extrabold tabular-nums">{ledgerRead ? formatDate(card.oldestDueDate) : EMPTY}</span>
+          {!ledgerRead ? waiting : oldestLate ? <span className="text-xs font-semibold text-critical-ink tabular-nums">{formatNumber(oldestLate)} ימי פיגור</span> : null}
+        </Kpi>
+        <Kpi label="אובליגו / מסגרת אשראי">
+          <span className="text-base font-bold tabular-nums">{formatILS(card.creditLimit)}</span>
+          {typeof card.obligoLimit === 'number' && <span className="text-xs text-muted-foreground tabular-nums">מסגרת אובליגו {formatILS(card.obligoLimit)}</span>}
+        </Kpi>
+        <Kpi label="תנאי תשלום">
+          <span className="text-base font-bold">{card.paymentTermsLabel || card.paymentMethod || EMPTY}</span>
+          <span className="text-xs text-muted-foreground">תשלום אחרון {formatDate(card.lastPaymentDate)}</span>
+        </Kpi>
+      </div>
+
+      {ledgerRead && <OnAccountReceipts customerCode={code} />}
+
+      <Panel
+        title="חשבוניות ומסמכים"
+        action={
+          <ToggleGroup
+            aria-label="סינון מסמכים"
+            value={[docsFilter]}
+            onValueChange={(v) => v[0] && setDocsFilter(v[0] as DocsFilter)}
+            className="gap-0.5 rounded-[20px] bg-glass-card p-1"
+          >
+            {DOC_FILTERS.map((f) => (
+              <ToggleGroupItem key={f.value} value={f.value} className={PILL}>
+                {f.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        }
+      >
+        <div className="overflow-x-auto">
+          <CustomerAllDocuments key={docsFilter} customerCode={code} filter={docsFilter} ledgerRead={ledgerRead} />
+        </div>
+      </Panel>
+
+      <Panel title="קבלות">
+        <CustomerPayments customerCode={code} />
+      </Panel>
+
+      <Panel title="תנאים, אשראי ובנק">
+        <CustomerFinanceTab code={code} mirror={card} />
+      </Panel>
+
+      <Panel title="אובליגו וביטוח" className="scroll-mt-[90px]">
+        <div id="credit" className="scroll-mt-[90px]">
+          <CreditExposureTab code={code} />
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+/** גבייה ופעילות: the only tab that runs GetCustomer360 (notes, months, invoices by urgency, closed + receipts, feed). */
+function CollectionTab({ card }: { card: CustomerRow }) {
+  const code = card.customerCode ?? '';
   const nina = useNinaActivity();
   const { executeFunction } = useExecuteAction(GetCustomer360Action);
   const q = useActionQuery(executeFunction, { customerCode: code, asOfDate: todayISO() }, { cache: 'customer360', validate: isCustomer360 });
   const data = q.data as (Customer360 & { error?: string }) | undefined;
-  useNinaFocus(code, data?.customer?.customerName);
   useRefreshOnNoteChanges(code, q.refresh);
   const [notesTarget, setNotesTarget] = useState<NotesTarget | null>(null);
-  // The card's tabs follow ?tab= (none = פרטי לקוח). Older links (open / closed / credit / payments / documents) land on פיננסי.
+
+  if (q.isLoading)
+    return (
+      <>
+        <Skeleton className="h-40 w-full rounded-[30px]" />
+        <LoadingRows rows={6} />
+      </>
+    );
+  if (q.isError || !data) return <LoadError what="נתוני הגבייה של הלקוח" />;
+
+  const notes = data.customerNotes ?? [];
+  const openMonths = data.openMonths ?? [];
+  const receipts = data.receipts ?? [];
+  const invoices = (data.invoices ?? []).filter(openAmountKnownOf);
+  const hasOpenData = invoices.length > 0;
+  const headline = commitmentHeadline(notes, nina.bankReady ? 'התקבולים שלו ממשיכים להיבדק מול שורות הבנק.' : `${nina.waitingFor} כדי לבדוק תקבולים.`);
+  const openNotes = (dueMonth: string | null, anchor: HTMLElement) =>
+    setNotesTarget({
+      customerCode: code,
+      customerName: card.customerName,
+      dueMonth,
+      months: openMonths.filter((m) => !!m.dueMonth).map((m) => ({ key: m.dueMonth ?? '', balance: m.openTotal ?? 0 })),
+      anchor,
+    });
+
+  return (
+    <>
+      {q.isRefreshing && (
+        <span role="status" className="inline-flex items-center gap-1.5 self-start rounded-full bg-glass-soft px-3 py-1 text-xs font-semibold text-muted-foreground">
+          <Spinner className="size-3" />
+          מתעדכן…
+        </span>
+      )}
+      <CustomerDailySummary code={code}>
+        <p className="flex items-start gap-2 text-[13px] text-muted-foreground">
+          <HandCoinsIcon className="mt-0.5 size-4 shrink-0" />
+          <span>{headline}</span>
+        </p>
+        <Button onClick={(e) => openNotes(null, e.currentTarget)} className="h-11 self-start rounded-full px-[21px] font-bold shadow-primary">
+          <PlusIcon data-icon="inline-start" />
+          הוספת הערה
+        </Button>
+      </CustomerDailySummary>
+      <CommitmentsStrip notes={notes} />
+      <OpenMonthsPanel months={openMonths} onOpenNotes={(m, anchor) => openNotes(m, anchor)} />
+      <Panel title="חשבוניות פתוחות לפי דחיפות">
+        {hasOpenData ? <CustomerOpenInvoices customerCode={code} invoices={invoices} /> : <WaitingForOpenMovements />}
+      </Panel>
+      <Panel title="חשבוניות שנסגרו והקבלות שסגרו אותן">
+        {hasOpenData ? <CustomerClosedInvoices customerCode={code} invoices={invoices} receipts={receipts} /> : <WaitingForOpenMovements />}
+      </Panel>
+      <CustomerFeed data={data} />
+      <MonthNotesPopover target={notesTarget} onClose={() => setNotesTarget(null)} />
+    </>
+  );
+}
+
+function CustomerBody({ code }: { code: string }) {
+  // Header and KPIs come from this one Customers row; each tab loads its own data only when opened.
+  const cardQ = useEntityGetAll(CustomersEntity, { where: { column: 'customerCode', value: code }, page: { size: 1 } });
+  const card = cardQ.data?.[0];
+  const scope = useOwnerScope();
+  useNinaFocus(code, card?.customerName);
   const [params, setParams] = useSearchParams();
   const tabParam = params.get('tab');
   const resolved = resolveTab(tabParam);
-  const [docsFilter, setDocsFilter] = useState<DocsFilter>(resolved.filter);
   const tabsRef = useRef<HTMLElement>(null);
-  const scrolled = useRef(false);
-  const deepLinkedCredit = useRef(tabParam === CREDIT_TAB);
-  const ready = !q.isLoading && !!data?.customer;
-  useEffect(() => {
-    if (!ready || scrolled.current || !deepLinkedCredit.current) return;
-    scrolled.current = true;
-    document.getElementById('credit')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }, [ready]);
-  function setTab(value: string, scroll = false) {
+  const [deepLinkedCredit] = useState(tabParam === CREDIT_TAB);
+  function setTab(value: string) {
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -358,23 +526,17 @@ function CustomerBody({ code }: { code: string }) {
       },
       { replace: true },
     );
-    if (scroll) tabsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 
-  if (q.isLoading)
+  if (cardQ.isLoading)
     return (
       <>
         <Skeleton className="h-10 w-72" />
-        <div className="flex flex-wrap gap-[13px]">
-          {Array.from({ length: 5 }, (_, i) => (
-            <Skeleton key={i} className="h-20 min-w-[180px] flex-1 rounded-[22px]" />
-          ))}
-        </div>
+        <Skeleton className="h-5 w-96" />
         <Skeleton className="h-40 w-full rounded-[30px]" />
-        <LoadingRows rows={6} />
       </>
     );
-  if (q.isError)
+  if (cardQ.isError)
     return (
       <>
         <Link to="/collections/customers" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -384,30 +546,11 @@ function CustomerBody({ code }: { code: string }) {
         <LoadError what="כרטיס הלקוח" />
       </>
     );
-  const c = data?.customer;
-  if (!c?.customerCode) return <Navigate to="/collections/customers" replace />;
+  if (!card?.customerCode) return <Navigate to="/collections/customers" replace />;
 
-  const kpis = data?.kpis ?? {};
-  const insured = !!data?.insured;
+  const ledgerRead = !!card.movementsSyncedAt;
+  const debtText = ledgerRead && card.openBalance != null ? formatILS(card.openBalance) : EMPTY;
   const tab = resolved.tab;
-  const notes = data?.customerNotes ?? [];
-  const openMonths = data?.openMonths ?? [];
-  const receipts = data?.receipts ?? [];
-  // The collection tab keeps the open invoices by severity and the closed ones with the receipts that closed them.
-  const invoices = (data?.invoices ?? []).filter(openAmountKnownOf);
-  const hasOpenData = invoices.length > 0;
-  const headline = commitmentHeadline(notes, nina.bankReady ? 'התקבולים שלו ממשיכים להיבדק מול שורות הבנק.' : `${nina.waitingFor} כדי לבדוק תקבולים.`);
-  const openNotes = (dueMonth: string | null, anchor: HTMLElement) =>
-    setNotesTarget({
-      customerCode: c.customerCode ?? code,
-      customerName: c.customerName,
-      dueMonth,
-      months: openMonths.filter((m) => !!m.dueMonth).map((m) => ({ key: m.dueMonth ?? '', balance: m.openTotal ?? 0 })),
-      anchor,
-    });
-  const insurance = kpis.insuranceUsePct === null || kpis.insuranceUsePct === undefined ? null : formatPct1(kpis.insuranceUsePct);
-  const debtText = active.isLoading ? '…' : active.debt === null ? '—' : formatILS(active.debt);
-  const terms = card?.paymentTermsLabel || c.paymentMethod || '—';
 
   return (
     <>
@@ -417,39 +560,37 @@ function CustomerBody({ code }: { code: string }) {
           כל הלקוחות
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[30px] leading-tight font-extrabold tracking-[-0.015em] md:text-[34px]">{c.customerName}</h1>
-          <span className="text-sm text-muted-foreground">{c.customerCode}</span>
-          <StatusBadge value={c.collectionStage} />
-          <StatusBadge value={c.priorityStatus} />
-          {c.doNotContact && <StatusBadge value="לא ליצור קשר" tone="critical" />}
-          {q.isRefreshing && (
-            <span role="status" className="inline-flex items-center gap-1.5 rounded-full bg-glass-soft px-3 py-1 text-xs font-semibold text-muted-foreground">
-              <Spinner className="size-3" />
-              מתעדכן…
-            </span>
-          )}
+          <h1 className="text-[30px] leading-tight font-extrabold tracking-[-0.015em] md:text-[34px]">{card.customerName}</h1>
+          <span className="text-sm text-muted-foreground">{card.customerCode}</span>
+          <StatusBadge value={card.collectionStage} />
+          <StatusBadge value={card.priorityStatus} />
+          {card.doNotContact && <StatusBadge value="לא ליצור קשר" tone="critical" />}
         </div>
         <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
           <span className="font-bold text-foreground tabular-nums">חוב פעיל {debtText}</span>
-          {active.count !== null && <span className="tabular-nums">· {active.count} חשבוניות פתוחות</span>}
-          <span>· אחראית {data?.bookkeeperName ?? '—'}</span>
-          <span>· סוכן {c.salesAgentName ?? '—'}</span>
-          {c.salesAgentPhone && (
-            <a href={`tel:${c.salesAgentPhone}`} dir="ltr" className="text-link hover:underline">
-              {c.salesAgentPhone}
+          {ledgerRead ? (
+            <span className="tabular-nums">· {formatNumber(card.openMovementCount ?? 0)} תנועות פתוחות</span>
+          ) : (
+            <span>· {WAITING_FOR_OPEN_MOVEMENTS}</span>
+          )}
+          <span>· אחראית {scope.ownerOf(card.customerCode, card.assignedBookkeeperName) || EMPTY}</span>
+          <span>· סוכן {card.salesAgentName || EMPTY}</span>
+          {card.salesAgentPhone && (
+            <a href={`tel:${card.salesAgentPhone}`} dir="ltr" className="text-link hover:underline">
+              {card.salesAgentPhone}
             </a>
           )}
         </p>
       </div>
 
       <section ref={tabsRef} aria-label="כרטיס לקוח" className="flex scroll-mt-[90px] flex-col gap-[21px]">
+        {/* Base UI unmounts closed panels, so each tab's reads start only when it is opened. */}
         <Tabs value={tab} onValueChange={(v) => setTab(String(v))} className="gap-[21px]">
           <TabsList className="h-auto gap-0.5 self-start rounded-[24px] bg-glass-soft p-1 group-data-horizontal/tabs:h-auto">
             <TabsTrigger value={DETAILS_TAB} className={TRIGGER}>
               פרטי לקוח
             </TabsTrigger>
             <TabsTrigger value={FINANCE_TAB} className={TRIGGER}>
-              {insured && <ShieldCheckIcon data-icon="inline-start" />}
               פיננסי
             </TabsTrigger>
             <TabsTrigger value={COLLECTION_TAB} className={TRIGGER}>
@@ -458,107 +599,23 @@ function CustomerBody({ code }: { code: string }) {
           </TabsList>
 
           <TabsContent value={DETAILS_TAB} className="glass glass-lift flex flex-col overflow-hidden rounded-[26px] border pt-[21px]">
-            <CustomerDetailsTab code={c.customerCode} mirror={card} internalNotes={c.internalNotes} />
+            <CustomerDetailsTab code={card.customerCode} mirror={card} internalNotes={card.internalNotes} />
           </TabsContent>
 
           <TabsContent value={FINANCE_TAB} className="flex flex-col gap-[21px]">
-            <div className="flex flex-wrap gap-[13px]">
-              <Kpi label="חוב פעיל">
-                <span className="text-[26px] leading-tight font-extrabold tabular-nums">{debtText}</span>
-                <span className="text-xs text-muted-foreground">מסמכים בלי התאמה בפריוריטי</span>
-              </Kpi>
-              <Kpi label="חשבוניות פתוחות">
-                <span className="text-[26px] leading-tight font-extrabold tabular-nums">{active.count ?? '—'}</span>
-                {(kpis.paidSeenPending ?? 0) > 0 && <span className="text-xs text-muted-foreground tabular-nums">{formatILS(kpis.paidSeenPending)} ראינו בבנק ועוד לא ב-Priority</span>}
-              </Kpi>
-              <Kpi label="אובליגו / מסגרת אשראי">
-                <span className="text-base font-bold tabular-nums">{formatILS(c.creditLimit)}</span>
-                {typeof card?.obligoLimit === 'number' && <span className="text-xs text-muted-foreground tabular-nums">מסגרת אובליגו {formatILS(card.obligoLimit)}</span>}
-              </Kpi>
-              <Kpi label="ביטוח אשראי">
-                <span className="text-base font-bold tabular-nums">{!insured ? 'לא מבוטח' : insurance ? `ניצול ${insurance}` : 'אין מכסה בתוקף'}</span>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('credit')?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
-                  className="inline-flex items-center gap-1 self-start text-xs font-semibold text-link hover:underline"
-                >
-                  אובליגו וביטוח
-                  <ArrowUpLeftIcon className="size-3.5" />
-                </button>
-              </Kpi>
-              <Kpi label="תנאי תשלום">
-                <span className="text-base font-bold">{terms}</span>
-                <span className="text-xs text-muted-foreground">תשלום אחרון {formatDate(kpis.lastPaymentDate)}</span>
-              </Kpi>
-            </div>
-
-            <Panel
-              title="חשבוניות ומסמכים"
-              action={
-                <ToggleGroup
-                  aria-label="סינון מסמכים"
-                  value={[docsFilter]}
-                  onValueChange={(v) => v[0] && setDocsFilter(v[0] as DocsFilter)}
-                  className="gap-0.5 rounded-[20px] bg-glass-card p-1"
-                >
-                  {DOC_FILTERS.map((f) => (
-                    <ToggleGroupItem key={f.value} value={f.value} className={PILL}>
-                      {f.label}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              }
-            >
-              <div className="overflow-x-auto">
-                <CustomerAllDocuments key={docsFilter} customerCode={c.customerCode} filter={docsFilter} />
-              </div>
-            </Panel>
-
-            <Panel title="קבלות">
-              <CustomerPayments customerCode={c.customerCode} />
-            </Panel>
-
-            <Panel title="תנאים, אשראי ובנק">
-              <CustomerFinanceTab code={c.customerCode} mirror={card} />
-            </Panel>
-
-            <Panel title="אובליגו וביטוח" className="scroll-mt-[90px]">
-              <div id="credit" className="scroll-mt-[90px]">
-                <CreditExposureTab code={c.customerCode} />
-              </div>
-            </Panel>
+            <FinanceTab card={card} deepLinkedCredit={deepLinkedCredit} initialFilter={resolved.filter} />
           </TabsContent>
 
           <TabsContent value={COLLECTION_TAB} className="flex flex-col gap-[21px]">
-            <CustomerDailySummary code={c.customerCode}>
-              <p className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                <HandCoinsIcon className="mt-0.5 size-4 shrink-0" />
-                <span>{headline}</span>
-              </p>
-              <Button onClick={(e) => openNotes(null, e.currentTarget)} className="h-11 self-start rounded-full px-[21px] font-bold shadow-primary">
-                <PlusIcon data-icon="inline-start" />
-                הוספת הערה
-              </Button>
-            </CustomerDailySummary>
-            <CommitmentsStrip notes={notes} />
-            <OpenMonthsPanel months={openMonths} onOpenNotes={(m, anchor) => openNotes(m, anchor)} />
-            <Panel title="חשבוניות פתוחות לפי דחיפות">
-              {hasOpenData ? <CustomerOpenInvoices customerCode={c.customerCode} invoices={invoices} /> : <WaitingForOpenMovements />}
-            </Panel>
-            <Panel title="חשבוניות שנסגרו והקבלות שסגרו אותן">
-              {hasOpenData ? <CustomerClosedInvoices customerCode={c.customerCode} invoices={invoices} receipts={receipts} /> : <WaitingForOpenMovements />}
-            </Panel>
-            <CustomerFeed data={data ?? {}} />
+            <CollectionTab card={card} />
           </TabsContent>
         </Tabs>
       </section>
 
-      <MonthNotesPopover target={notesTarget} onClose={() => setNotesTarget(null)} />
-      <TamarCardChat customerCode={c.customerCode} customerName={c.customerName} />
+      <TamarCardChat customerCode={card.customerCode} customerName={card.customerName} />
     </>
   );
 }
-
 
 export default function CustomerPage() {
   const { code } = useParams();

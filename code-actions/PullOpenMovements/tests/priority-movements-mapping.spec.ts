@@ -6,21 +6,24 @@ import {
 const noInvoices = new Map<string, string | null>();
 
 describe('FNCTRANS line → PriorityMovement', () => {
-  it('121205 receipt left on account: two open lines → two קבלה movements of −61,820.60', () => {
+  it('121205 receipt 25028956 (real lines): only KLINE 5 and 6 are open → two קבלה movements of −61,820.60', () => {
+    // the real FNCTRANS 25028956 of customer 121205: KLINE 1–4 are reconciled (FRECONNUM 28 / -1) and must be excluded;
+    // KLINE 5 (FNCDATE 2025-11-30) and KLINE 6 (FNCDATE 2025-12-05) are open (FRECONNUM 0), CREDIT1 61,820.60 each
     const header = {
-      FNCNUM: '25028956', BALDATE: '2025-11-12T00:00:00+02:00', FNCDATE: '2025-11-30T00:00:00+02:00', DETAILS: 'קבלה',
+      FNCNUM: '25028956', BALDATE: '2025-11-12T00:00:00+02:00', FNCDATE: '2025-11-12T00:00:00+02:00', DETAILS: 'קבלה',
       FNCITEMS_SUBFORM: [
-        { KLINE: 1, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 0, DETAILS: 'קבלה', FNCDATE: '2025-11-30T00:00:00+02:00' },
-        { KLINE: 2, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 0, DETAILS: 'קבלה', FNCDATE: '2025-11-30T00:00:00+02:00' },
-        // another account on the same transaction, and a reconciled line: never movements of 121205
-        { KLINE: 3, ACCNAME: '400100', FNCIREF1: null, DEBIT1: 123641.2, CREDIT1: 0, FRECONNUM: 0 },
-        { KLINE: 4, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 5, FRECONNUM: 991 },
+        { KLINE: 1, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 28, DETAILS: 'קבלה', FNCDATE: '2025-11-30T00:00:00+02:00' },
+        { KLINE: 2, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 28, DETAILS: 'קבלה', FNCDATE: '2025-12-05T00:00:00+02:00' },
+        { KLINE: 3, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 61820.6, CREDIT1: 0, FRECONNUM: -1, DETAILS: 'קבלה', FNCDATE: '2025-11-30T00:00:00+02:00' },
+        { KLINE: 4, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 61820.6, CREDIT1: 0, FRECONNUM: -1, DETAILS: 'קבלה', FNCDATE: '2025-12-05T00:00:00+02:00' },
+        { KLINE: 5, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 0, DETAILS: 'קבלה', FNCDATE: '2025-11-30T00:00:00+02:00' },
+        { KLINE: 6, ACCNAME: '121205', FNCIREF1: null, DEBIT1: 0, CREDIT1: 61820.6, FRECONNUM: 0, DETAILS: 'קבלה', FNCDATE: '2025-12-05T00:00:00+02:00' },
       ],
     };
     const m = movementsFromFncHeader(header, '121205', noInvoices);
     expect(m).toEqual([
-      { customerCode: '121205', movementId: '25028956:1', docType: 'קבלה', docNumber: '25028956', docDate: '2025-11-12', dueDate: '2025-11-30', amount: -61820.6, details: 'קבלה' },
-      { customerCode: '121205', movementId: '25028956:2', docType: 'קבלה', docNumber: '25028956', docDate: '2025-11-12', dueDate: '2025-11-30', amount: -61820.6, details: 'קבלה' },
+      { customerCode: '121205', movementId: '25028956:5', docType: 'קבלה', docNumber: '25028956', docDate: '2025-11-12', dueDate: '2025-11-30', amount: -61820.6, details: 'קבלה' },
+      { customerCode: '121205', movementId: '25028956:6', docType: 'קבלה', docNumber: '25028956', docDate: '2025-11-12', dueDate: '2025-12-05', amount: -61820.6, details: 'קבלה' },
     ]);
   });
 

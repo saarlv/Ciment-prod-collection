@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { HIDDEN_DOC_STATUSES, daysOverdue, formatDate, formatForeignExtra, formatILS, formatMoney, formatNumber, isILS, round2 } from '@/utils/Format';
+import { isIls } from '@/utils/Currency';
+import { HIDDEN_DOC_STATUSES, daysOverdue, formatDate, formatForeignExtra, formatILS, formatMoney, formatNumber, round2 } from '@/utils/Format';
 import { Switch } from '@/components/ui/switch';
 import { RECEIPT_APPROVED, RECEIPT_ISSUED } from '@/utils/ReceiptRecord';
 
@@ -93,7 +94,7 @@ export function CustomerPopup({ customerCode, onClose }: { customerCode: string;
   const allOpen = invoices.data ?? [];
   const hiddenCount = allOpen.filter((i) => HIDDEN_DOC_STATUSES.includes(i.priorityDocStatus ?? '')).length;
   const openRows = showHidden ? allOpen : allOpen.filter((i) => !HIDDEN_DOC_STATUSES.includes(i.priorityDocStatus ?? ''));
-  const ilsRows = openRows.filter((i) => isILS(i.currencyCode));
+  const ilsRows = openRows.filter((i) => isIls(i.currencyCode));
   const totalOpen = round2(ilsRows.reduce((s, i) => s + (i.openAmount ?? 0), 0));
   const totalOverdue = round2(ilsRows.filter((i) => (daysOverdue(i.dueDate) ?? 0) > 0).reduce((s, i) => s + (i.openAmount ?? 0), 0));
   const foreignExtra = formatForeignExtra(openRows.map((i) => ({ amount: i.openAmount, currencyCode: i.currencyCode })));

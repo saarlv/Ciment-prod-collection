@@ -1,0 +1,61 @@
+{
+  "name": "RefreshCustomerAggregates",
+  "type": "code",
+  "description": "Calc layer (6b): computes the ledger balance columns on Customers from OpenMovements (openBalance, openDebit, onAccountCredit = קבלה movements, overdueAmount = positive movements with dueDate before asOf, oldestDueDate, openMovementCount) and documentCount / lastDocumentDate from Invoices, plus aggregatesAt. asOf = AgentSettings balanceAsOfDate, empty = today. Customers whose ledger was never read (movementsSyncedAt empty) keep the ledger columns null. Works in batches; only changed rows are written, then read back. Called by PullOpenMovements (real run, completed customers) and SyncFromBrain (real run, async). dryRun (default true) only reports. Never writes to Priority.",
+  "iconName": "sigma",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customerCodes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only these customers (default all)"
+      },
+      "dryRun": {
+        "type": "boolean",
+        "default": true,
+        "description": "Default true: only report"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean"
+      },
+      "dryRun": {
+        "type": "boolean"
+      },
+      "asOf": {
+        "type": "string"
+      },
+      "customersChecked": {
+        "type": "number"
+      },
+      "customersChanged": {
+        "type": "number"
+      },
+      "samples": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "writeVerified": {
+        "type": "boolean"
+      },
+      "errors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "exposedToUI": false,
+  "toolEffect": "mutation"
+}

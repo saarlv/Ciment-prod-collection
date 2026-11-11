@@ -52,10 +52,10 @@ describe('computeInvoiceLayer / effectiveOpen (pure)', () => {
       { invoiceNumber: 'C', amount: 1000 },
     ]);
     const l = computeInvoiceLayer(invoices, ps);
-    expect(l.get('A')).toMatchObject({ paymentState: 'נראה תשלום', paidSeenAmount: 2000, paidSeenBankLineIds: 'BL-1', paidPriorityDoneAt: null, paidPendingAmount: 2000 });
-    expect(l.get('B')).toMatchObject({ paymentState: 'נקלט ב-Priority', paidSeenAmount: 3000, paidSeenAt: '2026-10-21T09:00:00.000Z', paidPriorityDoneAt: '2026-10-21T12:00:00.000Z', paidPendingAmount: 3000 });
-    expect(l.get('CR')).toMatchObject({ paymentState: null, paidSeenAmount: null, paidPendingAmount: 0 });
-    expect('latestNoteType' in l.get('A')!).toBe(false); // the old note fields are gone (wave 3)
+    expect(l.get(`${C}|A`)).toMatchObject({ paymentState: 'נראה תשלום', paidSeenAmount: 2000, paidSeenBankLineIds: 'BL-1', paidPriorityDoneAt: null, paidPendingAmount: 2000 });
+    expect(l.get(`${C}|B`)).toMatchObject({ paymentState: 'נקלט ב-Priority', paidSeenAmount: 3000, paidSeenAt: '2026-10-21T09:00:00.000Z', paidPriorityDoneAt: '2026-10-21T12:00:00.000Z', paidPendingAmount: 3000 });
+    expect(l.get(`${C}|CR`)).toMatchObject({ paymentState: null, paidSeenAmount: null, paidPendingAmount: 0 });
+    expect('latestNoteType' in l.get(`${C}|A`)!).toBe(false); // the old note fields are gone (wave 3)
   });
 
   it('effectiveOpen: נראה תשלום subtracts; נקלט ב-Priority only until Priority syncs after it; floored at 0; credit notes untouched', () => {

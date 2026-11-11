@@ -2,7 +2,9 @@ import { BlocksClient, Item } from '../shared/blocks/blocks-client.ts';
 import { resolveAsOf, sortableTime, toIsraelDate } from '../shared/collections-dates.ts';
 import { buildOwnerMap, formatIls, num, numberSetting, numOrNull, ownerOf, readAll, readSettings, readWhereIn, round2, str } from '../shared/collections-data.ts';
 import { buildWindow, computeAging, isDebtRow, isOpenCommitment, paidSeenPendingOf } from '../shared/collections-aging.ts';
-import { applyLedger, computeInvoiceLayer, effectiveOpen, hasOpenAmount, LAYER_FIELDS, ledgerCodesOf, type PaymentSources } from '../shared/collections-invoice-layer.ts';
+import { applyLedger, computeInvoiceLayer, effectiveOpen, fullHistoryCodesOf, hasOpenAmount, invoiceKey, LAYER_FIELDS, ledgerCodesOf, type PaymentSources } from '../shared/collections-invoice-layer.ts';
+import { ledgerOverdue } from '../shared/collections-customer-aggregates.ts';
+import { readMovementsCutoff } from '../shared/collections-movements-cutoff.ts';
 import { receiptView } from '../shared/collections-receipt-record.ts';
 import { customerCoverage } from '../shared/collections-allocation.ts';
 import { closingReceiptsByInvoice, invoiceClosingOf, invoicePaidOf } from '../shared/collections-closing-receipts.ts';
@@ -38,6 +40,11 @@ import { isActiveNote, isCommitment, monthBalances, noteTypeLabel, OUT_OPEN } fr
 // (movementsSyncedAt) an invoice with open movements is open for their sum (dueDate = the earliest), one without is
 // closed (openAmount 0); otherwise openAmount is null (unknown). isPaid no longer reads the stale Invoices.status, and
 // kpis.openBalance is the Customers aggregate openBalance (minus the payment seen) when the ledger was read.
+// Since 6d: invoices are keyed by customerCode|invoiceNumber (numbers repeat across customers); an invoice dated before
+// the open-movements cutoff with no open movement is unknown (null) unless the customer's full history was read
+// (fullHistorySyncedAt); and kpis.overdue follows the ledger's net rule (RefreshCustomerAggregates' ledgerOverdue: every
+// open movement due before asOf, credits included, capped at the balance, never below 0) minus the payment the app saw
+// on overdue invoices, when the ledger was read.
 const NEWEST_INVOICES = 100;
 type TimelineItem = {
   at: string;
@@ -61,6 +68,7 @@ export const invoke = async (input: any, context: any) => {
   // the credit view's reads (covers, adjustment sources, then exposure + the awaiting lines' proposals) run beside
   // round trips 1 and 2 and are awaited after them, so the card stays at two round trips
   const creditPromise = loadCreditSources(client, [customerCode]);
+  const cutoffPromise = readMovementsCutoff(client);
   // the customer may not exist: the credit reads then finish unobserved, never as an unhandled rejection
   creditPromise.catch(() => undefined);
   // round trip 1: every read keyed by the customer code, in parallel (existence is checked afterwards)
@@ -121,7 +129,8 @@ export const invoke = async (input: any, context: any) => {
   for (const r of [...dnNewest, ...dnOpen]) dnById.set(str(r.id), r);
   const deliveryNotes = [...dnById.values()];
   // the ledger decides open / closed (the invoice layer's shared rule)
-  const invoices = applyLedger([...newestInvoices, ...openOnly], openMovements, ledgerCodesOf([customer]));
+  const cutoff = await cutoffPromise;
+  const invoices = applyLedger([...newestInvoices, ...openOnly], openMovements, ledgerCodesOf([customer]), { cutoff, fullHistoryCodes: fullHistoryCodesOf([customer]) });
   const ledgerRead = !!str(customer.movementsSyncedAt).trim();
   console.log(`[GetCustomer360] ${customerCode}: invoices newest=${newestInvoices.length} open-extra=${openOnly.length} ledgerRead=${ledgerRead} movements=${openMovements.length}`);
   const creditSources = await creditPromise;
@@ -153,7 +162,7 @@ export const invoke = async (input: any, context: any) => {
   // the receipts that closed each invoice: the shared paid rule (ours + Priority's, a Priority copy counted once)
   const closingByInvoice = closingReceiptsByInvoice(customerCode, { receipts, allocations: receiptAllocations, payments, invoices }, asOfDate);
   const layered = invoices.map((inv): Item => {
-    const l: Item = layers.get(str(inv.invoiceNumber).trim()) ?? {};
+    const l: Item = layers.get(invoiceKey(inv)) ?? {};
     const row: Item = { ...inv };
     for (const f of LAYER_FIELDS) if (f in l) row[f] = l[f];
     if (typeof l.paidPendingAmount === 'number') row.paidPendingAmount = l.paidPendingAmount;
@@ -212,12 +221,17 @@ export const invoke = async (input: any, context: any) => {
   const debtRows = layered.filter(isDebtRow);
   const unknownOpenCount = layered.filter((i) => !i.openAmountKnown && !i.isPaid).length;
   const openSum = round2(debtRows.reduce((s, i) => s + effectiveOpen(i), 0));
-  const overdue = round2(
-    debtRows
-      .filter((i) => effectiveOpen(i) > 0 && (toIsraelDate(i.dueDate) ?? '9999') < asOfDate)
-      .reduce((s, i) => s + effectiveOpen(i), 0),
-  );
   const paidSeenPending = round2(layered.reduce((s, i) => s + paidSeenPendingOf(i), 0));
+  const isOverdueDue = (i: Item) => (toIsraelDate(i.dueDate) ?? '9999') < asOfDate;
+  // 6d: ledger read → the net overdue of the open movements (same rule as Customers.overdueAmount) minus the payment the
+  // app saw on overdue invoices; otherwise the open invoices due before asOf
+  const overdue = ledgerRead
+    ? round2(Math.max(0, ledgerOverdue(openMovements, asOfDate).overdueAmount - round2(layered.filter(isOverdueDue).reduce((s, i) => s + paidSeenPendingOf(i), 0))))
+    : round2(
+        debtRows
+          .filter((i) => effectiveOpen(i) > 0 && isOverdueDue(i))
+          .reduce((s, i) => s + effectiveOpen(i), 0),
+      );
   // 6b: the ledger aggregate (RefreshCustomerAggregates) when the customer's ledger was read, else Priority's balance
   const ledgerRaw = ledgerRead && numOrNull(customer.openBalance) !== null ? numOrNull(customer.openBalance) : numOrNull(customer.ledgerBalance);
   const ledger = ledgerRaw === null ? null : round2(ledgerRaw - paidSeenPending);

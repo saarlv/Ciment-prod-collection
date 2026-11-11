@@ -22,6 +22,14 @@
 import type { BlocksClient, Item, WhereClause } from './blocks/blocks-client.ts';
 import { monthKeyOf, sortableTime, toIsraelDate } from './collections-dates.ts';
 import { errText, mapLimit, num, numOrNull, readAll, readByIds, readWhereIn, round2, splitList, str } from './collections-data.ts';
+import { readMovementsCutoff } from './collections-movements-cutoff.ts';
+
+/**
+ * The key of one invoice row: customerCode|invoiceNumber (6d). Invoice numbers repeat across forms and customers
+ * (C18F0001 is a CINVOICES row of 131009 AND an AINVOICES row of 221134), so every per-row map (ledger facts, computed
+ * layer) is keyed by both – never by the number alone.
+ */
+export const invoiceKey = (inv: Item | null | undefined): string => `${str(inv?.customerCode).trim()}|${str(inv?.invoiceNumber).trim()}`;
 
 // ---------- enums (exactly as in the table artifacts) ----------
 export const PS_SEEN = 'נראה תשלום';
@@ -249,7 +257,8 @@ export interface PaymentEntry {
  * receipt row when given, else the allocation's own), then the approved / done matches whose receiptKey is not
  * among the given receipts / allocations (legacy matches; callers that loaded proposals only).
  */
-export function paymentEntries(sources: PaymentSources, invoiceByNo: Map<string, Item>): PaymentEntry[] {
+export function paymentEntries(sources: PaymentSources, invoiceByNo: Map<string, Item> | ((customerCode: string) => Map<string, Item>)): PaymentEntry[] {
+  const invoicesOf = typeof invoiceByNo === 'function' ? invoiceByNo : () => invoiceByNo;
   const receipts = sources.receipts ?? [];
   const allocations = sources.allocations ?? [];
   const receiptByKey = new Map(receipts.map((r) => [str(r.receiptKey).trim(), r]));
@@ -281,7 +290,7 @@ export function paymentEntries(sources: PaymentSources, invoiceByNo: Map<string,
     if (key && covered.has(key)) continue;
     const done = str(p.status) === MP_DONE;
     const pDone = sortableTime(p.priorityDoneAt);
-    for (const a of proposalAllocations(p, invoiceByNo)) {
+    for (const a of proposalAllocations(p, invoicesOf(str(p.customerCode).trim()))) {
       out.push({
         invoiceNumber: a.invoiceNumber,
         customerCode: str(p.customerCode),
@@ -305,7 +314,9 @@ export function paymentStatusOf(open: number, remaining: number, paid: number): 
 }
 
 /**
- * The layer of every invoice, keyed by invoice number. `payments` null → payment fields not computed (so a caller
+ * The layer of every invoice, keyed by invoiceKey (customerCode|invoiceNumber – numbers repeat across customers).
+ * A payment entry goes to the invoice of its own customer; one without a customer code to the first invoice of that
+ * number (as before). `payments` null → payment fields not computed (so a caller
  * that loaded no payments never blanks them). `payments` is MatchProposals (array) or PaymentSources (receipts +
  * allocations + proposals). Matches and receipts of other statuses are ignored; payments of another customer never
  * count. `status` null → the status fields (openDisputeId, subStatus) are not computed; when given they use the
@@ -316,26 +327,41 @@ export function computeInvoiceLayer(
   payments: PaymentInput,
   status: StatusSources | null = null,
 ): Map<string, ComputedLayer> {
-  const byNo = new Map<string, Item>();
+  const byKey = new Map<string, Item>();
+  /** invoice number → the first invoice of that number (entries / proposals without a customer code) */
+  const firstByNo = new Map<string, Item>();
+  /** customer code → invoice number → invoice */
+  const byCustomer = new Map<string, Map<string, Item>>();
   for (const inv of invoices) {
     const no = str(inv.invoiceNumber).trim();
-    if (no && !byNo.has(no)) byNo.set(no, inv);
+    if (!no) continue;
+    const key = invoiceKey(inv);
+    if (byKey.has(key)) continue;
+    byKey.set(key, inv);
+    if (!firstByNo.has(no)) firstByNo.set(no, inv);
+    const code = str(inv.customerCode).trim();
+    if (!byCustomer.has(code)) byCustomer.set(code, new Map());
+    byCustomer.get(code)!.set(no, inv);
   }
+  const invoicesOf = (code: string): Map<string, Item> => (code ? byCustomer.get(code) ?? new Map() : firstByNo);
   const out = new Map<string, ComputedLayer>();
-  for (const no of byNo.keys()) out.set(no, {});
+  for (const key of byKey.keys()) out.set(key, {});
 
   const sources = toPaymentSources(payments);
   if (sources) {
     const pays = new Map<string, PaymentEntry[]>();
-    for (const e of paymentEntries(sources, byNo)) {
-      const inv = byNo.get(e.invoiceNumber);
+    for (const e of paymentEntries(sources, invoicesOf)) {
+      const code = str(e.customerCode).trim();
+      // own customer's invoice of that number; an entry without a customer code keeps the old first-seen match
+      const inv = code ? byCustomer.get(code)?.get(e.invoiceNumber) ?? (byCustomer.get('')?.get(e.invoiceNumber)) : firstByNo.get(e.invoiceNumber);
       if (!inv || !sameCustomer(e.customerCode, inv.customerCode)) continue;
-      if (!pays.has(e.invoiceNumber)) pays.set(e.invoiceNumber, []);
-      pays.get(e.invoiceNumber)!.push(e);
+      const key = invoiceKey(inv);
+      if (!pays.has(key)) pays.set(key, []);
+      pays.get(key)!.push(e);
     }
-    for (const [no, inv] of byNo) {
-      const list = pays.get(no) ?? [];
-      const layer = out.get(no)!;
+    for (const [key, inv] of byKey) {
+      const list = pays.get(key) ?? [];
+      const layer = out.get(key)!;
       const open = round2(num(inv.openAmount));
       const known = hasOpenAmount(inv);
       if (!list.length) {
@@ -384,10 +410,10 @@ export function computeInvoiceLayer(
 
   if (status) {
     const disputesOf = openDisputesByInvoice(status.disputes);
-    for (const [no, inv] of byNo) {
-      const layer = out.get(no)!;
+    for (const [key, inv] of byKey) {
+      const layer = out.get(key)!;
       const merged: Item = { ...inv, ...layer };
-      const openDisputeId = openDisputeIdOf(inv, disputesOf.get(no));
+      const openDisputeId = openDisputeIdOf(inv, disputesOf.get(str(inv.invoiceNumber).trim()));
       if (!hasOpenAmount(inv)) {
         // unknown open amount → no sub-status (never פתוחה / סגורה by default)
         Object.assign(layer, { openDisputeId, subStatus: null });
@@ -445,7 +471,7 @@ export function withLayer(inv: Item, layer: ComputedLayer | undefined): Item {
 export function applyLiveLayer(invoices: Item[], payments: PaymentInput): Item[] {
   if (!payments) return invoices.map((i) => withLayer(i, undefined));
   const layers = computeInvoiceLayer(invoices, payments);
-  return invoices.map((i) => withLayer(i, layers.get(str(i.invoiceNumber).trim())));
+  return invoices.map((i) => withLayer(i, layers.get(invoiceKey(i))));
 }
 
 /** How far back done-in-Priority matches are read for a live layer: older ones are in Priority's own open amount. */
@@ -507,6 +533,10 @@ export async function readStatusSources(client: BlocksClient, customerCodes: str
  * customer's ledger was read (Customers.movementsSyncedAt set) and the invoice has no open movement; null while the
  * customer's ledger was never read (unknown – "ממתין לתנועות פתוחות מפריוריטי"). dueDate = the earliest dueDate of the
  * open movements, dueMonth its YYYY-MM; both are left as they are when there is no open movement.
+ * Pre-cutoff rule (6d): the ledger read covers documents from the cutoff (AgentSettings openMovementsFromDate) on, so an
+ * invoice dated BEFORE the cutoff with no open movement is unknown (null), not closed – unless the customer's full
+ * history was read (Customers.fullHistorySyncedAt set; PullOpenMovements fullHistory). Invoices dated on/after the cutoff
+ * (or without a date) keep the rule above. Facts are keyed by invoiceKey (customerCode|invoiceNumber).
  */
 export const LEDGER_FIELDS = ['openAmount', 'dueDate', 'dueMonth'] as const;
 export type LedgerField = (typeof LEDGER_FIELDS)[number];
@@ -523,8 +553,23 @@ export function ledgerCodesOf(customers: Item[]): Set<string> {
   return out;
 }
 
-/** invoice number → its ledger facts (see LEDGER_FIELDS). Pure. */
-export function ledgerOfInvoices(invoices: Item[], movements: Item[], ledgerCodes: Set<string>): Map<string, LedgerFacts> {
+/** The customer codes whose full ledger history was read (Customers.fullHistorySyncedAt set). */
+export function fullHistoryCodesOf(customers: Item[]): Set<string> {
+  const out = new Set<string>();
+  for (const c of customers) if (str(c.fullHistorySyncedAt).trim() && str(c.customerCode).trim()) out.add(str(c.customerCode).trim());
+  return out;
+}
+
+/** The pre-cutoff rule's inputs: the cutoff (YYYY-MM-DD; null = no rule) and the customers read in full. */
+export interface LedgerScope {
+  cutoff?: string | null;
+  fullHistoryCodes?: Set<string>;
+}
+
+/** invoiceKey (customerCode|invoiceNumber) → its ledger facts (see LEDGER_FIELDS). Pure. */
+export function ledgerOfInvoices(invoices: Item[], movements: Item[], ledgerCodes: Set<string>, scope: LedgerScope = {}): Map<string, LedgerFacts> {
+  const cutoff = scope.cutoff ?? null;
+  const full = scope.fullHistoryCodes ?? new Set<string>();
   const byDoc = new Map<string, Item[]>();
   for (const m of movements) {
     const k = `${str(m.customerCode).trim()}|${str(m.docNumber).trim()}`;
@@ -535,28 +580,31 @@ export function ledgerOfInvoices(invoices: Item[], movements: Item[], ledgerCode
   for (const inv of invoices) {
     const no = str(inv.invoiceNumber).trim();
     const code = str(inv.customerCode).trim();
-    if (!no || out.has(no)) continue;
+    const key = invoiceKey(inv);
+    if (!no || out.has(key)) continue;
     if (!code || !ledgerCodes.has(code)) {
-      out.set(no, { openAmount: null });
+      out.set(key, { openAmount: null });
       continue;
     }
     const ms = byDoc.get(`${code}|${no}`) ?? [];
     if (!ms.length) {
-      out.set(no, { openAmount: 0 });
+      const date = toIsraelDate(inv.invoiceDate);
+      const beforeCutoff = !!cutoff && !!date && date < cutoff;
+      out.set(key, { openAmount: beforeCutoff && !full.has(code) ? null : 0 });
       continue;
     }
     const dues = ms.map((m) => toIsraelDate(m.dueDate)).filter(Boolean).sort() as string[];
     const dueDate = dues[0] ?? null;
-    out.set(no, { openAmount: round2(ms.reduce((s, m) => s + num(m.amount), 0)), dueDate, dueMonth: dueDate ? monthKeyOf(dueDate) : null });
+    out.set(key, { openAmount: round2(ms.reduce((s, m) => s + num(m.amount), 0)), dueDate, dueMonth: dueDate ? monthKeyOf(dueDate) : null });
   }
   return out;
 }
 
 /** The invoices with their ledger facts merged in (openAmount always; dueDate / dueMonth only when open movements exist). */
-export function applyLedger(invoices: Item[], movements: Item[], ledgerCodes: Set<string>): Item[] {
-  const facts = ledgerOfInvoices(invoices, movements, ledgerCodes);
+export function applyLedger(invoices: Item[], movements: Item[], ledgerCodes: Set<string>, scope: LedgerScope = {}): Item[] {
+  const facts = ledgerOfInvoices(invoices, movements, ledgerCodes, scope);
   return invoices.map((inv) => {
-    const f = facts.get(str(inv.invoiceNumber).trim());
+    const f = facts.get(invoiceKey(inv));
     return f ? { ...inv, ...f } : { ...inv };
   });
 }
@@ -666,22 +714,26 @@ export async function refreshInvoiceLayer(client: BlocksClient, opts: RefreshOpt
       ? await readAll(client, 'Customers', { column: 'movementsSyncedAt', operator: 'is not null' })
       : custCodes.length ? await readWhereIn(client, 'Customers', 'customerCode', custCodes) : [];
     const ledgerCodes = ledgerCodesOf(customers);
-    const movements = !ledgerCodes.size ? [] : full ? await readAll(client, 'OpenMovements') : await readWhereIn(client, 'OpenMovements', 'customerCode', [...ledgerCodes]);
-    facts = ledgerOfInvoices(invoices, movements, ledgerCodes);
-    console.log(`[invoice-layer] ledger: ${ledgerCodes.size}/${custCodes.length} customers read, ${movements.length} open movements`);
+    const fullHistoryCodes = fullHistoryCodesOf(customers);
+    const [movements, cutoff] = await Promise.all([
+      !ledgerCodes.size ? Promise.resolve([] as Item[]) : full ? readAll(client, 'OpenMovements') : readWhereIn(client, 'OpenMovements', 'customerCode', [...ledgerCodes]),
+      readMovementsCutoff(client),
+    ]);
+    facts = ledgerOfInvoices(invoices, movements, ledgerCodes, { cutoff, fullHistoryCodes });
+    console.log(`[invoice-layer] ledger: ${ledgerCodes.size}/${custCodes.length} customers read (${fullHistoryCodes.size} full history), ${movements.length} open movements, cutoff ${cutoff}`);
   } catch (e) {
     errors.push(`קריאת התנועות הפתוחות לשכבת החשבוניות נכשלה: ${errText(e)}`);
     return result({});
   }
-  const ledgered = invoices.map((i) => ({ ...i, ...(facts.get(str(i.invoiceNumber).trim()) ?? {}) }));
+  const ledgered = invoices.map((i) => ({ ...i, ...(facts.get(invoiceKey(i)) ?? {}) }));
 
   const layers = computeInvoiceLayer(ledgered, proposals, status);
   const planned: { row: Item; fields: Item; previous: Item }[] = [];
   for (const row of invoices) {
     if (row.id === undefined || row.id === null) continue;
-    const computed = layers.get(str(row.invoiceNumber).trim());
+    const computed = layers.get(invoiceKey(row));
     if (!computed) continue;
-    const ledger = facts.get(str(row.invoiceNumber).trim()) ?? { openAmount: null };
+    const ledger = facts.get(invoiceKey(row)) ?? { openAmount: null };
     const layer = { ...EMPTY_PAYMENT, ...EMPTY_STATUS, ...computed, ...ledger } as InvoiceLayer & LedgerFacts;
     const diff = layerDiff(row, layer);
     if (!Object.keys(diff).length) continue;

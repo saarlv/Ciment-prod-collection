@@ -3,8 +3,9 @@
 //   openBalance       sum of the customer's OpenMovements.amount
 //   openDebit         sum of the positive amounts
 //   onAccountCredit   sum of the קבלה movements (receipts left on account – negative)
-//   overdueAmount     positive movements whose dueDate is before asOf
-//   oldestDueDate     earliest dueDate of the open movements
+//   overdueAmount     NET sum of ALL open movements (debits and credits) whose dueDate is before asOf; capped at
+//                     openBalance when openBalance > 0; 0 when the net is negative (6d)
+//   oldestDueDate     earliest dueDate of the POSITIVE open movements (null when there is none) (6d)
 //   openMovementCount number of open movements
 //   documentCount     Invoices rows of the customer (not deletedInSource)
 //   lastDocumentDate  latest Invoices.invoiceDate
@@ -34,6 +35,29 @@ export interface CustomerAggregates {
   lastDocumentDate: string | null;
 }
 
+/**
+ * Overdue from a customer's open movements (pure, 6d). overdueAmount = the NET sum of every open movement (debits and
+ * credits – unmatched receipts and credit notes reduce it) whose dueDate is before asOf; when the customer's balance
+ * (sum of all open movements) is positive the overdue never exceeds it; a negative net is 0. oldestDueDate = the
+ * earliest dueDate of the positive movements only (a credit is never "the oldest debt"); null when there is none.
+ */
+export function ledgerOverdue(movements: Item[], asOf: string): { overdueAmount: number; oldestDueDate: string | null } {
+  let balance = 0;
+  let net = 0;
+  let oldest: string | null = null;
+  for (const m of movements) {
+    const a = round2(num(m.amount));
+    const due = toIsraelDate(m.dueDate);
+    balance += a;
+    if (due && due < asOf) net += a;
+    if (a > 0 && due && (oldest === null || due < oldest)) oldest = due;
+  }
+  balance = round2(balance);
+  net = round2(net);
+  if (balance > 0 && net > balance) net = balance;
+  return { overdueAmount: net < 0 ? 0 : net, oldestDueDate: oldest };
+}
+
 /** The aggregates of one customer (pure). ledgerRead = Customers.movementsSyncedAt is set. */
 export function aggregatesOf(x: { ledgerRead: boolean; movements: Item[]; invoices: Item[]; asOf: string }): CustomerAggregates {
   const docs = x.invoices.filter((i) => i.deletedInSource !== true);
@@ -52,25 +76,20 @@ export function aggregatesOf(x: { ledgerRead: boolean; movements: Item[]; invoic
   let balance = 0;
   let debit = 0;
   let onAccount = 0;
-  let overdue = 0;
-  const dues: string[] = [];
   for (const m of x.movements) {
     const a = round2(num(m.amount));
-    const due = toIsraelDate(m.dueDate);
     balance += a;
     if (a > 0) debit += a;
     if (str(m.docType).trim() === DOC_RECEIPT) onAccount += a;
-    if (a > 0 && due && due < x.asOf) overdue += a;
-    if (due) dues.push(due);
   }
-  dues.sort();
+  const due = ledgerOverdue(x.movements, x.asOf);
   return {
     ...out,
     openBalance: round2(balance),
     openDebit: round2(debit),
     onAccountCredit: round2(onAccount),
-    overdueAmount: round2(overdue),
-    oldestDueDate: dues[0] ?? null,
+    overdueAmount: due.overdueAmount,
+    oldestDueDate: due.oldestDueDate,
     openMovementCount: x.movements.length,
   };
 }

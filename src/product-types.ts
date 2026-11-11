@@ -1021,6 +1021,8 @@ export interface ICustomersEntity {
   openMovementCount?: number;
   /** Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30  */
   movementsSyncedAt?: string;
+  /** Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30  */
+  fullHistorySyncedAt?: string;
   /** Calc: number of Invoices rows of the customer  */
   documentCount?: number;
   /** Calc: latest Invoices.invoiceDate of the customer. ISO 8601 date string, format: YYYY-MM-DD, e.g. 2025-09-30  */

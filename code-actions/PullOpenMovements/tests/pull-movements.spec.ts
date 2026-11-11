@@ -112,6 +112,25 @@ describe('PullOpenMovements (priority-direct source, fake priorityRead)', () => 
     expect(r.notes.some((n: string) => n.startsWith('RefreshInvoiceLayer'))).toBe(true);
   });
 
+  it('6d: fullHistory real run also sets fullHistorySyncedAt for the completed customers; a normal run does not', async () => {
+    const normal = await invoke({ dryRun: false, customerCodes: [C, '200', 'BAD'] }, ctx);
+    expect(normal.ok).toBe(true);
+    expect(fake.rows('Customers').every((c) => !c.fullHistorySyncedAt)).toBe(true);
+    const r = await invoke({ dryRun: false, fullHistory: true, customerCodes: [C, '200', 'BAD'] }, ctx);
+    expect(r.ok).toBe(true);
+    const cust = new Map(fake.rows('Customers').map((c) => [c.customerCode, c]));
+    expect(cust.get(C)).toMatchObject({ movementsSyncedAt: r.syncedAt, fullHistorySyncedAt: r.syncedAt });
+    expect(cust.get('200')).toMatchObject({ fullHistorySyncedAt: r.syncedAt });
+    expect(cust.get('BAD')!.fullHistorySyncedAt).toBeUndefined();
+    expect(r.notes.some((n: string) => n.startsWith('movementsSyncedAt + fullHistorySyncedAt'))).toBe(true);
+  });
+
+  it('6d: fullHistory dryRun writes nothing (no fullHistorySyncedAt)', async () => {
+    const mark = fake.calls.length;
+    await invoke({ dryRun: true, fullHistory: true, customerCodes: [C, '200'] }, ctx);
+    expect(writes(fake, mark)).toEqual([]);
+  });
+
   it('completed customers with no open line at all: success, their old rows cleared', async () => {
     ledger[C] = [];
     const r = await invoke({ dryRun: false, customerCodes: [C, '200'] }, ctx);

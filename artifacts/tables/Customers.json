@@ -282,6 +282,11 @@
       "description": "Calc: when PullOpenMovements last completed this customer's ledger read"
     },
     {
+      "name": "fullHistorySyncedAt",
+      "type": "datetime",
+      "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate"
+    },
+    {
       "name": "documentCount",
       "type": "number",
       "description": "Calc: number of Invoices rows of the customer"

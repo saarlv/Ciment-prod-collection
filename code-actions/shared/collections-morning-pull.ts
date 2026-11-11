@@ -586,7 +586,7 @@ async function summarizeMovements(client: BlocksClient, out: MovementsPullResult
   let activity = new Map<string, number>();
   if (top.length) {
     try {
-      // the deleted CustomerActivity view's openDebt, computed directly: amount of the unreconciled, not deleted invoices
+      // the customer's open invoice debt: the sum of amount over its invoices that are not reconciled and not deleted in source
       const codes = top.map(([c]) => c);
       const inv = await readWhereIn(client, 'Invoices', 'customerCode', codes);
       activity = new Map(codes.map((c) => [c, 0]));

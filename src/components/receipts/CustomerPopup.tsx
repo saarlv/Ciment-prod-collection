@@ -96,7 +96,9 @@ export function CustomerPopup({ customerCode, onClose }: { customerCode: string;
   const openRows = showHidden ? allOpen : allOpen.filter((i) => !HIDDEN_DOC_STATUSES.includes(i.priorityDocStatus ?? ''));
   const ilsRows = openRows.filter((i) => isIls(i.currencyCode));
   const totalOpen = round2(ilsRows.reduce((s, i) => s + (i.openAmount ?? 0), 0));
-  const totalOverdue = round2(ilsRows.filter((i) => (daysOverdue(i.dueDate) ?? 0) > 0).reduce((s, i) => s + (i.openAmount ?? 0), 0));
+  // Overdue = net of every open movement past due (debits and credits), capped at the open balance; 0 when not positive.
+  const pastDueNet = round2(ilsRows.filter((i) => (daysOverdue(i.dueDate) ?? 0) > 0).reduce((s, i) => s + (i.openAmount ?? 0), 0));
+  const totalOverdue = totalOpen > 0 ? Math.max(0, Math.min(pastDueNet, totalOpen)) : 0;
   const foreignExtra = formatForeignExtra(openRows.map((i) => ({ amount: i.openAmount, currencyCode: i.currencyCode })));
   const lastReceipts = (receipts.data ?? []).slice(0, 5);
   const lastKeys = lastReceipts.map((r) => r.receiptKey ?? '').filter(Boolean);
@@ -243,7 +245,7 @@ export function CustomerPopup({ customerCode, onClose }: { customerCode: string;
                     </TableHeader>
                     <TableBody>
                       {openRows.map((i) => {
-                        const late = daysOverdue(i.dueDate) ?? 0;
+                        const late = (i.openAmount ?? 0) > 0 ? (daysOverdue(i.dueDate) ?? 0) : 0;
                         return (
                           <TableRow key={i.id} className="hover:bg-glass-faint">
                             <TableCell className="ps-[13px] py-1.5">

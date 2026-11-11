@@ -53,6 +53,7 @@ When the version switcher (top-right) says **Live**, everything Ella changes **g
   - Note down the version you're on before large changes.
 - There is no per-message "undo" button and no "regenerate". Restore is the undo.
 - Restore covers the app (pages, logic, data structure), **not the data in your tables**. Deleted rows have to be re-entered; the Activity log (Data filter) shows what was deleted.
+  - [flag: data-revert] Data changes are undone from the Activity log instead: **Revert this change** on a Data entry (`navigation/builder-layout.md`).
 
 ## GitHub branches [flag: git-sync]
 

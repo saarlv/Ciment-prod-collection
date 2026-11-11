@@ -113,7 +113,7 @@ export function CustomerAllDocuments({ customerCode, filter = 'all', ledgerRead 
                 <TableCell>{PRIORITY_FORM_LABEL[d.priorityForm ?? ''] ?? EMPTY}</TableCell>
                 <TableCell className="tabular-nums">{formatDate(d.invoiceDate)}</TableCell>
                 {isOpen && <TableCell className="tabular-nums">{formatDate(d.dueDate)}</TableCell>}
-                {isOpen && <TableCell className={cn('tabular-nums', daysPastDue(d.dueDate, asOf) && 'font-semibold text-critical-ink')}>{daysPastDue(d.dueDate, asOf) ?? ''}</TableCell>}
+                {isOpen && <TableCell className={cn('tabular-nums', (d.openAmount ?? 0) > 0 && daysPastDue(d.dueDate, asOf) && 'font-semibold text-critical-ink')}>{(d.openAmount ?? 0) > 0 ? (daysPastDue(d.dueDate, asOf) ?? '') : ''}</TableCell>}
                 <TableCell className="tabular-nums">{formatMoney(d.amount, d.currencyCode)}</TableCell>
                 <TableCell className="tabular-nums">
                   {d.openAmount === null || d.openAmount === undefined ? (

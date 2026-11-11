@@ -63,4 +63,12 @@ Open it with the **Activity log** button at the top right, beside the version sw
   - **Logic**: actions and workflows started, completed or failed, with their inputs and **Output**. A code action's entry also has **Logs**: what the run printed (its last ~32 KB), on a successful run and a failed one. Ella reads the same logs when you ask why an action failed. A code action starts keeping logs once it's next changed and deployed; a run that timed out has none.
   - **Builder**: changes Ella made, grouped per build as "Builder changes (N)".
 - Each entry has **Open in builder**.
-- Recovering deleted records: filter **Data** and search "delete" to see what was removed, then re-enter it. There's no automatic data undo.
+- [flag: data-revert] Data changes can be undone:
+  - A change to many rows at once (an import, a bulk update or delete, a change Ella or an agent made) is one entry, such as "1,200 rows updated in Orders".
+  - Hover a Data entry and click **Revert this change** (the undo arrow). A dialog says how many rows go back and which stay as they are, and why: rows changed again later, rows whose unique value another row now has, or rows that no longer exist. **Revert N rows** confirms.
+  - Reverting a change that created rows deletes them; reverting a delete brings the rows back; reverting an update puts the earlier values back.
+  - The revert shows as its own entry ("Reverted a change to …"), and the original entry is marked **Reverted**. Reverting the revert redoes the change.
+  - Only for changes to the live app's data made after the feature was switched on (earlier versions are kept with no time limit). Draft changes, **delete all rows**, and very large changes (tens of thousands of rows) can't be reverted. Reverting doesn't run the app's data triggers.
+  - A record's own changes are also listed under **View history** in the record panel (`building/data-world.md`).
+  - A whole table can also be seen as it was at an earlier time, and put back to it, from the data editor's **See this table at an earlier time** button (`building/data-world.md`). That restore shows here as "Restored Orders to Nov 3, 2026, 10:00 AM (N rows)", and reverting it undoes the restore.
+- Recovering deleted records: filter **Data** and search "delete" to see what was removed, then re-enter it. There's no automatic data undo, unless the revert above is available [flag: data-revert].

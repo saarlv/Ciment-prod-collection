@@ -180,7 +180,8 @@ export function CustomerOpenInvoices({ customerCode, invoices }: { customerCode:
   const rows: Row[] = unpaid.filter((inv) => showHidden || !isHidden(inv)).map((inv) => {
     const no = (inv.invoiceNumber ?? '').trim();
     const remaining = inv.remainingAmount ?? inv.openAmount ?? 0;
-    const daysOverdue = daysOverdueOf(inv.dueDate, today);
+    // Credits (negative open amount) are never late: days overdue only on a positive open amount.
+    const daysOverdue = remaining > 0 ? daysOverdueOf(inv.dueDate, today) : 0;
     const score = severityScore(remaining, daysOverdue, settings.severity);
     return {
       inv,

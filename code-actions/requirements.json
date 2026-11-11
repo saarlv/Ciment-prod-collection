@@ -9300,6 +9300,13 @@
             "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
             "$id": "91a3286bd717c5f0c0e6517c"
           },
+          "fullHistorySyncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "fullHistorySyncedAt",
+            "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+            "$id": "689c71dd6ed8fd614bb4313e"
+          },
           "documentCount": {
             "type": "number",
             "title": "documentCount",
@@ -29823,6 +29830,13 @@
             "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
             "$id": "91a3286bd717c5f0c0e6517c"
           },
+          "fullHistorySyncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "fullHistorySyncedAt",
+            "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+            "$id": "689c71dd6ed8fd614bb4313e"
+          },
           "documentCount": {
             "type": "number",
             "title": "documentCount",
@@ -44435,6 +44449,13 @@
                   "title": "movementsSyncedAt",
                   "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
                   "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "fullHistorySyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "fullHistorySyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "689c71dd6ed8fd614bb4313e"
                 },
                 "documentCount": {
                   "type": "number",
@@ -66228,6 +66249,13 @@
                   "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
                   "$id": "91a3286bd717c5f0c0e6517c"
                 },
+                "fullHistorySyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "fullHistorySyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "689c71dd6ed8fd614bb4313e"
+                },
                 "documentCount": {
                   "type": "number",
                   "title": "documentCount",
@@ -66654,6 +66682,13 @@
                   "title": "movementsSyncedAt",
                   "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
                   "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "fullHistorySyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "fullHistorySyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "689c71dd6ed8fd614bb4313e"
                 },
                 "documentCount": {
                   "type": "number",
@@ -91187,6 +91222,13 @@
                   "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
                   "$id": "91a3286bd717c5f0c0e6517c"
                 },
+                "fullHistorySyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "fullHistorySyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "689c71dd6ed8fd614bb4313e"
+                },
                 "documentCount": {
                   "type": "number",
                   "title": "documentCount",
@@ -91620,6 +91662,13 @@
                   "title": "movementsSyncedAt",
                   "description": "Calc: when PullOpenMovements last completed this customer's ledger read. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
                   "$id": "91a3286bd717c5f0c0e6517c"
+                },
+                "fullHistorySyncedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "title": "fullHistorySyncedAt",
+                  "description": "Calc: when PullOpenMovements last completed a fullHistory (no BALDATE cutoff) ledger read of this customer; empty = only read from openMovementsFromDate. ISO 8601 datetime string, format: YYYY-MM-DDTHH:MM:SS, e.g. 2025-09-30T18:45:00Z, 2025-09-30T18:45:00+05:30",
+                  "$id": "689c71dd6ed8fd614bb4313e"
                 },
                 "documentCount": {
                   "type": "number",

@@ -31,27 +31,31 @@ async function invokeBounded(client: BlocksClient, name: string, input: any, dea
 /**
  * 6b, real run only: the customers whose ledger read completed get Customers.movementsSyncedAt = syncedAt (read back),
  * then their calc layer is refreshed – RefreshCustomerAggregates and RefreshInvoiceLayer for those customers. Each step
- * is skipped with a note when the run budget is spent.
+ * is skipped with a note when the run budget is spent. 6d: a fullHistory run (no BALDATE filter) also sets
+ * Customers.fullHistorySyncedAt = syncedAt for those customers, so their invoices dated before the cutoff with no open
+ * movement count as closed (0) instead of unknown (null).
  */
-async function afterPull(client: BlocksClient, codes: string[], syncedAt: string, deadline: number, notes: string[], errors: string[]) {
+async function afterPull(client: BlocksClient, codes: string[], syncedAt: string, deadline: number, notes: string[], errors: string[], fullHistory = false) {
   if (!codes.length) return;
-  // 1. movementsSyncedAt
+  // 1. movementsSyncedAt (+ fullHistorySyncedAt on a full-history read)
+  const stamp: Record<string, string> = fullHistory ? { movementsSyncedAt: syncedAt, fullHistorySyncedAt: syncedAt } : { movementsSyncedAt: syncedAt };
+  const fieldsLabel = Object.keys(stamp).join(' + ');
   try {
     const rows = await readWhereIn(client, 'Customers', 'customerCode', codes);
     const ids = rows.map((r) => str(r.id)).filter(Boolean);
     for (let i = 0; i < ids.length; i += 100) {
-      await client.updateItems('Customers', ids.slice(i, i + 100).map((id) => ({ id, movementsSyncedAt: syncedAt })));
+      await client.updateItems('Customers', ids.slice(i, i + 100).map((id) => ({ id, ...stamp })));
     }
     const back = await readByIds(client, 'Customers', ids);
-    const missed = back.filter((r) => Date.parse(str(r.movementsSyncedAt)) !== Date.parse(syncedAt)).map((r) => str(r.customerCode));
+    const missed = back.filter((r) => Object.keys(stamp).some((f) => Date.parse(str(r[f])) !== Date.parse(syncedAt))).map((r) => str(r.customerCode));
     if (missed.length || back.length !== ids.length) {
-      errors.push(`Customers.movementsSyncedAt: לא נשמר ל-${missed.length || ids.length - back.length} לקוחות (${missed.slice(0, 10).join(', ')})`);
+      errors.push(`Customers.${fieldsLabel}: לא נשמר ל-${missed.length || ids.length - back.length} לקוחות (${missed.slice(0, 10).join(', ')})`);
       return;
     }
-    notes.push(`movementsSyncedAt עודכן ל-${ids.length} לקוחות`);
-    console.log(`[PullOpenMovements] movementsSyncedAt set for ${ids.length} customers`);
+    notes.push(`${fieldsLabel} עודכן ל-${ids.length} לקוחות`);
+    console.log(`[PullOpenMovements] ${fieldsLabel} set for ${ids.length} customers`);
   } catch (e) {
-    errors.push(`Customers.movementsSyncedAt: ${errText(e)}`);
+    errors.push(`Customers.${fieldsLabel}: ${errText(e)}`);
     return;
   }
   // 2. customer aggregates, 3. invoice layer – both for these customers only
@@ -122,7 +126,7 @@ export const invoke = async (input: any, context: any) => {
   delete r.completedCodes;
   if (!dryRun && r.ok && completed.length) {
     // the pull itself succeeded; a follow-up problem is reported in errors / notes without failing it
-    await afterPull(client, completed, r.syncedAt, started + RUN_BUDGET_MS, r.notes, r.errors);
+    await afterPull(client, completed, r.syncedAt, started + RUN_BUDGET_MS, r.notes, r.errors, r.fullHistory === true);
   }
 
   if (ownBatch && importBatchId) {
